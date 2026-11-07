@@ -1,0 +1,9 @@
+#!/bin/sh
+# Config schema migrations. Runs once per install/upgrade (post-install/post-upgrade) and at first boot.
+s=$(uci -q get detour.main.schema || echo 0)
+if [ "$s" -lt 1 ]; then
+	uci -q get detour.direct >/dev/null || uci set detour.direct=direct
+	uci set detour.main.schema=1
+fi
+uci commit detour
+exit 0

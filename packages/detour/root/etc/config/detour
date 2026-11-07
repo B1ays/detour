@@ -1,0 +1,10 @@
+# Detour - policy routing through VPN exits. See /usr/share/doc/detour/example.conf
+config main 'main'
+	option enabled '1'
+	option lan_dev 'br-lan'
+	option probe_period '2'
+	option fails '2'
+	# router DNS: 'off' = untouched; 'tunnel' = via dns_policy, direct encrypted fallback when all its exits are down
+	option dns 'off'
+
+config direct 'direct'

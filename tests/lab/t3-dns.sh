@@ -1,0 +1,42 @@
+#!/bin/sh
+# A-5 from the package: router DNS via policy "vpn"; all its exits down -> dnsproxy (DoH/DoT/DoQ) direct.
+CL=192.168.1.145
+cl() { ssh -y -i /root/.ssh/id_dropbear root@$CL "$@" 2>/dev/null; }
+q() { cl "nslookup -timeout=3 $1 192.168.1.1 2>&1" | awk '/^Address: [0-9.]+$/{a=$2} END{print a?"ok":"FAIL"}'; }
+FAIL=0; ok() { echo "  ok   $*"; }; bad() { echo "  FAIL $*"; FAIL=1; }
+expect() { if [ "$2" = "$3" ]; then ok "$1 ($2)"; else bad "$1: got '$2' want '$3'"; fi; }
+waitfor() { i=0; while [ $i -lt ${3:-15} ]; do [ "$(eval "$2")" = "$1" ] && return 0; sleep 1; i=$((i+1)); done; return 1; }
+dmode() { ubus call detour status | jsonfilter -e '@.dns'; }
+excnt() { ip netns exec ex$1 nft list chain ip exnat cnt 2>/dev/null | sed -n 's/.*packets \([0-9]*\).*/\1/p' | head -n1; }
+skuid() { nft list chain inet detour output | grep skuid | sed -n 's/.*skuid \([0-9]*\).*/\1/p'; }
+
+apk info -e dnsproxy >/dev/null || apk add -q dnsproxy
+/etc/init.d/dnsproxy disable 2>/dev/null; /etc/init.d/dnsproxy stop 2>/dev/null
+echo "== enable dns=tunnel"
+uci set detour.main.dns=tunnel; uci set detour.main.dns_policy=vpn; uci commit detour; reload_config; sleep 6
+expect "dnsmasq serversfile" "$(uci -q get dhcp.@dnsmasq[0].serversfile)" "/tmp/detour/dns.servers"
+expect "noresolv" "$(uci -q get dhcp.@dnsmasq[0].noresolv)" "1"
+expect "servers file" "$(cat /tmp/detour/dns.servers | tr '\n' ' ')" "server=1.1.1.1 server=1.0.0.1 "
+waitfor dnsproxy "ps w | grep '[d]nsproxy -l 127.0.0.1' | awk '{print \$2}' | head -n1" 15 && ok "dnsproxy runs as user dnsproxy" || bad "dnsproxy user: $(ps w | grep '[d]nsproxy -l')"
+expect "skuid exemption rule (uid)" "$(skuid)" "$(id -u dnsproxy)"
+expect "mode" "$(dmode)" "tunnel"
+a=$(excnt 1); r=$(q example.net); expect "client DNS via tunnel" "$r $(( $(excnt 1) - a > 0 ? 1 : 0 ))" "ok 1"
+
+echo "== all exits down -> fallback"
+ifdown wgx1; ifdown wgx2
+waitfor fallback dmode 15 && ok "mode fallback" || bad "mode $(dmode)"
+expect "servers file" "$(cat /tmp/detour/dns.servers)" "server=127.0.0.1#5354"
+expect "client DNS via dnsproxy" "$(q example.com)" "ok"
+expect "policy traffic still blocked" "$(cl "curl -s -m 5 -o /dev/null -w '%{http_code}' https://1.1.1.1/cdn-cgi/trace")" "000"
+
+echo "== exits back -> tunnel"
+ifup wgx1; ifup wgx2
+waitfor tunnel dmode 25 && ok "mode tunnel" || bad "mode $(dmode)"
+expect "client DNS" "$(q example.org)" "ok"
+
+echo "== dns=off restores dnsmasq"
+uci set detour.main.dns=off; uci commit detour; reload_config; sleep 6
+waitfor "" "uci -q get dhcp.@dnsmasq[0].serversfile" 20 && ok "serversfile removed" || bad "serversfile still set"
+waitfor 0 "ps w | grep -c '[d]nsproxy -l 127.0.0.1'" 15 && ok "dnsproxy instance gone" || bad "dnsproxy still running"
+waitfor ok "q example.org" 20 && ok "client DNS (ISP upstream again)" || bad "client DNS after dns=off"
+echo "RESULT: $([ $FAIL = 0 ] && echo PASS || echo FAIL)"

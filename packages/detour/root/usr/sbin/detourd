@@ -1,0 +1,195 @@
+#!/usr/bin/ucode
+// detourd: exit health, policy -> exit selection, routes on netifd events, DNS fallback, 2FA guard.
+// ubus object "detour": status, reload, pin {policy, exit}, unpin {policy}, switch (= pin).
+'use strict';
+
+import * as uloop from 'uloop';
+import * as ubus from 'ubus';
+import * as fs from 'fs';
+import * as core from 'detour.core';
+import * as nft from 'detour.nft';
+import * as net from 'detour.net';
+import * as dns from 'detour.dns';
+import * as fw from 'detour.fw';
+import * as auth from 'detour.auth';
+
+const t0 = time();
+let cfg, active, pins;
+let health = {};          // exit id -> { ok, fails, seen, last_ok, rtt }
+let dns_mode = null;      // 'tunnel' | 'fallback'
+let events = [];
+let switches = 0, last_switch = null, auth_state = 'ok';
+
+function ev(msg) {
+	push(events, sprintf('%d %s', time(), msg));
+	if (length(events) > 50) shift(events);
+	core.log(msg);
+}
+
+function exit_name(id) { return core.exit_by_id(cfg, id)?.name ?? ('exit' + id); }
+
+function healthy(e) {
+	if (!e.enabled) return false;
+	const h = health[e.id];
+	if (!net.dev_up(e.device)) return false;
+	if (!e.probe) return true;               // no probe configured: device state only
+	return h != null && h.ok && h.fails < cfg.main.fails;
+}
+
+function choose(p) {
+	const pinned = pins[p.name];
+	if (pinned && index(p.exits, pinned) >= 0 && healthy(cfg.by_name[pinned])) return cfg.by_name[pinned].id;
+	for (let n in p.exits) if (healthy(cfg.by_name[n])) return cfg.by_name[n].id;
+	return null;   // nothing alive: keep the current exit (its table is unreachable -> fail-closed)
+}
+
+function ready() {
+	// start-up grace: decide only after every probed exit reported once (no flapping at boot)
+	for (let e in cfg.exits) if (e.enabled && e.probe && !health[e.id]?.seen) return false;
+	return true;
+}
+
+function update_dns() {
+	if (cfg.main.dns != 'tunnel') { dns_mode = null; return; }
+	let alive = false;
+	for (let p in cfg.policies)
+		if (p.name == cfg.main.dns_policy)
+			for (let n in p.exits) if (healthy(cfg.by_name[n])) alive = true;
+	const mode = alive ? 'tunnel' : 'fallback';
+	if (mode == dns_mode) return;
+	if (dns.write_servers(cfg, mode)) dns.hup();
+	if (dns_mode != null || mode == 'fallback') ev('router DNS: ' + mode);
+	dns_mode = mode;
+}
+
+function evaluate() {
+	if (!ready()) return;
+	let changed = false;
+	for (let p in cfg.policies) {
+		if (!p.enabled) continue;
+		const want = choose(p);
+		const cur = active['' + p.id];
+		if (want == null || want == cur) continue;
+		const r = nft.set_policy_exit(p.id, want);
+		if (r.code != 0) { ev(sprintf('policy %s: switch failed: %s', p.name, trim(r.out))); continue; }
+		// flows of this policy pinned to the old exit are dropped, the next packet re-classifies
+		if (cur) core.run(sprintf('conntrack -D -m 0x%x/0xffff00', (cur << 16) | (p.id << 8)));
+		active['' + p.id] = want;
+		changed = true;
+		switches++; last_switch = time();
+		ev(sprintf('policy %s: %s -> %s%s', p.name, cur ? exit_name(cur) : '-', exit_name(want), pins[p.name] ? ' (pinned ' + pins[p.name] + ')' : ''));
+	}
+	if (changed) fw.save_active(active);
+	update_dns();
+}
+
+function probe(e) {
+	const cmd = net.probe_cmd(e);
+	if (!cmd || !e.enabled) return;
+	const started = time();
+	uloop.process(cmd[0], slice(cmd, 1), {}, function(code) {
+		const h = health[e.id] ??= { ok: false, fails: 0, seen: false };
+		const was = h.ok && h.fails < cfg.main.fails;
+		h.seen = true;
+		if (code == 0) { h.ok = true; h.fails = 0; h.last_ok = time(); }
+		else { h.fails++; if (h.fails >= cfg.main.fails) h.ok = false; }
+		const now = h.ok && h.fails < cfg.main.fails;
+		if (was != now) ev(sprintf('exit %s %s', e.name, now ? 'up' : 'down'));
+		evaluate();
+	});
+}
+
+function guard() {
+	try { return auth.guard(); }
+	catch (e) { ev('2FA guard error: ' + e); return 'error'; }
+}
+
+function load_all(reason) {
+	cfg = core.load();
+	pins = fw.pins();
+	for (let p in keys(pins))
+		if (!length(filter(cfg.policies, (x) => x.name == p))) delete pins[p];
+	const res = fw.apply(cfg, active ? fw.active_map(cfg) : null);
+	active = fw.active_map(cfg);
+	if (res.dns_restart) dns.restart();
+	for (let e in res.errors) ev('config: ' + e);
+	dns_mode = null;
+	ev(sprintf('%s: %d exits, %d policies', reason, length(cfg.exits), length(cfg.policies)));
+	return res;
+}
+
+function status() {
+	const ex = [];
+	for (let e in cfg.exits) {
+		const h = health[e.id] ?? {};
+		push(ex, { name: e.name, id: e.id, device: e.device, enabled: e.enabled, up: net.dev_up(e.device),
+			healthy: healthy(e), probe: e.probe, fails: h.fails ?? 0, last_ok: h.last_ok, drops: nft.counter_drops(e.id) });
+	}
+	const pol = [];
+	for (let p in cfg.policies)
+		push(pol, { name: p.name, id: p.id, enabled: p.enabled, exits: p.exits,
+			active: exit_name(active['' + p.id]), pinned: pins[p.name] });
+	return { version: core.VERSION, uptime: time() - t0, exits: ex, policies: pol, dns: dns_mode ?? cfg.main.dns,
+		switches, last_switch, auth: auth.status(), errors: cfg.errors, events };
+}
+
+function do_pin(pol, ex) {
+	let p = null;
+	for (let x in cfg.policies) if (x.name == pol) p = x;
+	if (!p) return { error: 'unknown policy' };
+	if (ex == null || ex == '') delete pins[pol];
+	else {
+		if (index(p.exits, ex) < 0) return { error: 'exit is not in this policy' };
+		pins[pol] = ex;
+	}
+	fw.save_pins(pins);
+	ev(sprintf('policy %s: %s', pol, pins[pol] ? 'pinned to ' + pins[pol] : 'unpinned'));
+	evaluate();
+	return { policy: pol, pinned: pins[pol], active: exit_name(active['' + p.id]) };
+}
+
+uloop.init();
+const conn = ubus.connect();
+if (!conn) { warn('detourd: no ubus\n'); exit(1); }
+fs.mkdir(core.RUN);
+load_all('start');
+
+const S = { ubus_rpc_session: '' };
+conn.publish('detour', {
+	status: { call: () => status(), args: { ...S } },
+	reload: { call: () => { const r = load_all('reload'); evaluate(); auth_state = guard(); return { ok: r.ok, errors: r.errors, auth: auth_state }; }, args: { ...S } },
+	pin:    { call: (req) => do_pin(req.args.policy, req.args.exit), args: { policy: '', exit: '', ...S } },
+	switch: { call: (req) => do_pin(req.args.policy, req.args.exit), args: { policy: '', exit: '', ...S } },
+	unpin:  { call: (req) => do_pin(req.args.policy, null), args: { policy: '', ...S } },
+});
+
+// netifd: put the exit route back on ifup (netifd does not restore routes in our tables)
+conn.listener('network.interface', function(t, data) {
+	for (let e in cfg.exits) {
+		if (data?.interface != e.iface) continue;
+		if (data.action == 'ifup') { net.ensure_route(e); ev(sprintf('exit %s: %s up, route restored', e.name, e.iface)); }
+		else if (data.action == 'ifdown') { net.drop_route(e); ev(sprintf('exit %s: %s down', e.name, e.iface)); }
+		evaluate();
+	}
+});
+
+let tick;
+let n = 0;
+tick = uloop.timer(500, function() {
+	for (let e in cfg.exits) {
+		if (!e.probe) health[e.id] ??= { seen: true, ok: true, fails: 0 };
+		probe(e);
+		// devices can appear late (tun of a proxy engine): keep the route in place
+		if (e.enabled && net.dev_up(e.device)) net.ensure_route(e);
+	}
+	evaluate();
+	fs.writefile(core.RUN + '/heartbeat', sprintf('%d\n', time()));
+	if (n++ % 30 == 0) {
+		const a = guard();
+		if (a != 'ok') ev('2FA guard: ' + a);
+		auth_state = a;
+	}
+	tick.set(cfg.main.probe_period * 1000);
+});
+
+uloop.run();

@@ -1,0 +1,13 @@
+#!/bin/sh
+# cron, every 2 minutes: procd restarts a crashed daemon, this catches a hung one (stale heartbeat).
+[ -x /etc/init.d/detour ] || exit 0
+/etc/init.d/detour enabled || exit 0
+[ "$(uci -q get detour.main.enabled)" = 0 ] && exit 0
+hb=$(cat /tmp/detour/heartbeat 2>/dev/null) || hb=0
+now=$(date +%s)
+[ $((now - hb)) -le 90 ] && exit 0
+# give a fresh start a chance
+up=$(cut -d. -f1 /proc/uptime)
+[ "$up" -lt 180 ] && exit 0
+logger -t detour "watchdog: heartbeat is $((now - hb)) s old, restarting the daemon"
+/etc/init.d/detour restart

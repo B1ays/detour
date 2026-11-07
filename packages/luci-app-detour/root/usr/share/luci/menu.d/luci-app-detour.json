@@ -1,0 +1,28 @@
+{
+	"admin/services/detour": {
+		"title": "Detour",
+		"order": 10,
+		"action": { "type": "firstchild" },
+		"depends": { "acl": [ "luci-app-detour" ], "uci": { "detour": true } }
+	},
+	"admin/services/detour/overview": {
+		"title": "Overview",
+		"order": 1,
+		"action": { "type": "view", "path": "detour/overview" }
+	},
+	"admin/services/detour/policies": {
+		"title": "Policies",
+		"order": 2,
+		"action": { "type": "view", "path": "detour/policies" }
+	},
+	"admin/services/detour/exits": {
+		"title": "Exits",
+		"order": 3,
+		"action": { "type": "view", "path": "detour/exits" }
+	},
+	"admin/services/detour/settings": {
+		"title": "Settings",
+		"order": 4,
+		"action": { "type": "view", "path": "detour/settings" }
+	}
+}

@@ -1,0 +1,13 @@
+{
+	"luci-app-detour": {
+		"description": "Grant access to Detour",
+		"read": {
+			"ubus": { "detour": [ "status" ], "luci": [ "getFeatures" ] },
+			"uci": [ "detour", "network" ]
+		},
+		"write": {
+			"ubus": { "detour": [ "pin", "unpin", "reload" ] },
+			"uci": [ "detour" ]
+		}
+	}
+}

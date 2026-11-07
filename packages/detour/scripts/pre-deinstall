@@ -1,0 +1,10 @@
+#!/bin/sh
+[ -n "$IPKG_INSTROOT" ] && exit 0
+/etc/init.d/detour stop
+/etc/init.d/detour disable
+/etc/init.d/detour-fw disable
+# leave a stock router: no table/rules, dnsmasq back on its own upstreams, rpcd ACL restored
+/usr/sbin/detour purge
+sed -i '\#/usr/libexec/detour/watchdog#d' /etc/crontabs/root 2>/dev/null
+/etc/init.d/cron restart
+exit 0

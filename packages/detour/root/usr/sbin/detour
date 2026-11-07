@@ -1,0 +1,53 @@
+#!/usr/bin/ucode
+// detour CLI: fw-start | fw-stop | purge | render | check | status | reload | pin <policy> <exit> | unpin <policy>
+'use strict';
+
+import * as ubus from 'ubus';
+import * as core from 'detour.core';
+import * as nft from 'detour.nft';
+import * as fw from 'detour.fw';
+import * as dns from 'detour.dns';
+
+const cmd = ARGV[0];
+
+function call(method, args) {
+	const c = ubus.connect();
+	const r = c ? c.call('detour', method, args ?? {}) : null;
+	if (r == null) { warn('detour: daemon not running\n'); exit(2); }
+	printf('%.J\n', r);
+	exit(r?.error ? 1 : 0);
+}
+
+switch (cmd) {
+case 'fw-start': {
+	const r = fw.start();
+	for (let e in r.errors) warn('detour: ' + e + '\n');
+	exit(r.ok ? 0 : 1);
+}
+case 'fw-stop':
+	fw.stop(true);
+	exit(0);
+case 'purge':
+	fw.purge();
+	exit(0);
+case 'render': {
+	const cfg = core.load();
+	dns.prepare(cfg);
+	print(nft.render(cfg, fw.active_map(cfg), { skip_uid: fw.skip_uid(cfg) }));
+	print('# --- dnsmasq\n', dns.render_conf(cfg));
+	exit(0);
+}
+case 'check': {
+	const cfg = core.load();
+	for (let e in cfg.errors) print(e, '\n');
+	printf('%d exits, %d policies, %d errors\n', length(cfg.exits), length(cfg.policies), length(cfg.errors));
+	exit(length(cfg.errors) ? 1 : 0);
+}
+case 'status': call('status'); break;
+case 'reload': call('reload'); break;
+case 'pin': call('pin', { policy: ARGV[1], exit: ARGV[2] }); break;
+case 'unpin': call('unpin', { policy: ARGV[1] }); break;
+default:
+	warn('usage: detour fw-start|fw-stop|purge|render|check|status|reload|pin <policy> <exit>|unpin <policy>\n');
+	exit(1);
+}

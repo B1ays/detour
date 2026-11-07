@@ -1,0 +1,9 @@
+#!/bin/sh
+[ -n "$IPKG_INSTROOT" ] && exit 0
+[ -f /etc/uci-defaults/90-detour ] && ( . /etc/uci-defaults/90-detour ) && rm -f /etc/uci-defaults/90-detour
+# rules are reloaded in place (sets with dnsmasq data are kept), then the daemon restarts with new code
+sed -i '\#/usr/libexec/detour/watchdog#d' /etc/crontabs/root 2>/dev/null
+echo '*/2 * * * * /usr/libexec/detour/watchdog' >> /etc/crontabs/root; /etc/init.d/cron restart
+/usr/sbin/detour fw-start
+/etc/init.d/detour enabled && /etc/init.d/detour restart
+exit 0
