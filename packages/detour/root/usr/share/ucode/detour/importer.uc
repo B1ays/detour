@@ -113,6 +113,7 @@ function exit_from(dir, name, transport, cfgname, skipped) {
 	}
 	else r = { error: 'transport ' + transport + ' is not carried over (' + (transport == 'masque' ? 'WARP-MASQUE not in v1' : 'no tunnel config') + ')' };
 	if (r.error) { push(skipped, { what: 'exit ' + name, why: r.error }); return null; }
+	r.cfg = cfgname;
 	return r;
 }
 
@@ -162,8 +163,9 @@ function plan_lists(dir, skipped, have_vpn, full_tunnel) {
 	for (let c in [ 'adblock', 'ipblock', 'zapret-cidr', 'zapret-dom' ])
 		if (fs.access(dir + '/lists/' + c)) push(skipped, { what: 'lists/' + c, why: 'blocking/desync lists are not part of Detour for OpenWrt' });
 
-	// no registry for tunnel-cidr: the legacy iplist.conf / iplist.custom, or the stock default (opencck)
-	if (!length(filter(out, (l) => l.name == 'l_tunnel_cidr')) && !full_tunnel) {
+	// no registry for tunnel-cidr: the legacy iplist.conf / iplist.custom, or the stock default (opencck).
+	// A registry whose sources are all switched off is the person's choice - nothing is added then.
+	if (!length(filter(out, (l) => l.name == 'l_tunnel_cidr')) && !full_tunnel && !fs.access(dir + '/lists/tunnel-cidr/sources.tsv')) {
 		const c = rd(dir, 'iplist.conf');
 		let url = conf_get(c, 'IPLIST_URL');
 		const sites = conf_get(c, 'IPLIST_SITES'), base = conf_get(c, 'IPLIST_BASE') ?? OPENCCK;
@@ -178,6 +180,45 @@ function plan_lists(dir, skipped, have_vpn, full_tunnel) {
 	if (!have_vpn) {
 		for (let l in out) if (l.policy == 'vpn') push(skipped, { what: 'list ' + l.name, why: 'the main policy could not be carried over' });
 		return filter(out, (l) => l.policy != 'vpn');
+	}
+	return out;
+}
+
+// geo categories (stock geo.sh, geo/actions.tsv: key action count ts slot) -> one list per category, with
+// the sources geo.sh downloads (cat_url): runetfreedom geoip CIDR / geosite domains, v2fly domain-list-community
+// (lists-update resolves "v2fly:<name>" with its include: lines, as fetch_v2fly). slot 0 = the main policy.
+const RF = 'https://cdn.jsdelivr.net/gh/runetfreedom/russia-blocked-geoip@release/text';
+const RF_GEOSITE = 'https://cdn.jsdelivr.net/gh/runetfreedom/russia-blocked-geosite@release';
+const IPDENY = 'https://www.ipdeny.com/ipblocks/data/aggregated';
+function geo_source(key) {
+	let m;
+	if ((m = match(key, /^v2fly-([a-z0-9!._-]+)$/))) return { url: 'v2fly:' + m[1], kind: 'domain' };
+	if ((m = match(key, /^rfip-([a-z0-9._-]+)$/))) return { url: RF + '/' + m[1] + '.txt', kind: 'cidr' };
+	if ((m = match(key, /^rfgs-([a-z0-9._-]+)$/)) || (m = match(key, /^rf-([a-z0-9._-]+)$/))) return { url: RF_GEOSITE + '/' + m[1] + '.txt', kind: 'domain' };
+	if (index([ 'ru-blocked', 're-filter', 'ru-blocked-community' ], key) >= 0) return { url: RF + '/' + key + '.txt', kind: 'cidr' };
+	if (match(key, /^[a-z][a-z]$/)) return { url: IPDENY + '/' + key + '-aggregated.zone', kind: 'cidr' };
+	return null;
+}
+function plan_geo(dir, skipped, slot_pols, have_vpn) {
+	const out = [];
+	for (let r in tsv(dir, 'geo/actions.tsv')) {
+		const key = r[0], act = r[1], slot = int(r[4] ?? '0');
+		if (!key || act == 'off' || act == '') continue;
+		const src = geo_source(key);
+		if (!src) { push(skipped, { what: 'geo category ' + key, why: 'unknown source' }); continue; }
+		let policy;
+		if (act == 'direct' || act == 'bypass') policy = 'direct';
+		else if (act == 'vpn') {
+			policy = (slot >= 2 && slot_pols[slot]) ? 's' + slot : 'vpn';
+			if (policy == 'vpn' && !have_vpn) { push(skipped, { what: 'geo category ' + key, why: 'the main policy could not be carried over' }); continue; }
+		}
+		else { push(skipped, { what: 'geo category ' + key, why: 'action "' + act + '" is not part of Detour for OpenWrt' }); continue; }
+		// the "too few lines = a failed download" guard (10) is bigger than some categories (telegram CIDR: 8,
+		// jetbrains-ai: 3): half of what stock had, at least 1
+		let minl = int(int(r[2] ?? '20') / 2);
+		if (minl > 10) minl = 10;
+		if (minl < 1) minl = 1;
+		push(out, { name: 'g_' + replace(key, /[^a-z0-9]/g, '_'), policy, kind: src.kind, urls: [ src.url ], text: null, min_lines: minl, from: 'geo ' + key + ' (' + (r[2] ?? '?') + ' entries in stock)' });
 	}
 	return out;
 }
@@ -278,13 +319,24 @@ export function plan(dir) {
 		'sched': 'access schedules: use firewall rules with a time window',
 		'.zapret-on': 'zapret: install the zapret package and choose a strategy',
 		'.port-rules': 'port rules: not supported yet',
-		'geo/actions.tsv': 'geo categories: add their sources as lists',
+		'.split-runet': 'split DNS for Russian domains: not needed here (the router resolves through dnsmasq)',
 		'.doh-on': 'encrypted DNS: set "Router DNS" in Detour settings',
 		'.warp-reg': 'WARP registration: register WARP again from Detour (new device)',
 	};
 	for (let f, why in not) if (fs.access(dir + '/' + f)) push(skipped, { what: f, why });
 
-	const lists = plan_lists(dir, skipped, length(vpn.exits) > 0, word(dir, '.full-tunnel') == '1');
+	const lists = [ ...plan_lists(dir, skipped, length(vpn.exits) > 0, word(dir, '.full-tunnel') == '1'),
+		...plan_geo(dir, skipped, slot_pol, length(vpn.exits) > 0) ];
+
+	// Xray exits whose own connection rides another exit (stock sockif.sh, .xray-sockif: config TAB s<id>)
+	for (let r in tsv(dir, '.xray-sockif')) {
+		const m = match(r[1] ?? '', /^s([2-7])$/);
+		if (!m) continue;
+		for (let e in exits) if (e.kind == 'xray' && e.cfg == r[0]) {
+			if (length(filter(exits, (x) => x.name == 's' + m[1]))) e.via = 's' + m[1];
+			else push(skipped, { what: 'exit ' + e.name + ' through s' + m[1], why: 'that exit is not carried over - it connects directly' });
+		}
+	}
 
 	// subscriptions (subs-lib.sh): .subs = tag url label; .sub-client = tag client ua hwon hwid hwsrc
 	const subs = [], client = {};
@@ -378,6 +430,11 @@ export function apply(p, prefix) {
 		c.set('detour', n, 'probe', 'https://1.1.1.1/cdn-cgi/trace');
 		push(done, sprintf('exit %s (%s from %s, id %d)', n, e.kind, e.from, id));
 	}
+	for (let e in p.exits)
+		if (e.via && idmap[e.via]) {
+			c.set('detour', idmap[e.name] + '_eng', 'via', idmap[e.via]);
+			push(done, sprintf('exit %s connects to its server through %s', idmap[e.name], idmap[e.via]));
+		}
 	const pused = {};
 	c.foreach('detour', 'policy', (s) => { pused[int(s.id)] = s['.name']; });
 	for (let pol in p.policies) {
@@ -417,6 +474,7 @@ export function apply(p, prefix) {
 		c.set('detour', n, 'list');
 		c.set('detour', n, 'policy', (l.policy == 'direct') ? 'direct' : prefix + 'p_' + l.policy);
 		c.set('detour', n, 'kind', l.kind);
+		if (l.min_lines != null) c.set('detour', n, 'min_lines', '' + l.min_lines); else c.delete('detour', n, 'min_lines');
 		if (length(l.urls)) c.set('detour', n, 'url', l.urls); else c.delete('detour', n, 'url');
 		if (l.text) {
 			fs.mkdir(PERSIST + '/lists');

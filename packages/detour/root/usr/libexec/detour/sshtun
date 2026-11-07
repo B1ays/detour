@@ -1,0 +1,141 @@
+#!/bin/sh
+# The panel through your own VPS (stock ssh-tunnel.sh): the router itself keeps a reverse SSH tunnel to
+# a server and holds a port there (-R) that leads to LuCI at home. Nothing is opened on the router.
+#     browser -> VPS:<rport> -> (SSH raised by the router) -> <LAN address>:<LuCI port>
+# It leads to LuCI's HTTPS when uhttpd listens on it: then the VPS sees neither the password nor the pages.
+#
+# Client: OpenWrt's own dbclient (Dropbear 2025+, ed25519) - stock needed its own build, OpenWrt does not.
+# Server key: trust on first use, not never. "Check" (test, dbclient -y) records the key and shows its
+# fingerprint; the tunnel itself (run) is strict: a changed key -> no connection until "Forget".
+# Path to the VPS: always direct, around the policies - the panel is most needed when the VPN is down. The
+# tunnel runs as the system user dtssh, whose traffic Detour never classifies (meta skuid, fw.uc).
+#
+# UCI detour.sshtun: enabled, host, port (22), user, rport (18443), public (0: the VPS port listens on
+# 127.0.0.1 only - reach it with ssh -L; 1: on all addresses - needs GatewayPorts clientspecified).
+#   sshtun keygen|pubkey|test|run|forget|status
+D=/etc/detour/sshtun
+KEY=$D/id_ed25519
+H=$D/home
+KNOWN=$H/.ssh/known_hosts
+U=dtssh
+LOG=/tmp/detour/sshtun.log
+
+g() { uci -q get detour.sshtun.$1; }
+HOST=$(g host); SPORT=$(g port); TUSER=$(g user); RPORT=$(g rport); PUBLIC=$(g public)
+case "$SPORT" in ''|*[!0-9]*) SPORT=22 ;; esac
+case "$RPORT" in ''|*[!0-9]*) RPORT=18443 ;; esac
+[ "$PUBLIC" = 1 ] || PUBLIC=0
+# host and user go to dbclient's argv: letters, digits and a few signs only
+case "$HOST" in *[!A-Za-z0-9.:-]*) HOST= ;; esac
+case "$TUSER" in *[!A-Za-z0-9._-]*) TUSER= ;; esac
+
+me_root() { [ "$(id -u)" = 0 ]; }
+# replace this (sub)shell with a command run as dtssh (from root: start-stop-daemon in the foreground,
+# which execs it - so the loop's "kill $c" reaches the client itself)
+exec_as_u() {
+	if me_root; then p=$1; shift; exec start-stop-daemon -S -p /tmp/detour/none.pid -c $U -x "$p" -- "$@"
+	else exec "$@"; fi
+}
+log() { mkdir -p /tmp/detour; printf '%s %s\n' "$(date '+%F %T')" "$*" >> $LOG; }
+log_trim() { [ "$(wc -c < $LOG 2>/dev/null || echo 0)" -gt 65536 ] && { tail -c 16384 $LOG > $LOG.t && mv -f $LOG.t $LOG; }; return 0; }
+
+lan_ip() { ip -4 -o addr show dev br-lan 2>/dev/null | awk '{print $4; exit}' | cut -d/ -f1; }
+target_port() {
+	if [ -n "$(uci -q get uhttpd.main.listen_https)" ]; then
+		uci -q get uhttpd.main.listen_https | tr ' ' '\n' | sed -n 's/^0\.0\.0\.0:\([0-9]*\)$/\1/p' | head -1
+	else
+		uci -q get uhttpd.main.listen_http | tr ' ' '\n' | sed -n 's/^0\.0\.0\.0:\([0-9]*\)$/\1/p' | head -1
+	fi
+}
+fwd_spec() { printf '%s:%s:%s:%s' "$([ $PUBLIC = 1 ] && echo 0.0.0.0 || echo 127.0.0.1)" "$RPORT" "$1" "${2:-80}"; }
+
+keygen() {
+	[ -s $KEY ] && return 0
+	mkdir -p $H/.ssh
+	( umask 077; dropbearkey -t ed25519 -f $KEY >/dev/null 2>&1 ) || { echo "the key was not created"; return 1; }
+	chown -R $U $D; chmod 700 $D $H $H/.ssh; chmod 600 $KEY
+}
+pubkey() {
+	[ -s $KEY ] || return 1
+	dropbearkey -y -f $KEY 2>/dev/null | grep '^ssh-' | head -1 | awk '{print $1" "$2" detour-"}' | tr -d '\n'
+	tr -cd 'A-Za-z0-9-' < /proc/sys/kernel/hostname; echo
+}
+host_fp() {
+	[ -s $KNOWN ] || return 0
+	set -- $(grep -v '^#' $KNOWN | head -1)
+	[ -n "$3" ] || return 0
+	printf '%s SHA256:%s\n' "$2" "$(printf '%s' "$3" | openssl base64 -d -A 2>/dev/null | openssl dgst -sha256 -binary 2>/dev/null | openssl base64 -A 2>/dev/null | tr -d '=')"
+}
+configured() { [ -n "$HOST" ] && [ -n "$TUSER" ]; }
+
+# the strict client (the loop runs it in a background subshell, which it replaces)
+client() {
+	HOME=$H exec_as_u /usr/bin/dbclient $1 -N -T -K 30 -I 120 -o ExitOnForwardFailure=yes -i $KEY -p "$SPORT" \
+		-R "$(fwd_spec "$(lan_ip)" "$(target_port)")" "$TUSER@$HOST"
+}
+
+# the first connection or a repeat: the tunnel is held for 10 s; alive at the end = the VPS gave the port
+test_conn() {
+	configured || { echo "set the server and the user first"; return 1; }
+	keygen || return 1
+	[ -n "$(lan_ip)" ] || { echo "br-lan has no address"; return 1; }
+	t=/tmp/detour/sshtun-test.log; mkdir -p /tmp/detour; : > $t
+	export HOME=$H
+	timeout 10 sh -c "$(declare_client)" >> $t 2>&1
+	rc=$?
+	if [ $rc = 143 ] || [ $rc = 124 ]; then rm -f $t; echo ok; return 0; fi
+	why=$(grep -v '^$' $t | tail -1 | sed 's/^dbclient: //'); rm -f $t
+	echo "${why:-the client exited with code $rc}"; return 1
+}
+# the command line of a TOFU client for timeout (it needs a single command)
+declare_client() {
+	if me_root; then printf 'exec start-stop-daemon -S -p /tmp/detour/none.pid -c %s -x /usr/bin/dbclient -- ' $U; else printf 'exec /usr/bin/dbclient '; fi
+	printf -- "-y -N -T -K 30 -o ExitOnForwardFailure=yes -i %s -p %s -R '%s' '%s@%s'\n" \
+		$KEY "$SPORT" "$(fwd_spec "$(lan_ip)" "$(target_port)")" "$TUSER" "$HOST"
+}
+
+# the tunnel loop (procd instance; the client runs as dtssh). Strict host key: unknown or changed -> exits with an error.
+run_loop() {
+	pause=10; c=
+	# procd stops the instance with TERM to this loop: the client must not survive it (it holds the VPS port)
+	trap '[ -n "$c" ] && kill $c 2>/dev/null; exit 0' TERM INT
+	while :; do
+		[ "$(g enabled)" = 1 ] || exit 0
+		log_trim
+		if [ -z "$(lan_ip)" ]; then log "br-lan has no address - waiting"; sleep 30; continue; fi
+		t0=$(cut -d. -f1 /proc/uptime)
+		log "connecting to $TUSER@$HOST:$SPORT, VPS port $RPORT -> $(lan_ip):$(target_port)"
+		export HOME=$H
+		client "" >> $LOG 2>&1 &
+		c=$!; wait $c; rc=$?; c=
+		# held more than a minute: a working session ended - again quickly; failing at once: pause grows to 60 s
+		if [ $(( $(cut -d. -f1 /proc/uptime) - t0 )) -gt 60 ]; then pause=10; else pause=$((pause * 2)); [ $pause -gt 60 ] && pause=60; fi
+		log "client exited (code $rc), again in $pause s"
+		sleep $pause
+	done
+}
+
+jstr() { printf '%s' "$1" | tr -d '\r\n"\\' | cut -c1-300; }
+status() {
+	on=false; [ "$(g enabled)" = 1 ] && on=true
+	run=false; pgrep -f "dbclient.*$KEY" >/dev/null && run=true
+	con=false
+	if [ $run = true ] && [ -n "$HOST" ]; then
+		netstat -tn 2>/dev/null | grep -q ":$SPORT .*ESTABLISHED" && con=true
+	fi
+	last=$(grep -v '^$' $LOG 2>/dev/null | tail -1)
+	printf '{"on":%s,"running":%s,"connected":%s,"host":"%s","port":%s,"user":"%s","rport":%s,"public":%s,"target":"%s:%s","pubkey":"%s","host_fp":"%s","last":"%s"}\n' \
+		$on $run $con "$(jstr "$HOST")" "$SPORT" "$(jstr "$TUSER")" "$RPORT" "$([ $PUBLIC = 1 ] && echo true || echo false)" \
+		"$(lan_ip)" "$(target_port)" "$(jstr "$(pubkey 2>/dev/null)")" "$(jstr "$(host_fp)")" "$(jstr "$last")"
+}
+
+case "$1" in
+	keygen) keygen && pubkey ;;
+	pubkey) pubkey ;;
+	test)   test_conn ;;
+	run)    run_loop ;;
+	# a client of the loop that is connecting right now must not write the key back after the removal
+	forget) rm -f $KNOWN; pkill -f "dbclient.*$KEY" 2>/dev/null; sleep 1; rm -f $KNOWN; echo "the server key is forgotten" ;;
+	status) status ;;
+	*) echo "usage: sshtun keygen|pubkey|test|run|forget|status"; exit 1 ;;
+esac

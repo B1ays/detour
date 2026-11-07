@@ -4,7 +4,8 @@
 		"read": {
 			"ubus": {
 				"detour": [
-					"status"
+					"status",
+					"sshtun_status"
 				],
 				"luci": [
 					"getFeatures"
@@ -28,7 +29,10 @@
 					"import_check",
 					"import_apply",
 					"lists_update",
-					"sub_update"
+					"sub_update",
+					"sshtun_keygen",
+					"sshtun_test",
+					"sshtun_forget"
 				]
 			},
 			"uci": [

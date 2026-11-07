@@ -45,6 +45,20 @@ engine_instances() {
 	done < $f
 }
 
+# the panel through a VPS (/usr/libexec/detour/sshtun): the loop runs as root (it reads /etc/config/detour,
+# which holds secrets), the SSH client itself as user dtssh; only once the server key is known
+sshtun_instance() {
+	local on
+	config_get_bool on sshtun enabled 0
+	[ "$on" = 1 ] || return 0
+	[ -s /etc/detour/sshtun/id_ed25519 ] && [ -s /etc/detour/sshtun/home/.ssh/known_hosts ] || return 0
+	grep -q '^dtssh:' /etc/passwd || return 0
+	procd_open_instance sshtun
+	procd_set_param command /bin/sh /usr/libexec/detour/sshtun run
+	procd_set_param respawn 3600 10 0
+	procd_close_instance
+}
+
 start_service() {
 	config_load detour
 	local enabled
@@ -59,6 +73,7 @@ start_service() {
 	procd_close_instance
 	dnsproxy_instance
 	engine_instances
+	sshtun_instance
 }
 
 service_triggers() {

@@ -4,6 +4,7 @@
 FAIL=0; ok() { echo "  ok   $*"; }; bad() { echo "  FAIL $*"; FAIL=1; }
 waitfor() { i=0; while [ $i -lt ${3:-15} ]; do [ "$(eval "$2")" = "$1" ] && return 0; sleep 1; i=$((i+1)); done; return 1; }
 PW=$(cat /tmp/lab-pw)
+lab tests/lab/restart-sb.sh >/dev/null   # the shadowsocks server the link exit dials (gone after a lab reboot)
 rm -f /tmp/cj
 curl -s -o /dev/null -c /tmp/cj --data-urlencode luci_username=root --data-urlencode "luci_password=$PW" http://127.0.0.1/cgi-bin/luci/
 SID=$(awk '/sysauth/{print $7}' /tmp/cj | head -n1)

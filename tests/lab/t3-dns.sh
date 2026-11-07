@@ -34,6 +34,44 @@ ifup wgx1; ifup wgx2
 waitfor tunnel dmode 25 && ok "mode tunnel" || bad "mode $(dmode)"
 expect "client DNS" "$(q example.org)" "ok"
 
+echo "== engines' own server names resolve around the tunnels (BE7000: st_main needed itself to find its server)"
+# two throw-away engines with server NAMES: one chained to exit alt (wgx2), one direct
+printf '{"type":"shadowsocks","server":"chained.example","server_port":1,"method":"none","password":"x"}' > /tmp/te1.json
+printf '{"type":"shadowsocks","server":"direct.example","server_port":1,"method":"none","password":"x"}' > /tmp/te2.json
+uci -q batch <<'U'
+set detour.te1=engine
+set detour.te1.type=singbox
+set detour.te1.enabled=0
+set detour.te1.outbound=/tmp/te1.json
+set detour.te1.via=alt
+set detour.te2=engine
+set detour.te2.type=singbox
+set detour.te2.enabled=0
+set detour.te2.outbound=/tmp/te2.json
+commit detour
+U
+ubus call detour reload >/dev/null; sleep 2
+C=$(cat /tmp/dnsmasq.*.d/detour.conf)
+echo "$C" | grep -q 'chained.example' && bad "a disabled engine got DNS lines" || ok "disabled engines: no lines"
+uci set detour.te1.enabled=1; uci set detour.te2.enabled=1; uci commit detour
+# enabled engines with junk outbounds would fail to start: only the DNS side is looked at, then removed
+ubus call detour reload >/dev/null; sleep 2
+C=$(cat /tmp/dnsmasq.*.d/detour.conf)
+echo "$C" | grep -q '^server=/chained.example/1.1.1.1@wgx2$' && ok "chained engine: asked through its carrying exit" || bad "chained: $(echo "$C" | grep chained)"
+W=$(sed -n 's/^nameserver \([0-9.]*\)$/\1/p' /tmp/resolv.conf.d/resolv.conf.auto | head -1)
+echo "$C" | grep -q "^server=/direct.example/$W$" && ok "direct engine: asked the provider DNS ($W)" || bad "direct: $(echo "$C" | grep direct.example)"
+for s in te1 te2; do uci delete detour.$s; done; uci commit detour; rm -f /tmp/te1.json /tmp/te2.json; ubus call detour reload >/dev/null
+
+echo "== dnsproxy missing: the fallback uses the provider DNS, not nothing"
+apk del -q dnsproxy >/dev/null 2>&1
+ifdown wgx1; ifdown wgx2
+waitfor fallback dmode 25 && ok "mode fallback" || bad "mode $(dmode)"
+grep -q "^server=$W$" /tmp/detour/dns.servers && ok "servers file: provider DNS" || bad "servers: $(cat /tmp/detour/dns.servers)"
+expect "client DNS without dnsproxy" "$(q example.org)" "ok"
+ubus call detour reload >/dev/null; ubus call detour status | jsonfilter -e "@.errors[*]" | grep -q "dnsproxy is not installed" && ok "warning shown (after a reload)" || bad "no warning"
+ifup wgx1; ifup wgx2; apk add -q dnsproxy; /etc/init.d/dnsproxy disable 2>/dev/null; /etc/init.d/dnsproxy stop 2>/dev/null
+waitfor tunnel dmode 25 && ok "back to tunnel" || bad "mode $(dmode)"
+
 echo "== dns=off restores dnsmasq"
 uci set detour.main.dns=off; uci commit detour; reload_config; sleep 6
 waitfor "" "uci -q get dhcp.@dnsmasq[0].serversfile" 20 && ok "serversfile removed" || bad "serversfile still set"

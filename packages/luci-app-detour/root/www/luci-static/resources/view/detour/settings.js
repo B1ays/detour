@@ -2,13 +2,52 @@
 'require view';
 'require form';
 'require uci';
+'require rpc';
+
+const callTunStatus = rpc.declare({ object: 'detour', method: 'sshtun_status' });
+const callTunKeygen = rpc.declare({ object: 'detour', method: 'sshtun_keygen' });
+const callTunTest = rpc.declare({ object: 'detour', method: 'sshtun_test' });
+const callTunForget = rpc.declare({ object: 'detour', method: 'sshtun_forget' });
 
 return view.extend({
 	load: function() {
-		return uci.load('detour');
+		return Promise.all([ uci.load('detour'), L.resolveDefault(callTunStatus(), {}) ]);
 	},
 
-	render: function() {
+	// "The panel through your own VPS": key, server key check, state (sshtun.uc / ssh-tunnel.sh in stock)
+	tunInfo: function(st) {
+		const box = E('div');
+		const info = E('div');
+		const show = function(t) {
+			t = t || {};
+			info.replaceChildren(
+				E('div', {}, [ E('strong', {}, _('State: ')), !t.on ? _('off') : (t.connected ? _('connected') : (t.running ? _('connecting…') : _('not running (check the connection first)'))) ]),
+				t.target ? E('div', {}, [ E('strong', {}, _('Leads to: ')), t.target, ' ', E('span', { 'class': 'cbi-value-description' }, (/:443$/.test(t.target) ? _('(LuCI over HTTPS: the VPS sees nothing)') : _('(LuCI over HTTP: the VPS can see the pages - enable HTTPS in uhttpd)'))) ]) : '',
+				t.pubkey ? E('div', {}, [ E('strong', {}, _('Router key - put it into ~/.ssh/authorized_keys of the user on the VPS:')), E('pre', { 'class': 'detour-key' }, t.pubkey) ]) : E('div', {}, _('No router key yet.')),
+				t.host_fp ? E('div', {}, [ E('strong', {}, _('Server key: ')), E('code', {}, t.host_fp), E('div', { 'class': 'cbi-value-description' }, _('Compare with ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub on the VPS.')) ]) : '',
+				t.last ? E('div', { 'class': 'cbi-value-description' }, _('Last: %s').format(t.last)) : '');
+		};
+		const refresh = function() { return L.resolveDefault(callTunStatus(), {}).then(show); };
+		const act = function(btn, fn, okText) {
+			btn.disabled = true;
+			return fn().then(function(r) {
+				box.replaceChildren(E('div', { 'class': 'alert-message ' + ((!r || r.error) ? 'warning' : 'success') }, (!r) ? _('No answer from the router') : (r.error || okText(r))));
+				return refresh();
+			}).finally(function() { btn.disabled = false; });
+		};
+		const bKey = E('button', { 'class': 'btn cbi-button-action', 'click': function(ev) { ev.preventDefault(); return act(bKey, callTunKeygen, function() { return _('Key ready.'); }); } }, _('Create router key'));
+		const bTest = E('button', { 'class': 'btn cbi-button-action', 'click': function(ev) { ev.preventDefault(); return act(bTest, callTunTest, function(r) { return _('The VPS accepted the key and gave the port. Server key %s recorded; from now on it must not change.').format(r.host_fp || ''); }); } }, _('Check the connection'));
+		const bForget = E('button', { 'class': 'btn cbi-button-negative', 'click': function(ev) { ev.preventDefault();
+			if (!confirm(_('Forget the server key? The tunnel stops; the next check accepts whatever key the server shows.'))) return;
+			return act(bForget, callTunForget, function() { return _('Server key forgotten.'); }); } }, _('Forget the server key'));
+		show(st);
+		return E('div', {}, [ info, E('div', { 'style': 'margin-top:.5em' }, [ bKey, ' ', bTest, ' ', bForget ]), box,
+			E('div', { 'class': 'cbi-value-description' }, _('Save the settings above before checking.')) ]);
+	},
+
+	render: function(data) {
+		const tunStatus = data[1];
+		const self = this;
 		const m = new form.Map('detour', _('Detour settings'));
 
 		let s = m.section(form.NamedSection, 'main', 'main', _('General'));
@@ -55,11 +94,12 @@ return view.extend({
 		o.validate = function(section_id, v) { return (!v || /^[0-9]+:[A-Za-z0-9_-]{30,}$/.test(v)) ? true : _('Looks like 123456:ABC… from @BotFather'); };
 		o = s.option(form.Value, 'tg_chat', _('Chat id'));
 		o.datatype = 'integer';
-		o = s.option(form.MultiValue, 'event', _('Notify about'));
-		o.value('exit_down', _('an exit stopped responding'));
-		o.value('exit_up', _('an exit works again'));
-		o.value('switch', _('a policy switched to another exit'));
-		o.value('all_down', _('a policy has no working exit (its traffic is blocked)'));
+		o = s.option(form.MultiValue, 'event', _('Notify about'),
+			_('exit down: an exit stopped responding; exit back: it works again; switch: a policy moved to another exit; no exit left: a policy has no working exit, its traffic is blocked.'));
+		o.value('exit_down', _('exit down'));
+		o.value('exit_up', _('exit back'));
+		o.value('switch', _('switch'));
+		o.value('all_down', _('no exit left'));
 		o.default = 'exit_down exit_up all_down switch';
 		o = s.option(form.Value, 'tg_api', _('Own Bot API address'), _('Only if api.telegram.org is blocked for you and you run a Bot API proxy.'));
 		o.placeholder = 'https://api.telegram.org';
@@ -76,6 +116,33 @@ return view.extend({
 		o = s.option(form.DynamicList, 'domain', _('Domains'));
 		o.datatype = 'hostname';
 
-		return m.render();
+		if (!uci.get('detour', 'sshtun')) uci.add('detour', 'sshtun', 'sshtun');
+		s = m.section(form.NamedSection, 'sshtun', 'sshtun', _('The panel through your own VPS (SSH)'),
+			_('Open LuCI from outside without a public address and without opening ports: the router itself connects to your server ' +
+			  'over SSH and holds a port there that leads to LuCI at home. The connection always goes directly, around the policies. ' +
+			  'Then open https://127.0.0.1:PORT through ssh -L on your computer, or https://VPS:PORT when the port is public (PORT is the port on the VPS below).'));
+		o = s.option(form.Flag, 'enabled', _('Enabled'));
+		o = s.option(form.Value, 'host', _('Server'));
+		o.datatype = 'host';
+		o.placeholder = 'vps.example.com';
+		o = s.option(form.Value, 'port', _('SSH port'));
+		o.datatype = 'port';
+		o.placeholder = '22';
+		o = s.option(form.Value, 'user', _('User'));
+		o.placeholder = 'tunnel';
+		o.validate = function(section_id, v) { return (!v || /^[A-Za-z0-9._-]+$/.test(v)) ? true : _('Letters, digits, . _ -'); };
+		o = s.option(form.Value, 'rport', _('Port on the VPS'));
+		o.datatype = 'port';
+		o.placeholder = '18443';
+		o = s.option(form.Flag, 'public', _('Listen on all addresses of the VPS'),
+			_('Otherwise only on 127.0.0.1 of the VPS (reach it with ssh -L). Needs GatewayPorts clientspecified in sshd_config.'));
+		o = s.option(form.DummyValue, '_tun', _('Key and state'));
+		o.renderWidget = function() { return self.tunInfo(tunStatus); };
+
+		// detour.css: the last field of a card must not touch its bottom (Argon gives the node no padding)
+		return m.render().then(function(node) {
+			node.insertBefore(E('link', { 'rel': 'stylesheet', 'href': L.resource('detour/detour.css') }), node.firstChild);
+			return node;
+		});
 	}
 });

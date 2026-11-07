@@ -4,7 +4,7 @@
 'use strict';
 
 import * as fs from 'fs';
-import { hex, run, M_POL, M_EXIT, M_BOTH, M_SKIP, RUN } from 'detour.core';
+import { hex, run, log, M_POL, M_EXIT, M_BOTH, M_SKIP, RUN } from 'detour.core';
 
 const T = 'inet detour';
 
@@ -36,10 +36,16 @@ function wanted(cfg) {
 
 // objects present in the kernel table that the config no longer has
 export function stale(cfg) {
-	const r = run("nft -j list table inet detour");
-	if (r.code != 0) return { sets: [], chains: [] };
-	let j;
-	try { j = json(r.out); } catch (e) { return { sets: [], chains: [] }; }
+	// a dump is interrupted when the table changes meanwhile (dnsmasq fills the domain sets all the time):
+	// nft fails, and a failed listing must not mean "nothing to remove" - a removed exit's chains stayed
+	let j = null;
+	for (let i = 0; i < 4 && j == null; i++) {
+		const r = run("nft -j list table inet detour");
+		if (r.code == 0) { try { j = json(r.out); } catch (e) { j = null; } }
+		else if (index(r.out, 'No such file') >= 0) return { sets: [], chains: [] };   // no table yet
+		if (j == null) system('sleep 0.2');
+	}
+	if (j == null) { log('nft: could not list the table - stale objects stay until the next reload'); return { sets: [], chains: [] }; }
 	const w = wanted(cfg);
 	const out = { sets: [], chains: [], maps: [] };
 	for (let o in j?.nftables ?? []) {

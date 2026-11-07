@@ -35,6 +35,18 @@ for d in "$REPO"/packages/*/; do
 	for x in "$P"/root/etc/init.d/* "$P"/root/usr/sbin/* "$P"/root/usr/bin/* "$P"/root/usr/libexec/*/* "$P"/root/etc/uci-defaults/* "$P"/scripts/*; do
 		[ -f "$x" ] && chmod 755 "$x"
 	done
+	# LuCI translations: po/<lang>/<domain>.po -> /usr/lib/lua/luci/i18n/<domain>.<lang>.lmo (po2lmo from
+	# tools/build-po2lmo.sh); LuCI merges every catalogue of the page language
+	if [ -d "$P/po" ]; then
+		command -v po2lmo >/dev/null || sh "$REPO/tools/build-po2lmo.sh" >/dev/null
+		mkdir -p "$P/root/usr/lib/lua/luci/i18n"
+		for po in "$P"/po/*/*.po; do
+			lang=$(basename "$(dirname "$po")"); dom=$(basename "$po" .po)
+			po2lmo "$po" "$P/root/usr/lib/lua/luci/i18n/$dom.$lang.lmo"
+			chmod 644 "$P/root/usr/lib/lua/luci/i18n/$dom.$lang.lmo"
+		done
+		chmod 755 "$P/root/usr/lib" "$P/root/usr/lib/lua" "$P/root/usr/lib/lua/luci" "$P/root/usr/lib/lua/luci/i18n"
+	fi
 	chown -R root:root "$P"
 	set -- -I "name:$name" -I "version:$version" -I "arch:noarch" -I "description:$description" -I "license:$license"
 	[ -n "$depends" ] && set -- "$@" -I "depends:$depends"

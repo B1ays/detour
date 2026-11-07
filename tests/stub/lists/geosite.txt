@@ -1,0 +1,13 @@
+domain:geo-one.example
+full:www.geo-two.example
+domain:geo-three.example:@ads
+full:geo-four.example @cn
+keyword:youtube
+regexp:^ads\..*$
+include:other-category
+domain:geo-five.example
+domain:geo-six.example
+domain:geo-seven.example
+domain:geo-eight.example
+domain:geo-nine.example
+domain:geo-ten.example

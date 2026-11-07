@@ -18,9 +18,10 @@ import * as engines from 'detour.engines';
 const SDIR = RUN + '/subs';
 const PROXY_TYPES = [ 'vless', 'vmess', 'trojan', 'shadowsocks', 'hysteria2', 'hysteria', 'tuic', 'wireguard', 'anytls', 'shadowtls' ];
 
-function status(name, ok, count, msg) {
+// code: a stable key LuCI translates (the message stays English for the CLI and the log)
+function status(name, ok, count, msg, code, skipped) {
 	fs.mkdir(RUN); fs.mkdir(SDIR);
-	fs.writefile(sprintf('%s/%s.status', SDIR, name), sprintf('%J\n', { name, ok, count, ts: time(), message: msg }));
+	fs.writefile(sprintf('%s/%s.status', SDIR, name), sprintf('%J\n', { name, ok, count, skipped: skipped ?? 0, code, ts: time(), message: msg }));
 }
 
 // the stock SSRF guard: the URL must not point into the router's own networks (unless allowed - lab)
@@ -72,12 +73,12 @@ export function update(name) {
 	const c = cursor();
 	const s = c.get_all('detour', name);
 	if (s?.['.type'] != 'subscription') return { error: 'no subscription ' + name };
-	if (s.enabled == '0') { status(name, true, 0, 'disabled'); return { name, disabled: true }; }
+	if (s.enabled == '0') { status(name, true, 0, 'disabled', 'disabled'); return { name, disabled: true }; }
 	const ne = engines.check_name(name);
 	if (ne) return { error: ne };
 	const url = s.url ?? '';
-	if (!match(url, /^https?:\/\/\S+$/)) { status(name, false, 0, 'bad URL'); return { error: 'bad URL' }; }
-	if (s.allow_private != '1' && private_host(url)) { status(name, false, 0, 'the URL points into a private network'); return { error: 'the URL points into a private network' }; }
+	if (!match(url, /^https?:\/\/\S+$/)) { status(name, false, 0, 'bad URL', 'bad_url'); return { error: 'bad URL' }; }
+	if (s.allow_private != '1' && private_host(url)) { status(name, false, 0, 'the URL points into a private network', 'private'); return { error: 'the URL points into a private network' }; }
 	if (s.via && c.get('detour', s.via) != 'exit') return { error: 'via: "' + s.via + '" is not an exit' };
 
 	fs.mkdir(RUN); fs.mkdir(SDIR);
@@ -92,14 +93,14 @@ export function update(name) {
 	const body = fs.readfile(body_f);
 	fs.unlink(body_f);
 	if (r.code != 0 || !body) {
-		status(name, false, 0, 'download failed, previous servers kept');
+		status(name, false, 0, 'download failed, previous servers kept', 'download_failed');
 		log(sprintf('subscription %s: download failed, previous servers kept', name));
 		return { error: 'download failed' };
 	}
 	const p = parse_body(body);
 	const max = int(s.max ?? 30) || 30;
 	const outs = slice(p.outbounds, 0, max);
-	if (!length(outs)) { status(name, false, 0, 'no usable servers in the answer, previous servers kept'); return { error: 'no usable servers' }; }
+	if (!length(outs)) { status(name, false, 0, 'no usable servers in the answer, previous servers kept', 'no_servers'); return { error: 'no usable servers' }; }
 	// the exit is "<name>_sub" (exits and subscriptions share the UCI namespace), its tun "<name>tun"
 	const xn = name + '_sub';
 	const f = engines.write_outbound(xn, outs);
@@ -113,7 +114,7 @@ export function update(name) {
 		if (s.via) c.set('detour', xn + '_eng', 'via', s.via); else c.delete('detour', xn + '_eng', 'via');
 		c.commit('detour');
 	}
-	status(name, true, length(outs), sprintf('%d servers%s', length(outs), length(p.skipped) ? sprintf(', %d skipped', length(p.skipped)) : ''));
+	status(name, true, length(outs), sprintf('%d servers%s', length(outs), length(p.skipped) ? sprintf(', %d skipped', length(p.skipped)) : ''), 'updated', length(p.skipped));
 	log(sprintf('subscription %s: %d servers', name, length(outs)));
 	// procd restarts the engine when its generated config changed (procd "file" param)
 	run('/etc/init.d/detour reload');

@@ -1,0 +1,629 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: ru\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+msgid "No answer from the router"
+msgstr "Роутер не ответил"
+
+msgid "directly"
+msgstr "напрямую"
+
+msgid "through %s"
+msgstr "через %s"
+
+msgid "Exit %s added (%s to %s). Put it into a policy on the Policies page."
+msgstr "Выход %s добавлен (%s, сервер %s). Добавьте его в политику на странице «Политики»."
+
+msgid "Add exit"
+msgstr "Добавить выход"
+
+msgid "Exit from a link"
+msgstr "Выход из ссылки"
+
+msgid "A link from your VPN provider or your own server. The exit runs on sing-box (install the sing-box package)."
+msgstr "Ссылка от вашего VPN-провайдера или со своего сервера. Выход работает на sing-box (нужен пакет sing-box)."
+
+msgid "Name"
+msgstr "Имя"
+
+msgid "Link"
+msgstr "Ссылка"
+
+msgid "Connect to the server"
+msgstr "Подключаться к серверу"
+
+msgid "Through another exit (for example WARP) when the server itself is blocked by the provider. If that exit fails, this one stops too - nothing goes directly."
+msgstr "Через другой выход (например, WARP), когда сам сервер заблокирован провайдером. Если тот выход упадёт, этот тоже остановится — напрямую ничего не пойдёт."
+
+msgid "WARP exit %s registered (address %s, server %s)."
+msgstr "Выход WARP %s зарегистрирован (адрес %s, сервер %s)."
+
+msgid "Register WARP"
+msgstr "Зарегистрировать WARP"
+
+msgid "AmneziaWG masking"
+msgstr "Маскировка AmneziaWG"
+
+msgid "When plain WARP is blocked by the provider. Needs the AmneziaWG kernel module and openssl-util."
+msgstr "Когда провайдер блокирует обычный WARP. Нужны модуль ядра AmneziaWG и openssl-util."
+
+msgid "Remove WARP exit %s and its registration?"
+msgstr "Удалить выход WARP %s и его регистрацию?"
+
+msgid "Removed%s."
+msgstr "Удалено%s."
+
+msgid " (the registration could not be deleted at Cloudflare)"
+msgstr " (регистрацию у Cloudflare удалить не удалось)"
+
+msgid "Remove"
+msgstr "Удалить"
+
+msgid "Registered WARP exits"
+msgstr "Зарегистрированные выходы WARP"
+
+msgid "Cloudflare WARP"
+msgstr "Cloudflare WARP"
+
+msgid "Registers a new free WARP device at Cloudflare and adds it as an exit."
+msgstr "Регистрирует у Cloudflare новое бесплатное устройство WARP и добавляет его как выход."
+
+msgid "Imported."
+msgstr "Импортировано."
+
+msgid "Import these settings"
+msgstr "Импортировать эти настройки"
+
+msgid "Exits"
+msgstr "Выходы"
+
+msgid "Policies"
+msgstr "Политики"
+
+msgid "Lists"
+msgstr "Списки"
+
+msgid "Subscriptions"
+msgstr "Подписки"
+
+msgid "Always direct: %s"
+msgstr "Всегда напрямую: %s"
+
+msgid "Notifications: %s"
+msgstr "Уведомления: %s"
+
+msgid "DHCP reservations: %d"
+msgstr "Резервирования DHCP: %d"
+
+msgid "Not carried over"
+msgstr "Не переносится"
+
+msgid "Choose the backup file…"
+msgstr "Выбрать файл резервной копии…"
+
+msgid "Import from Detour for stock firmware"
+msgstr "Импорт из Detour для стоковой прошивки"
+
+msgid "The settings backup (.tar.gz) saved in the old Detour panel. First you see what will be carried over; nothing changes until you confirm."
+msgstr "Резервная копия настроек (.tar.gz), сохранённая в старой панели Detour. Сначала вы увидите, что будет перенесено; ничего не меняется, пока вы не подтвердите."
+
+msgid "Add and import"
+msgstr "Добавить и импорт"
+
+msgid "A number from 1 to 250"
+msgstr "Число от 1 до 250"
+
+msgid "Already used by %s"
+msgstr "Уже занято: %s"
+
+msgid "An exit is a tunnel interface (WireGuard, AmneziaWG or the tun device of a proxy engine). Traffic sent to an exit can only leave through its device: when it is down, that traffic is blocked, not sent directly."
+msgstr "Выход — это туннельный интерфейс (WireGuard, AmneziaWG или tun-устройство прокси-движка). Трафик, отправленный в выход, уходит только через его устройство: когда оно не работает, трафик блокируется, а не идёт напрямую."
+
+msgid "Enabled"
+msgstr "Включено"
+
+msgid "Description"
+msgstr "Описание"
+
+msgid "Interface"
+msgstr "Интерфейс"
+
+msgid "The netifd interface of the tunnel. Its device is used unless set below."
+msgstr "Интерфейс netifd туннеля. Используется его устройство, если ниже не указано другое."
+
+msgid "Device"
+msgstr "Устройство"
+
+msgid "Only when the device name differs from the interface name (proxy tun)."
+msgstr "Только если имя устройства отличается от имени интерфейса (tun прокси)."
+
+msgid "Health check"
+msgstr "Проверка работы"
+
+msgid "An IP address to ping through the tunnel, or an http(s) URL. Empty: only the device state is checked."
+msgstr "IP-адрес для ping через туннель или адрес http(s). Пусто — проверяется только состояние устройства."
+
+msgid "An IPv4 address or an http(s) URL"
+msgstr "Адрес IPv4 или адрес http(s)"
+
+msgid "Number"
+msgstr "Номер"
+
+msgid "Internal number 1-250, part of the packet mark. Do not change while in use."
+msgstr "Внутренний номер 1–250, часть метки пакетов. Не меняйте, пока выход используется."
+
+msgid "An address from your VPN provider that returns the current list of servers. All its servers form one exit (named NAME_sub) that picks a working, fast one by itself. Updated every night. Name: up to 11 characters a-z, 0-9, _."
+msgstr "Адрес от VPN-провайдера, по которому выдаётся актуальный список серверов. Все его серверы образуют один выход (с именем ИМЯ_sub), который сам выбирает рабочий и быстрый. Обновляется каждую ночь. Имя: до 11 символов a-z, 0-9, _."
+
+msgid "Add subscription"
+msgstr "Добавить подписку"
+
+msgid "Subscription address"
+msgstr "Адрес подписки"
+
+msgid "Kept secret: it is shown only here and never logged."
+msgstr "Хранится в тайне: показывается только здесь и не попадает в журнал."
+
+msgid "http(s) address"
+msgstr "адрес http(s)"
+
+msgid "Connect to the servers"
+msgstr "Подключаться к серверам"
+
+msgid "Client name (User-Agent)"
+msgstr "Имя клиента (User-Agent)"
+
+msgid "Some providers choose the format by it."
+msgstr "Некоторые провайдеры выбирают по нему формат."
+
+msgid "Device id (x-hwid)"
+msgstr "Идентификатор устройства (x-hwid)"
+
+msgid "Only if your provider counts devices."
+msgstr "Только если провайдер считает устройства."
+
+msgid "State"
+msgstr "Состояние"
+
+msgid "not loaded yet"
+msgstr "ещё не загружено"
+
+msgid "%d server"
+msgid_plural "%d servers"
+msgstr[0] "%d сервер"
+msgstr[1] "%d сервера"
+msgstr[2] "%d серверов"
+
+msgid "%d skipped"
+msgid_plural "%d skipped"
+msgstr[0] "%d пропущен"
+msgstr[1] "%d пропущено"
+msgstr[2] "%d пропущено"
+
+msgid "disabled"
+msgstr "выключено"
+
+msgid "bad address"
+msgstr "неверный адрес"
+
+msgid "the address points into a private network"
+msgstr "адрес указывает во внутреннюю сеть"
+
+msgid "download failed, the previous servers are kept"
+msgstr "не удалось скачать, прежние серверы сохранены"
+
+msgid "no usable servers in the answer, the previous servers are kept"
+msgstr "в ответе нет подходящих серверов, прежние серверы сохранены"
+
+msgid "Update"
+msgstr "Обновление"
+
+msgid "Update now"
+msgstr "Обновить сейчас"
+
+msgid "%d servers"
+msgstr "Серверов: %d"
+
+msgid "download failed: %s"
+msgstr "не удалось скачать: %s"
+
+msgid "only %d entries (minimum %d)"
+msgstr "всего записей: %d (минимум %d)"
+
+msgid "file missing: %s"
+msgstr "нет файла: %s"
+
+msgid "unknown policy %s"
+msgstr "неизвестная политика %s"
+
+msgid "the previous list stays in use"
+msgstr "используется прежний список"
+
+msgid "Big lists of addresses or domains from the internet or a local file. They are updated every night; if a source does not answer, the previous list stays in use. Address lists: one IP or range (CIDR) per line. Domain lists: plain, hosts, dnsmasq, adblock or v2fly/geosite text (domain:, full:). A v2fly domain-list-community category is given as v2fly:NAME (for example v2fly:youtube), its include: lines are followed."
+msgstr "Большие списки адресов или доменов из интернета или из локального файла. Обновляются каждую ночь; если источник не ответил, остаётся прежний список. Списки адресов: один IP или диапазон (CIDR) в строке. Списки доменов: простой текст, hosts, dnsmasq, adblock или текст v2fly/geosite (domain:, full:). Категория v2fly domain-list-community задаётся как v2fly:ИМЯ (например, v2fly:youtube), строки include: учитываются."
+
+msgid "Add list"
+msgstr "Добавить список"
+
+msgid "Goes"
+msgstr "Куда"
+
+msgid "through policy %s"
+msgstr "через политику %s"
+
+msgid "never through a tunnel"
+msgstr "никогда через туннель"
+
+msgid "Sources (URL)"
+msgstr "Источники (URL)"
+
+msgid "http(s) address or v2fly:NAME"
+msgstr "адрес http(s) или v2fly:ИМЯ"
+
+msgid "Local file"
+msgstr "Локальный файл"
+
+msgid "Optional: a file on the router with more entries."
+msgstr "Необязательно: файл на роутере с дополнительными записями."
+
+msgid "Contents"
+msgstr "Содержимое"
+
+msgid "detect"
+msgstr "определить"
+
+msgid "addresses"
+msgstr "адреса"
+
+msgid "domains"
+msgstr "домены"
+
+msgid "Minimum entries"
+msgstr "Минимум записей"
+
+msgid "A download with fewer entries is treated as a failure."
+msgstr "Загрузка с меньшим числом записей считается неудачной."
+
+msgid "%d entry"
+msgid_plural "%d entries"
+msgstr[0] "%d запись"
+msgstr[1] "%d записи"
+msgstr[2] "%d записей"
+
+msgid "List %s updated"
+msgstr "Список %s обновлён"
+
+msgid "Error"
+msgstr "Ошибка"
+
+msgid "Policy"
+msgstr "Политика"
+
+msgid "Active exit"
+msgstr "Текущий выход"
+
+msgid "Exits in order"
+msgstr "Выходы по порядку"
+
+msgid "Manual choice"
+msgstr "Ручной выбор"
+
+msgid "Automatic"
+msgstr "Автоматически"
+
+msgid "Exit"
+msgstr "Выход"
+
+msgid "Last good probe"
+msgstr "Последняя удачная проверка"
+
+msgid "Blocked leaks"
+msgstr "Заблокировано утечек"
+
+msgid "Cloudflare point the WARP tunnel lands on"
+msgstr "Точка Cloudflare, на которую приходит туннель WARP"
+
+msgid "working"
+msgstr "работает"
+
+msgid "not responding"
+msgstr "не отвечает"
+
+msgid "down"
+msgstr "не поднят"
+
+msgid "device state only"
+msgstr "только состояние устройства"
+
+msgid "not managed"
+msgstr "не управляется"
+
+msgid "through the tunnel"
+msgstr "через туннель"
+
+msgid "encrypted fallback (all exits down)"
+msgstr "резервный шифрованный (все выходы не работают)"
+
+msgid "Router DNS"
+msgstr "DNS роутера"
+
+msgid "Switches"
+msgstr "Переключений"
+
+msgid "Two-factor login"
+msgstr "Двухфакторный вход"
+
+msgid "password-only login over /ubus is open"
+msgstr "вход только по паролю через /ubus открыт"
+
+msgid "protected"
+msgstr "защищён"
+
+msgid "SSH"
+msgstr "SSH"
+
+msgid "password login only from the local network; elsewhere keys only"
+msgstr "вход по паролю только из локальной сети, снаружи — только по ключам"
+
+msgid "no SSH key for root: SSH from outside is impossible until you add one (System → Administration → SSH-Keys)"
+msgstr "у root нет ключа SSH: войти по SSH снаружи нельзя, пока вы его не добавите (Система → Управление → SSH-ключи)"
+
+msgid "Configuration"
+msgstr "Конфигурация"
+
+msgid "No events yet."
+msgstr "Событий пока нет."
+
+msgid "The Detour service is not running."
+msgstr "Служба Detour не запущена."
+
+msgid "Detour"
+msgstr "Detour"
+
+msgid "Events"
+msgstr "События"
+
+msgid "A policy says what goes through the tunnel: whole devices, address ranges or domains. The first working exit in its list carries the traffic; policies are checked from top to bottom."
+msgstr "Политика определяет, что идёт через туннель: устройства целиком, диапазоны адресов или домены. Трафик идёт через первый работающий выход из её списка; политики проверяются сверху вниз."
+
+msgid "Add policy"
+msgstr "Добавить политику"
+
+msgid "General"
+msgstr "Основное"
+
+msgid "What goes through"
+msgstr "Что пропускать"
+
+msgid "In order of preference. When the first one fails, the next working one takes over; it comes back automatically."
+msgstr "В порядке предпочтения. Если первый выход перестал работать, его заменяет следующий рабочий; возврат — автоматически."
+
+msgid "Internal number 1-250, part of the packet mark."
+msgstr "Внутренний номер 1–250, часть метки пакетов."
+
+msgid "Devices"
+msgstr "Устройства"
+
+msgid "MAC addresses: all traffic of these devices."
+msgstr "MAC-адреса: весь трафик этих устройств."
+
+msgid "Addresses"
+msgstr "Адреса"
+
+msgid "IP addresses or ranges (CIDR), IPv4 or IPv6."
+msgstr "IP-адреса или диапазоны (CIDR), IPv4 или IPv6."
+
+msgid "Domains"
+msgstr "Домены"
+
+msgid "A domain also covers its subdomains. The router's DNS must be used by the devices (it is by default)."
+msgstr "Домен включает и его поддомены. Устройства должны пользоваться DNS роутера (так по умолчанию)."
+
+msgid "Matches"
+msgstr "Содержит"
+
+msgid "%d device"
+msgid_plural "%d devices"
+msgstr[0] "%d устройство"
+msgstr[1] "%d устройства"
+msgstr[2] "%d устройств"
+
+msgid "%d address"
+msgid_plural "%d addresses"
+msgstr[0] "%d адрес"
+msgstr[1] "%d адреса"
+msgstr[2] "%d адресов"
+
+msgid "%d domain"
+msgid_plural "%d domains"
+msgstr[0] "%d домен"
+msgstr[1] "%d домена"
+msgstr[2] "%d доменов"
+
+msgid "%d list"
+msgid_plural "%d lists"
+msgstr[0] "%d список"
+msgstr[1] "%d списка"
+msgstr[2] "%d списков"
+
+msgid "nothing yet"
+msgstr "пока ничего"
+
+msgid "State: "
+msgstr "Состояние: "
+
+msgid "off"
+msgstr "выключено"
+
+msgid "connected"
+msgstr "подключено"
+
+msgid "connecting…"
+msgstr "подключается…"
+
+msgid "not running (check the connection first)"
+msgstr "не запущено (сначала проверьте подключение)"
+
+msgid "Leads to: "
+msgstr "Ведёт на: "
+
+msgid "(LuCI over HTTPS: the VPS sees nothing)"
+msgstr "(LuCI по HTTPS: VPS ничего не видит)"
+
+msgid "(LuCI over HTTP: the VPS can see the pages - enable HTTPS in uhttpd)"
+msgstr "(LuCI по HTTP: VPS может видеть страницы — включите HTTPS в uhttpd)"
+
+msgid "Router key - put it into ~/.ssh/authorized_keys of the user on the VPS:"
+msgstr "Ключ роутера — добавьте его в ~/.ssh/authorized_keys пользователя на VPS:"
+
+msgid "No router key yet."
+msgstr "Ключа роутера пока нет."
+
+msgid "Server key: "
+msgstr "Ключ сервера: "
+
+msgid "Compare with ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub on the VPS."
+msgstr "Сверьте с выводом ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub на VPS."
+
+msgid "Last: %s"
+msgstr "Последнее: %s"
+
+msgid "Key ready."
+msgstr "Ключ создан."
+
+msgid "Create router key"
+msgstr "Создать ключ роутера"
+
+msgid "The VPS accepted the key and gave the port. Server key %s recorded; from now on it must not change."
+msgstr "VPS принял ключ и выделил порт. Ключ сервера %s запомнен; дальше он не должен меняться."
+
+msgid "Check the connection"
+msgstr "Проверить подключение"
+
+msgid "Forget the server key? The tunnel stops; the next check accepts whatever key the server shows."
+msgstr "Забыть ключ сервера? Туннель остановится; при следующей проверке будет принят тот ключ, который покажет сервер."
+
+msgid "Server key forgotten."
+msgstr "Ключ сервера забыт."
+
+msgid "Forget the server key"
+msgstr "Забыть ключ сервера"
+
+msgid "Save the settings above before checking."
+msgstr "Перед проверкой сохраните настройки выше."
+
+msgid "Detour settings"
+msgstr "Настройки Detour"
+
+msgid "Check exits every (s)"
+msgstr "Проверять выходы каждые (с)"
+
+msgid "Failed checks before switching"
+msgstr "Неудачных проверок до переключения"
+
+msgid "Through the tunnel: the router resolves names via the exits of the selected policy, so the provider does not see the queries. If all of its exits are down, it switches to an encrypted resolver (DoH/DoT/DoQ) directly; traffic of the policies stays blocked."
+msgstr "Через туннель: роутер разрешает имена через выходы выбранной политики, и провайдер не видит запросов. Если все её выходы не работают, роутер переходит на шифрованный DNS (DoH/DoT/DoQ) напрямую; трафик политик остаётся заблокированным."
+
+msgid "Mode"
+msgstr "Режим"
+
+msgid "Not managed (provider DNS)"
+msgstr "Не управляется (DNS провайдера)"
+
+msgid "Through the tunnel"
+msgstr "Через туннель"
+
+msgid "Resolvers through the tunnel"
+msgstr "DNS-серверы через туннель"
+
+msgid "Encrypted fallback resolvers"
+msgstr "Резервные шифрованные DNS-серверы"
+
+msgid "quic://, tls:// or https:// addresses. Needs the dnsproxy package."
+msgstr "Адреса quic://, tls:// или https://. Нужен пакет dnsproxy."
+
+msgid "Telegram notifications"
+msgstr "Уведомления в Telegram"
+
+msgid "Create a bot with @BotFather, paste its token, write /start to the bot and put your chat id here. Messages go through a working tunnel first, then directly; undelivered ones wait and are sent later."
+msgstr "Создайте бота у @BotFather, вставьте его токен, напишите боту /start и укажите здесь id чата. Сообщения идут сначала через рабочий туннель, потом напрямую; недоставленные ждут и отправляются позже."
+
+msgid "Bot token"
+msgstr "Токен бота"
+
+msgid "Looks like 123456:ABC… from @BotFather"
+msgstr "Должен выглядеть как 123456:ABC… от @BotFather"
+
+msgid "Chat id"
+msgstr "Id чата"
+
+msgid "Notify about"
+msgstr "Сообщать о"
+
+msgid "exit down: an exit stopped responding; exit back: it works again; switch: a policy moved to another exit; no exit left: a policy has no working exit, its traffic is blocked."
+msgstr "выход упал — выход перестал отвечать; выход вернулся — снова работает; переключение — политика перешла на другой выход; выходов нет — у политики не осталось рабочего выхода, её трафик заблокирован."
+
+msgid "exit down"
+msgstr "выход упал"
+
+msgid "exit back"
+msgstr "выход вернулся"
+
+msgid "switch"
+msgstr "переключение"
+
+msgid "no exit left"
+msgstr "выходов нет"
+
+msgid "Own Bot API address"
+msgstr "Свой адрес Bot API"
+
+msgid "Only if api.telegram.org is blocked for you and you run a Bot API proxy."
+msgstr "Только если api.telegram.org у вас заблокирован и у вас есть свой прокси Bot API."
+
+msgid "Always direct"
+msgstr "Всегда напрямую"
+
+msgid "Addresses that never go through a tunnel, whatever the policies say."
+msgstr "Адреса, которые никогда не идут через туннель, что бы ни говорили политики."
+
+msgid "MAC addresses of devices that never use a tunnel."
+msgstr "MAC-адреса устройств, которые никогда не используют туннель."
+
+msgid "The panel through your own VPS (SSH)"
+msgstr "Панель через свой VPS (SSH)"
+
+msgid "Open LuCI from outside without a public address and without opening ports: the router itself connects to your server over SSH and holds a port there that leads to LuCI at home. The connection always goes directly, around the policies. Then open https://127.0.0.1:PORT through ssh -L on your computer, or https://VPS:PORT when the port is public (PORT is the port on the VPS below)."
+msgstr "Открывайте LuCI снаружи без белого адреса и без проброса портов: роутер сам подключается к вашему серверу по SSH и держит на нём порт, который ведёт на LuCI дома. Соединение всегда идёт напрямую, мимо политик. Затем откройте https://127.0.0.1:ПОРТ через ssh -L на своём компьютере или https://VPS:ПОРТ, если порт открыт для всех (ПОРТ — порт на VPS ниже)."
+
+msgid "Server"
+msgstr "Сервер"
+
+msgid "SSH port"
+msgstr "Порт SSH"
+
+msgid "User"
+msgstr "Пользователь"
+
+msgid "Letters, digits, . _ -"
+msgstr "Буквы, цифры, . _ -"
+
+msgid "Port on the VPS"
+msgstr "Порт на VPS"
+
+msgid "Listen on all addresses of the VPS"
+msgstr "Слушать на всех адресах VPS"
+
+msgid "Otherwise only on 127.0.0.1 of the VPS (reach it with ssh -L). Needs GatewayPorts clientspecified in sshd_config."
+msgstr "Иначе только на 127.0.0.1 VPS (доступ через ssh -L). Нужно GatewayPorts clientspecified в sshd_config."
+
+msgid "Key and state"
+msgstr "Ключ и состояние"
+
+msgid "Overview"
+msgstr "Обзор"
+
+msgid "Settings"
+msgstr "Настройки"

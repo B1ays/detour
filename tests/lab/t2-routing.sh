@@ -62,7 +62,11 @@ echo "== B. domain via dnsmasq nftset; AAAA suppressed"
 A=$(cl "nslookup ifconfig.me 192.168.1.1" | awk '/^Address: [0-9.]+$/{print $2}' | head -n1)
 nft add element inet labwatch ifme "{ $A }" 2>/dev/null
 expect "dom4_p1 has $A" "$(nft list set inet detour dom4_p1 | grep -c "$A")" "1"
-expect "AAAA suppressed" "$(cl "nslookup -type=AAAA ifconfig.me 192.168.1.1" | grep -c 'Address: [0-9a-f]*:[0-9a-f:]*[1-9a-f]')" "0"
+expect "AAAA suppressed" "$(cl "nslookup -type=AAAA ifconfig.me 192.168.1.1" | grep 'Address: [0-9a-f]*:' | grep -vcE 'Address: (::|100::)$')" "0"
+expect "AAAA is the discard prefix, not the host itself" "$(cl "nslookup -type=AAAA ifconfig.me 192.168.1.1" | grep -c 'Address: 100::$')" "1"
+# the router's own HTTPS to a policy domain (lists, subscriptions, notifications): with "::" curl reached
+# its own uhttpd on [::]:443 and failed on the certificate (seen on the BE7000 with cdn.jsdelivr.net)
+expect "router's own https to a policy domain uses IPv4" "$(curl -s -m 10 -o /dev/null -w '%{remote_ip}' https://ifconfig.me/ | grep -c '^[0-9.]*$')" "1"
 r=$(meas https://ifconfig.me/ip); expect "ifconfig.me via exit1" "$r" "200 1 0 0"
 
 echo "== C. failover: ifdown wgx1"

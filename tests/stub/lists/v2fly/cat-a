@@ -1,0 +1,5 @@
+a1.example
+full:a2.example
+include:cat-b
+regexp:^regex\.example$
+keyword:keywordx

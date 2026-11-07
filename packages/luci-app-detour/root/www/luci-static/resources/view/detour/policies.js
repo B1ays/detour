@@ -72,9 +72,20 @@ return view.extend({
 		o.modalonly = false;
 		o.textvalue = function(section_id) {
 			const n = function(k) { return (uci.get('detour', section_id, k) || []).length; };
-			return _('%d devices, %d addresses, %d domains').format(n('device'), n('dst'), n('domain'));
+			// only what the policy has, with the right number form (LuCI's N_() for plurals)
+			const parts = [];
+			if (n('device')) parts.push(N_(n('device'), '%d device', '%d devices').format(n('device')));
+			if (n('dst')) parts.push(N_(n('dst'), '%d address', '%d addresses').format(n('dst')));
+			if (n('domain')) parts.push(N_(n('domain'), '%d domain', '%d domains').format(n('domain')));
+			const lists = uci.sections('detour', 'list').filter(function(l) { return l.policy == section_id && l.enabled != '0'; }).length;
+			if (lists) parts.push(N_(lists, '%d list', '%d lists').format(lists));
+			return parts.length ? parts.join(', ') : _('nothing yet');
 		};
 
-		return m.render();
+		// detour.css: the last field of a card must not touch its bottom (Argon gives the node no padding)
+		return m.render().then(function(node) {
+			node.insertBefore(E('link', { 'rel': 'stylesheet', 'href': L.resource('detour/detour.css') }), node.firstChild);
+			return node;
+		});
 	}
 });

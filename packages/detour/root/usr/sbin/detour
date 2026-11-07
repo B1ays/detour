@@ -109,7 +109,7 @@ case 'import': {
 	let prefix = 'st_';
 	for (let a in ARGV) if (substr(a, 0, 7) == 'prefix=') prefix = substr(a, 7);
 	const out = {
-		exits: map(p.exits, (e) => sprintf('%s%s: %s from %s', prefix, e.name, e.kind, e.from)),
+		exits: map(p.exits, (e) => sprintf('%s%s: %s from %s%s', prefix, e.name, e.kind, e.from, e.via ? ' (connects through ' + prefix + e.via + ')' : '')),
 		policies: map(p.policies, (x) => sprintf('%sp_%s via %s: %d addresses, %d domains, %d devices', prefix, x.name, join(' -> ', x.exits), length(x.dst), length(x.domain), length(x.device))),
 		direct: sprintf('%d addresses, %d devices, %d domains', length(p.direct.dst), length(p.direct.device), length(p.direct.domain)),
 		lists: map(p.lists, (l) => sprintf('%s%s -> %s: %s%s (from %s)', prefix, l.name, l.policy, join(' ', l.urls), l.text ? ' + local entries' : '', l.from)),
@@ -126,6 +126,26 @@ case 'import': {
 case 'lists-update':
 	// detour lists-update [--restore|--missing] [name...]
 	exit(system([ '/usr/libexec/detour/lists-update', ...slice(ARGV, 1) ]));
+case 'sshtun': {
+	// detour sshtun keygen|pubkey|test|forget|status - the panel tunnel to a VPS (/usr/libexec/detour/sshtun)
+	const v = ARGV[1];
+	if (index([ 'keygen', 'pubkey', 'test', 'forget', 'status' ], v) < 0) { warn('usage: detour sshtun keygen|pubkey|test|forget|status
+'); exit(2); }
+	const st = () => { try { return json(core.run('/bin/sh /usr/libexec/detour/sshtun status').out); } catch (e) { return {}; } };
+	if (v == 'status') { printf('%.J
+', st()); exit(0); }
+	const r = core.run('/bin/sh /usr/libexec/detour/sshtun ' + v + ' 2>&1');
+	const out = trim(r.out);
+	let res;
+	if (v == 'test') res = (out == 'ok') ? { ok: true, host_fp: st().host_fp } : { error: out };
+	else if (v == 'keygen' || v == 'pubkey') res = (r.code == 0 && length(out)) ? { pubkey: out } : { error: out || 'no key' };
+	else res = { ok: true, message: out };
+	// the tunnel instance starts only once the server key is known (test) and stops when it is forgotten
+	if ((v == 'test' && res.ok) || v == 'forget') core.run('/etc/init.d/detour start');
+	printf('%.J
+', res);
+	exit(res.error ? 1 : 0);
+}
 case 'status': call('status'); break;
 case 'reload': call('reload'); break;
 case 'pin': call('pin', { policy: ARGV[1], exit: ARGV[2] }); break;

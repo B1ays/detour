@@ -124,7 +124,19 @@ return view.extend({
 		o.textvalue = function(id) {
 			const st = (subState || {})[id];
 			if (!st) return E('em', {}, _('not loaded yet'));
-			return E('span', { 'style': st.ok ? '' : 'color:#c62828' }, [ st.message || '', ' ',
+			// the daemon writes a stable code with each state; its message (English) is the fallback
+			const text = {
+				'updated': function() {
+					return N_(st.count, '%d server', '%d servers').format(st.count) +
+						(st.skipped ? ', ' + N_(st.skipped, '%d skipped', '%d skipped').format(st.skipped) : '');
+				},
+				'disabled': function() { return _('disabled'); },
+				'bad_url': function() { return _('bad address'); },
+				'private': function() { return _('the address points into a private network'); },
+				'download_failed': function() { return _('download failed, the previous servers are kept'); },
+				'no_servers': function() { return _('no usable servers in the answer, the previous servers are kept'); }
+			}[st.code];
+			return E('span', { 'class': st.ok ? '' : 'detour-warn' }, [ text ? text() : (st.message || ''), ' ',
 				E('small', {}, '(' + new Date(st.ts * 1000).toLocaleString() + ')') ]);
 		};
 
@@ -141,6 +153,10 @@ return view.extend({
 			});
 		};
 
-		return m.render();
+		// detour.css: the last field of a card must not touch its bottom (Argon gives the node no padding)
+		return m.render().then(function(node) {
+			node.insertBefore(E('link', { 'rel': 'stylesheet', 'href': L.resource('detour/detour.css') }), node.firstChild);
+			return node;
+		});
 	}
 });

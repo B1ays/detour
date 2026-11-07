@@ -8,6 +8,18 @@
 const callStatus = rpc.declare({ object: 'detour', method: 'status' });
 const callUpdate = rpc.declare({ object: 'detour', method: 'lists_update', params: [ 'name' ] });
 
+// lists-update writes English messages (they also go to the log); the known ones are shown translated
+function failText(m) {
+	let x, kept = / ?;? previous data kept$/.test(m);
+	m = m.replace(/;? ?previous data kept$/, '');
+	let t = m;
+	if ((x = m.match(/^download failed: (.+)$/))) t = _('download failed: %s').format(x[1]);
+	else if ((x = m.match(/^only (\d+) entries \(minimum (\d+)\)$/))) t = _('only %d entries (minimum %d)').format(+x[1], +x[2]);
+	else if ((x = m.match(/^file missing: (.+)$/))) t = _('file missing: %s').format(x[1]);
+	else if ((x = m.match(/^unknown policy '(.+)'$/))) t = _('unknown policy %s').format(x[1]);
+	return kept ? t + '; ' + _('the previous list stays in use') : t;
+}
+
 return view.extend({
 	load: function() {
 		return Promise.all([ uci.load('detour'), callStatus().catch(() => ({})) ]);
@@ -20,7 +32,8 @@ return view.extend({
 		const m = new form.Map('detour', _('Lists'),
 			_('Big lists of addresses or domains from the internet or a local file. ' +
 			  'They are updated every night; if a source does not answer, the previous list stays in use. ' +
-			  'Address lists: one IP or range (CIDR) per line. Domain lists: plain, hosts, dnsmasq or adblock format.'));
+			  'Address lists: one IP or range (CIDR) per line. Domain lists: plain, hosts, dnsmasq, adblock or v2fly/geosite text (domain:, full:). ' +
+			  'A v2fly domain-list-community category is given as v2fly:NAME (for example v2fly:youtube), its include: lines are followed.'));
 
 		const s = m.section(form.GridSection, 'list');
 		s.addremove = true;
@@ -39,7 +52,7 @@ return view.extend({
 
 		o = s.option(form.DynamicList, 'url', _('Sources (URL)'));
 		o.datatype = 'string';
-		o.validate = function(id, v) { return (!v || /^https?:\/\/\S+$/.test(v)) ? true : _('http(s) address'); };
+		o.validate = function(id, v) { return (!v || /^https?:\/\/\S+$/.test(v) || /^v2fly:[a-z0-9!._-]+$/.test(v)) ? true : _('http(s) address or v2fly:NAME'); };
 		o.modalonly = true;
 
 		o = s.option(form.Value, 'file', _('Local file'), _('Optional: a file on the router with more entries.'));
@@ -64,9 +77,10 @@ return view.extend({
 			const l = st[id];
 			if (!l) return E('em', {}, _('not loaded yet'));
 			const when = l.ts ? new Date(l.ts * 1000).toLocaleString() : '';
-			return E('span', { 'style': l.ok ? '' : 'color:#c62828' }, [
-				_('%d entries').format(l.count || 0), ' ', E('small', {}, '(' + (l.kind || '') + ', ' + when + ')'),
-				l.ok ? '' : E('div', {}, l.message || '')
+			const kind = { 'cidr': _('addresses'), 'domain': _('domains') }[l.kind] || l.kind || '';
+			return E('span', { 'class': l.ok ? '' : 'detour-warn' }, [
+				N_(l.count || 0, '%d entry', '%d entries').format(l.count || 0), ' ', E('small', {}, '(' + kind + ', ' + when + ')'),
+				l.ok ? '' : E('div', {}, failText(l.message || ''))
 			]);
 		};
 
@@ -83,6 +97,10 @@ return view.extend({
 			});
 		};
 
-		return m.render();
+		// detour.css: the last field of a card must not touch its bottom (Argon gives the node no padding)
+		return m.render().then(function(node) {
+			node.insertBefore(E('link', { 'rel': 'stylesheet', 'href': L.resource('detour/detour.css') }), node.firstChild);
+			return node;
+		});
 	}
 });

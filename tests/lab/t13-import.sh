@@ -75,6 +75,14 @@ printf '100.64.200.0/24\n' > $S/lists/tunnel-cidr/blob/s2
 printf 's1\turl\t1\tauto\t0\t0\tdoms\t%s/domains.txt\n' "$L" > $S/lists/tunnel-domains/sources.tsv
 printf 's1\turl\t1\tcidr\t0\t0\tdirect\t%s/direct.txt\n' "$L" > $S/lists/bypass-ip/sources.tsv
 printf 's1\turl\t1\tauto\t0\t0\tads\thttp://ads.example/x\n' > $S/lists/adblock/sources.tsv
+# geo categories (geo.sh registry: key action count ts slot)
+mkdir -p $S/geo
+printf 'rfgs-ru-blocked	vpn	73515	0	0
+v2fly-youtube	vpn	177	0	2
+rfip-telegram	direct	8	0	0
+rfgs-x	block	1	0	0
+weird-key	vpn	1	0	0
+' > $S/geo/actions.tsv
 tar -czf /tmp/stock.tgz -C $S .
 
 echo "== dry run"
@@ -93,6 +101,21 @@ echo "$OUT" | grep -q 'st_l_tunnel_cidr -> vpn: .*cidr.txt + local entries (from
 echo "$OUT" | grep -q 'st_l_tunnel_domains -> vpn' && echo "$OUT" | grep -q 'st_l_bypass_ip -> direct' && ok "domain and bypass lists" || bad "other lists"
 echo "$OUT" | grep -q 'source off: switched off' && ok "disabled source reported" || bad "disabled source"
 echo "$OUT" | grep -q 'lists/adblock: blocking' && ok "adblock reported as not carried over" || bad "adblock"
+echo "$OUT" | grep -q 'st_g_rfgs_ru_blocked -> vpn: https://cdn.jsdelivr.net/gh/runetfreedom/russia-blocked-geosite@release/ru-blocked.txt' && ok "geo: runetfreedom geosite -> main policy" || bad "geo rfgs: $(echo "$OUT" | grep g_rfgs)"
+echo "$OUT" | grep -q 'st_g_v2fly_youtube -> s2: v2fly:youtube' && ok "geo: v2fly category on slot 2 -> its policy" || bad "geo v2fly: $(echo "$OUT" | grep g_v2fly)"
+echo "$OUT" | grep -q 'st_g_rfip_telegram -> direct: .*russia-blocked-geoip@release/text/telegram.txt' && ok "geo: geoip CIDR -> direct" || bad "geo rfip: $(echo "$OUT" | grep g_rfip)"
+echo "$OUT" | grep -q 'geo category rfgs-x: action' && echo "$OUT" | grep -q 'geo category weird-key: unknown source' && ok "geo: unsupported action / unknown key reported" || bad "geo reports"
+# xray main exit whose connection rides slot 2 (sockif.sh, .xray-sockif)
+S3=/tmp/stock-state3; rm -rf $S3; mkdir -p $S3/configs $S3/xray-configs; cp $S/configs/home.conf $S3/configs/; cp $S/xray-configs/lab.json $S3/xray-configs/
+echo xray > $S3/.transport; echo lab > $S3/.xray-active
+printf '2	%s	awg	home	main	on
+' "$(ucode -e 'print(b64enc("home"))')" > $S3/.slots; printf 'lab	s2
+' > $S3/.xray-sockif
+detour import $S3 | grep -q 'st_main: xray from xray-configs/lab.json (connects through st_s2)' && ok "xray exit through another exit (.xray-sockif)" || bad "sockif: $(detour import $S3 | grep st_main)"
+# a list registry whose sources are all off: the stock default (opencck) must not come back
+mkdir -p $S3/lists/tunnel-cidr; printf 's1	url	0	cidr	0	0	opencck	http://x.example/y
+' > $S3/lists/tunnel-cidr/sources.tsv
+detour import $S3 | grep -q 'l_tunnel_cidr' && bad "default list added although stock switched it off" || ok "all-off registry: no default list"
 # legacy config without a registry: iplist.conf sites -> opencck URL with &site=
 S2=/tmp/stock-state2; rm -rf $S2; mkdir -p $S2/configs; cp $S/configs/home.conf $S2/configs/; echo awg > $S2/.transport; echo home > $S2/.active
 printf 'IPLIST_SITES="steampowered.com discord.com"\nIPLIST_CUSTOM_MODE=merge\n' > $S2/iplist.conf; printf '100.64.201.0/24\n' > $S2/iplist.custom
@@ -101,6 +124,7 @@ detour import $S2 | grep -q 'data=cidr4&site=steampowered.com&site=discord.com +
 echo "== apply"
 detour import /tmp/stock.tgz --apply > /tmp/import.out
 grep -q 'exit st_main' /tmp/import.out && ok "applied" || bad "apply: $(cat /tmp/import.out)"
+[ "$(uci -q get detour.st_g_rfip_telegram.min_lines)" = 4 ] && [ "$(uci -q get detour.st_g_rfgs_ru_blocked.min_lines)" = 10 ] && ok "geo lists: failure threshold from the stock size (8 -> 4, 73515 -> 10)" || bad "min_lines: $(uci -q get detour.st_g_rfip_telegram.min_lines) $(uci -q get detour.st_g_rfgs_ru_blocked.min_lines)"
 [ "$(uci -q get detour.st_smyprov.user_agent)" = Happ/2.0 ] && [ "$(uci -q get detour.st_smyprov.hwid)" = abc-123 ] && ok "subscription with its client UA and hwid" || bad "sub fields"
 [ "$(uci -q get network.st_main.proto)" = wireguard ] && ok "netifd st_main" || bad "network st_main"
 [ "$(uci -q get detour.st_s2_eng.type)" = xray ] && ok "engine for s2" || bad "engine"

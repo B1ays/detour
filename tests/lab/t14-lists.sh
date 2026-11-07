@@ -10,7 +10,7 @@ B=http://10.0.2.2:8765/tests/stub/lists
 st() { jsonfilter -i /tmp/detour/lists/$1.status -e "@.$2" 2>/dev/null; }
 inset() { nft get element inet detour $1 "{ $2 }" >/dev/null 2>&1 && echo yes || echo no; }
 txb() { cat /sys/class/net/$1/statistics/tx_bytes 2>/dev/null || echo 0; }
-cleanup() { for s in tl_cidr tl_dom tl_dir tl_short tl_big; do uci -q delete detour.$s; done; uci commit detour; rm -f /etc/detour/lists/big.txt; }
+cleanup() { for s in tl_cidr tl_dom tl_dir tl_short tl_big tl_geo tl_v2; do uci -q delete detour.$s; done; uci commit detour; rm -f /etc/detour/lists/big.txt; }
 cleanup
 uci -q batch <<U
 set detour.tl_cidr=list
@@ -43,7 +43,7 @@ t0=$(txb wgx1); r=$(cl "curl -s -m 8 -o /dev/null -w '%{http_code}' https://8.8.
 [ "$r" != 000 ] && [ $((t1 - t0)) -gt 0 ] && ok "8.8.8.8 (from the list) via the vpn policy's exit" || bad "via list: http=$r tx+$((t1 - t0))"
 for i in 1 2 3 4 5; do A=$(cl "nslookup ifconfig.io 192.168.1.1" | awk '/^Address: [0-9.]+$/{print $2}' | head -n1); [ -n "$A" ] && break; sleep 2; done
 [ -n "$A" ] && [ "$(inset dom4_p1 $A)" = yes ] && ok "ifconfig.io ($A) in dom4_p1 via the list" || { bad "dom4_p1 for ifconfig.io ($A)"; cl "nslookup ifconfig.io 192.168.1.1" | tail -5; nft list set inet detour dom4_p1 | head -5; cat /tmp/dnsmasq.*.d/detour-list-tl_dom.conf | head -2 | cut -c1-120; }
-[ "$(cl "nslookup -type=AAAA ifconfig.io 192.168.1.1" | grep -c 'Address: [0-9a-f]*:[0-9a-f:]*[1-9a-f]')" = 0 ] && ok "AAAA suppressed for list domains" || bad "AAAA"
+[ "$(cl "nslookup -type=AAAA ifconfig.io 192.168.1.1" | grep 'Address: [0-9a-f]*:' | grep -vcE 'Address: (::|100::)$')" = 0 ] && ok "AAAA suppressed for list domains" || bad "AAAA"
 echo "== a failing source keeps the previous data"
 uci set detour.tl_cidr.url=$B/missing.txt; uci commit detour
 detour lists-update tl_cidr
@@ -59,6 +59,17 @@ echo "== boot: restored from the flash snapshot without downloads"
 [ "$(inset lst4_p1 8.8.8.8)" = yes ] && [ "$(inset lst4_direct 203.0.113.9)" = yes ] && ok "sets back from snapshots" || bad "restore"
 grep -q 'restored from snapshot' /tmp/detour/lists/tl_cidr.status && ok "status: restored from snapshot" || bad "status: $(cat /tmp/detour/lists/tl_cidr.status)"
 /etc/init.d/detour start; sleep 4
+echo "== v2fly/geosite text (runetfreedom, as stock): domain:/full: kept, keyword/regexp/include skipped"
+uci set detour.tl_geo=list; uci set detour.tl_geo.policy=px; uci add_list detour.tl_geo.url=$B/geosite.txt; uci commit detour
+detour lists-update tl_geo >/dev/null 2>&1
+[ "$(st tl_geo count)" = 10 ] && ok "10 domains from geosite text" || bad "geosite: $(cat /tmp/detour/lists/tl_geo.status) $(tr '\n' ' ' < /tmp/detour/lists/tl_geo.data)"
+grep -qx 'www.geo-two.example' /tmp/detour/lists/tl_geo.data && grep -qx 'geo-three.example' /tmp/detour/lists/tl_geo.data && grep -qx 'geo-four.example' /tmp/detour/lists/tl_geo.data && ok "prefixes and attributes stripped" || bad "geosite data: $(tr '\n' ' ' < /tmp/detour/lists/tl_geo.data)"
+echo "== v2fly:<category> with include: (stock fetch_v2fly); base URL pointed at the PC for the lab"
+uci set detour.main.v2fly_base=$B/v2fly; uci set detour.tl_v2=list; uci set detour.tl_v2.policy=px; uci add_list detour.tl_v2.url=v2fly:cat-a; uci commit detour
+detour lists-update tl_v2 >/dev/null 2>&1
+grep -qx 'a1.example' /tmp/detour/lists/tl_v2.data && grep -qx 'b1.example' /tmp/detour/lists/tl_v2.data && grep -qx 'c1.example' /tmp/detour/lists/tl_v2.data && ok "category + include (two levels) fetched ($(st tl_v2 count) domains)" || bad "v2fly: $(cat /tmp/detour/lists/tl_v2.status) $(tr '\n' ' ' < /tmp/detour/lists/tl_v2.data 2>/dev/null)"
+grep -q 'regex\|keyword' /tmp/detour/lists/tl_v2.data && bad "regexp/keyword leaked" || ok "regexp/keyword lines skipped"
+uci delete detour.main.v2fly_base; uci commit detour
 echo "== 30000 CIDR (local file)"
 awk 'BEGIN { for (a = 11; a < 70; a++) for (b = 0; b < 255; b++) for (c = 0; c < 2; c++) { if (n++ >= 30000) exit; print a "." b "." c*128 ".0/25" } }' > /etc/detour/lists/big.txt
 uci set detour.tl_big=list; uci set detour.tl_big.policy=px; uci set detour.tl_big.file=/etc/detour/lists/big.txt; uci commit detour

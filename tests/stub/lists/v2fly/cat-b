@@ -1,0 +1,7 @@
+b1.example @ads
+include:cat-c @cn
+include:cat-a
+b2.example
+b3.example
+b4.example
+b5.example

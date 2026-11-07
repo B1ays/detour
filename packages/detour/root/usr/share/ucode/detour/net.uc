@@ -60,6 +60,12 @@ export function sync_rules(cfg) {
 	for (let e in cfg.exits) ensure_unreachable(e.id);
 }
 
+// the AAAA answer for policy domains (dns.uc DISCARD6) must fail at once, also for LAN devices that
+// have an IPv6 route through the router
+export function discard6(on) {
+	run(on ? 'ip -6 route replace unreachable 100::/64 metric 1' : 'ip -6 route del unreachable 100::/64 2>/dev/null');
+}
+
 export function remove_all() {
 	const have = rules_now();
 	for (let prio, r in have) {
@@ -69,6 +75,32 @@ export function remove_all() {
 			run(sprintf('ip rule del priority %d', prio));
 		}
 	}
+	discard6(false);
+}
+
+// Flows that were not classified (no policy mark) towards destinations / from devices that have just come
+// under a policy. Unoffloaded, their next packet is classified anew and moves to the exit; offloaded
+// (fw4 flowtable - BE7000: software for Wi-Fi and the engines' tun, PPE for wired ports) they keep going
+// directly and never meet our rules again. Deleting the entry gives both cases the same outcome.
+export function flush_unclassified(dsts, macs) {
+	let n = 0;
+	for (let d in dsts) {
+		const m = match(d, /^([0-9.]+)(\/([0-9]+))?$/);
+		if (!m) continue;
+		const len = (m[3] != null) ? int(m[3]) : 32;
+		const v = (len == 0) ? 0 : ((0xffffffff << (32 - len)) & 0xffffffff);
+		const mask = sprintf('%d.%d.%d.%d', (v >> 24) & 255, (v >> 16) & 255, (v >> 8) & 255, v & 255);
+		run(sprintf('conntrack -D -m 0/0xffff00 -d %s --mask-dst %s', m[1], mask));
+		n++;
+	}
+	if (length(macs)) {
+		const neigh = run('ip -4 neigh show').out;
+		for (let l in split(neigh, '\n')) {
+			const x = match(l, /^([0-9.]+) .*lladdr ([0-9a-f:]+)/);
+			if (x && index(macs, x[2]) >= 0) { run(sprintf('conntrack -D -m 0/0xffff00 -s %s', x[1])); n++; }
+		}
+	}
+	return n;
 }
 
 export function flush_conntrack_exit(eid) {

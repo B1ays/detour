@@ -43,6 +43,10 @@ norm_domains() {
 		/^(server|ipset|nftset|address|local)=\// { n = split($0, a, "/"); for (i = 2; i < n; i++) print a[i]; next }
 		/^\|\|/ { d = substr($0, 3); sub(/[\^$].*$/, "", d); print d; next }
 		/^(0\.0\.0\.0|127\.0\.0\.1|::1?)[[:space:]]/ { print $2; next }
+		# v2fly/geosite text (runetfreedom russia-blocked-geosite, as stock uses): domain:x / full:x are
+		# domains (an attribute tail " @ads" / ":@ads" dropped); keyword/regexp/include/ext are not
+		/^[[:space:]]*(include|keyword|regexp|ext):/ { next }
+		/^[[:space:]]*(domain|full):/ { d = $0; sub(/^[[:space:]]*(domain|full):/, "", d); sub(/(:@|[[:space:]]).*$/, "", d); print d; next }
 		{ print $1 }' | sed 's/^\*\.//; s/^\.//; s/\.$//' | \
 		grep -E '^[a-z0-9_]([a-z0-9_.-]*[a-z0-9])?\.[a-z][a-z0-9-]*[a-z0-9]$|^[a-z0-9_]([a-z0-9_.-]*[a-z0-9])?\.[a-z]{2,}$' | \
 		grep -vE '^(localhost|local|broadcasthost)$' | sort -u
@@ -53,6 +57,32 @@ detect_kind() {
 	_ip=$(grep -cE '^[[:space:]]*[0-9]{1,3}(\.[0-9]{1,3}){3}' "$1")
 	_all=$(grep -cvE '^[[:space:]]*($|#|!)' "$1")
 	[ "$_all" -gt 0 ] && [ $((_ip * 2)) -ge "$_all" ] && echo cidr || echo domain
+}
+
+# up to 3 attempts 5 s apart: the daemon starts us right after a reload that may restart dnsmasq,
+# and a name that does not resolve meanwhile is not a "transient" error for curl --retry
+fetch() {
+	local a=0
+	until curl -fsSL -m 180 --retry 2 "$1" > "$2" 2>/dev/null; do
+		a=$((a + 1)); [ $a -ge 3 ] && return 1; sleep 5
+	done
+}
+
+# a v2fly domain-list-community category with its include: lines (stock geo.sh fetch_v2fly; attribute
+# filters "include:x @cn" are not applied - the whole included category is taken)
+V2FLY=$(uci -q get detour.main.v2fly_base); V2FLY=${V2FLY:-https://cdn.jsdelivr.net/gh/v2fly/domain-list-community@master/data}   # lab: a copy on the PC
+fetch_v2fly() {
+	local queue="$1" out="$2" seen=" " nm n=0 i   # $2 is saved: "set --" below replaces the arguments
+	while [ -n "$queue" ]; do
+		set -- $queue; nm=$1; shift; queue="$*"
+		case "$nm" in *[!a-z0-9!._-]*|'') continue ;; esac
+		case "$seen" in *" $nm "*) continue ;; esac
+		seen="$seen$nm "; n=$((n + 1)); [ $n -gt 200 ] && break
+		fetch "$V2FLY/$nm" "$RUN/.v2.part" || { rm -f "$RUN/.v2.part"; return 1; }
+		for i in $(tr 'A-Z' 'a-z' < "$RUN/.v2.part" | sed -n 's/^[[:space:]]*include:\([a-z0-9!._-]*\).*/\1/p'); do queue="$queue $i"; done
+		cat "$RUN/.v2.part" >> "$out"; echo >> "$out"
+	done
+	rm -f "$RUN/.v2.part"
 }
 
 handle_list() {
@@ -82,7 +112,10 @@ handle_list() {
 	raw="$RUN/$s.raw"
 	: > "$raw"
 	for u in $urls; do
-		curl -fsSL -m 180 --retry 2 "$u" >> "$raw" 2>/dev/null || { fail=1; msg="download failed: $u"; }
+		case "$u" in
+		v2fly:*) fetch_v2fly "${u#v2fly:}" "$raw" || { fail=1; msg="download failed: $u"; } ;;
+		*) fetch "$u" "$raw.part" && cat "$raw.part" >> "$raw" || { fail=1; msg="download failed: $u"; }; rm -f "$raw.part" ;;
+		esac
 		echo >> "$raw"
 	done
 	[ -n "$file" ] && { [ -r "$file" ] && cat "$file" >> "$raw" || { fail=1; msg="file missing: $file"; }; }
@@ -143,7 +176,7 @@ for dir in $dirs; do
 				for (i = 1; i <= n; i += 40) {
 					l = d[i]; for (j = i + 1; j < i + 40 && j <= n; j++) l = l "/" d[j]
 					printf "nftset=/%s/4#inet#detour#%s%s\n", l, s4, (s6 != "" ? ",6#inet#detour#" s6 : "")
-					if (!direct) printf "address=/%s/::\n", l
+					if (!direct) printf "address=/%s/100::\n", l   # AAAA -> the discard prefix (see dns.uc)
 				}
 			}' "$RUN/$s.data" > "$out.tmp"
 		if cmp -s "$out.tmp" "$out"; then rm -f "$out.tmp"; else mv "$out.tmp" "$out"; changed=1; fi

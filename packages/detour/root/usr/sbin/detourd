@@ -24,6 +24,8 @@ let events = [];
 let switches = 0, last_switch = null, auth_state = 'ok';
 let down_noted = {};
 let lists_busy = false, subs_busy = false;
+let apply_errors = [];    // the last apply's errors and warnings (config + nft + setup), shown in LuCI
+let pol_keys = null;      // what put flows under a policy at the last load (dst / device), see load_all
 
 function ev(msg) {
 	push(events, sprintf('%d %s', time(), msg));
@@ -131,7 +133,21 @@ function load_all(reason) {
 		if (!length(filter(cfg.policies, (x) => x.name == p))) delete pins[p];
 	const res = fw.apply(cfg, active ? fw.active_map(cfg) : null);
 	active = fw.active_map(cfg);
+	// destinations / devices newly under a policy: their direct flows (offloaded ones would never be
+	// re-classified) are dropped so the next packets meet the new rules
+	const keys = {}, nd = [], nm = [];
+	for (let p in cfg.policies) {
+		if (!p.enabled) continue;
+		for (let d in p.dst4) keys['d ' + d] = true;
+		for (let m in p.devices) keys['m ' + m] = true;
+	}
+	if (pol_keys != null)
+		for (let k in keys) if (!pol_keys[k]) push(substr(k, 0, 1) == 'd' ? nd : nm, substr(k, 2));
+	pol_keys = keys;
+	if (length(nd) || length(nm)) ev(sprintf('new under a policy: %d destinations, %d devices - their direct flows reset (%d)',
+		length(nd), length(nm), net.flush_unclassified(nd, nm)));
 	if (res.dns_restart) dns.restart();
+	apply_errors = res.errors;
 	for (let e in res.errors) ev('config: ' + e);
 	dns_mode = null;
 	ev(sprintf('%s: %d exits, %d policies', reason, length(cfg.exits), length(cfg.policies)));
@@ -178,7 +194,7 @@ function status() {
 		push(pol, { name: p.name, id: p.id, enabled: p.enabled, exits: p.exits,
 			active: exit_name(active['' + p.id]), pinned: pins[p.name] });
 	return { version: core.VERSION, uptime: time() - t0, exits: ex, policies: pol, dns: dns_mode ?? cfg.main.dns,
-		switches, last_switch, engines: engines.list(), lists: lists_status(), subscriptions: lists_status('subs'), auth: auth.status(), notify_queued: notify.queued(), errors: cfg.errors, events };
+		switches, last_switch, engines: engines.list(), lists: lists_status(), subscriptions: lists_status('subs'), auth: auth.status(), notify_queued: notify.queued(), errors: apply_errors, events };
 }
 
 function do_pin(pol, ex) {
@@ -252,6 +268,10 @@ conn.publish('detour', {
 	import_check:    { call: (req) => cli_job(req, [ 'import', IMPORT_FILE ]), args: { ...S } },
 	import_apply:    { call: (req) => cli_job(req, [ 'import', IMPORT_FILE, '--apply' ], true), args: { ...S } },
 	sub_update:      { call: (req) => cli_job(req, [ 'sub-update', ...(length(req.args.name ?? '') ? [ req.args.name ] : []) ]), args: { name: '', ...S } },
+	sshtun_status:   { call: () => { try { return json(core.run('/bin/sh /usr/libexec/detour/sshtun status').out); } catch (e) { return { error: 'no status' }; } }, args: { ...S } },
+	sshtun_keygen:   { call: (req) => cli_job(req, [ 'sshtun', 'keygen' ]), args: { ...S } },
+	sshtun_test:     { call: (req) => cli_job(req, [ 'sshtun', 'test' ]), args: { ...S } },
+	sshtun_forget:   { call: (req) => cli_job(req, [ 'sshtun', 'forget' ]), args: { ...S } },
 	lists_update:    { call: (req) => cli_job(req, [ 'lists-update', ...(length(req.args.name ?? '') ? [ req.args.name ] : []) ]), args: { name: '', ...S } },
 });
 

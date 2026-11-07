@@ -1,0 +1,70 @@
+/* Detour LuCI pages. Spacing for our own (non-form) content, in the theme's units when it defines them
+ * (Argon 3.x: --section-inset / --field-gap / --control-gap) and plain values otherwise. Argon pads only
+ * its standard pieces (h3, .cbi-section-descr, .cbi-value); a <pre>, a button row or text placed straight
+ * into a .cbi-section touched the card edges. */
+
+/* body of a card: rows (.cbi-value), action rows and results, spaced and kept off the bottom edge */
+.detour-node {
+	display: flex;
+	flex-direction: column;
+	gap: var(--field-gap, .75rem);
+	padding: var(--control-gap, .5rem) 0 var(--field-gap, 1rem);
+}
+.detour-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--control-gap, .5rem);
+	padding: 0 var(--section-inset, 1rem);
+}
+.detour-result {
+	padding: 0 var(--section-inset, 1rem);
+}
+.detour-result:empty {
+	display: none;
+}
+.detour-result ul {
+	margin: .25rem 0 .5rem 1.25rem;
+}
+.detour-info {
+	display: flex;
+	flex-direction: column;
+	gap: .35rem;
+	padding: var(--field-gap, 1rem) var(--section-inset, 1rem);
+}
+pre.detour-log {
+	margin: 0;
+	padding: var(--field-gap, 1rem) var(--section-inset, 1rem);
+	max-height: 20em;
+	overflow: auto;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+pre.detour-key {
+	margin: .25rem 0;
+	white-space: pre-wrap;
+	word-break: break-all;
+	line-height: 1.4;
+}
+.detour-badge {
+	display: inline-block;
+	padding: 1px 6px;
+	border-radius: 3px;
+	color: #fff;
+	line-height: 1.5;
+}
+.detour-badge.ok { background: #2e7d32; }
+.detour-badge.bad { background: #c62828; }
+.detour-warn { color: #c62828; }
+
+/* generated forms (settings, exits, lists, policies): the last field must not touch the bottom of the
+ * card - Argon gives .cbi-section-node no padding; themes without the variable get 0 (unchanged) */
+[data-page^="admin-services-detour"] .cbi-map > .cbi-section > .cbi-section-node {
+	padding-bottom: var(--field-gap, 0);
+}
+
+/* a share link is long: its box takes the whole field column, not the theme's field width */
+.detour-node .cbi-value textarea {
+	width: 100%;
+	max-width: 100%;
+}
