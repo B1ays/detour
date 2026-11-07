@@ -277,7 +277,6 @@ export function plan(dir) {
 		'server': 'home access server: set it up again (new keys)',
 		'sched': 'access schedules: use firewall rules with a time window',
 		'.zapret-on': 'zapret: install the zapret package and choose a strategy',
-		'.subs': 'subscriptions: not supported yet',
 		'.port-rules': 'port rules: not supported yet',
 		'geo/actions.tsv': 'geo categories: add their sources as lists',
 		'.doh-on': 'encrypted DNS: set "Router DNS" in Detour settings',
@@ -286,7 +285,18 @@ export function plan(dir) {
 	for (let f, why in not) if (fs.access(dir + '/' + f)) push(skipped, { what: f, why });
 
 	const lists = plan_lists(dir, skipped, length(vpn.exits) > 0, word(dir, '.full-tunnel') == '1');
-	return { exits, policies, direct, notify, hosts, skipped, lists };
+
+	// subscriptions (subs-lib.sh): .subs = tag url label; .sub-client = tag client ua hwon hwid hwsrc
+	const subs = [], client = {};
+	for (let r in tsv(dir, '.sub-client')) client[r[0]] = { ua: r[2], hwon: r[3] == '1', hwid: r[4] };
+	for (let r in tsv(dir, '.subs')) {
+		if (!match(r[1] ?? '', /^https?:\/\//)) { push(skipped, { what: 'subscription ' + (r[2] ?? r[0]), why: 'no http(s) URL' }); continue; }
+		const sn = substr(replace(lc(r[0] ?? ''), /[^a-z0-9]/g, ''), 0, 8) || sprintf('s%d', length(subs) + 1);
+		const cl = client[r[0]] ?? {};
+		push(subs, { name: 's' + sn, url: r[1], label: r[2] ?? r[0], ua: (cl.ua && cl.ua != '-') ? cl.ua : null,
+			hwid: (cl.hwon && cl.hwid && cl.hwid != '-') ? cl.hwid : null });
+	}
+	return { exits, policies, direct, notify, hosts, skipped, lists, subs };
 }
 
 function uniq(l) { const o = []; for (let x in l) if (index(o, x) < 0) push(o, x); return o; }
@@ -392,6 +402,16 @@ export function apply(p, prefix) {
 		c.set('detour', 'direct', k, uniq([ ...cur, ...p.direct[k] ]));
 	}
 	push(done, sprintf('always direct: %d addresses, %d devices, %d domains', length(p.direct.dst), length(p.direct.device), length(p.direct.domain)));
+	for (let sb in p.subs ?? []) {
+		// names are kept short: the subscription's tun is "<name>tun" (max 15 characters)
+		const n = substr(prefix + sb.name, 0, 11);
+		c.set('detour', n, 'subscription');
+		c.set('detour', n, 'url', sb.url);
+		c.set('detour', n, 'label', sb.label);
+		if (sb.ua) c.set('detour', n, 'user_agent', sb.ua); else c.delete('detour', n, 'user_agent');
+		if (sb.hwid) c.set('detour', n, 'hwid', sb.hwid); else c.delete('detour', n, 'hwid');
+		push(done, sprintf('subscription %s ("%s"): its exit %s_sub appears after the first update - put it into a policy', n, sb.label, n));
+	}
 	for (let l in p.lists ?? []) {
 		const n = prefix + l.name;
 		c.set('detour', n, 'list');

@@ -64,7 +64,7 @@ return view.extend({
 		(st.exits || []).forEach(function(x) {
 			rows.push(E('tr', { 'class': 'tr' }, [
 				E('td', { 'class': 'td' }, x.name),
-				E('td', { 'class': 'td' }, x.device),
+				E('td', { 'class': 'td' }, x.colo ? [ x.device, ' ', E('small', { 'title': _('Cloudflare point the WARP tunnel lands on') }, '(' + x.colo + ')') ] : x.device),
 				E('td', { 'class': 'td' }, !x.enabled ? _('disabled') : badge(x.healthy, _('working'), x.up ? _('not responding') : _('down'))),
 				E('td', { 'class': 'td' }, x.probe ? fmtTime(x.last_ok) : _('device state only')),
 				E('td', { 'class': 'td' }, String(x.drops || 0))

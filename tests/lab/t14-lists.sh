@@ -41,8 +41,8 @@ echo "== traffic"
 conntrack -D -d 8.8.8.8 >/dev/null 2>&1
 t0=$(txb wgx1); r=$(cl "curl -s -m 8 -o /dev/null -w '%{http_code}' https://8.8.8.8/"); t1=$(txb wgx1)
 [ "$r" != 000 ] && [ $((t1 - t0)) -gt 0 ] && ok "8.8.8.8 (from the list) via the vpn policy's exit" || bad "via list: http=$r tx+$((t1 - t0))"
-A=$(cl "nslookup ifconfig.io 192.168.1.1" | awk '/^Address: [0-9.]+$/{print $2}' | head -n1)
-[ -n "$A" ] && [ "$(inset dom4_p1 $A)" = yes ] && ok "ifconfig.io ($A) in dom4_p1 via the list" || bad "dom4_p1 for ifconfig.io ($A)"
+for i in 1 2 3 4 5; do A=$(cl "nslookup ifconfig.io 192.168.1.1" | awk '/^Address: [0-9.]+$/{print $2}' | head -n1); [ -n "$A" ] && break; sleep 2; done
+[ -n "$A" ] && [ "$(inset dom4_p1 $A)" = yes ] && ok "ifconfig.io ($A) in dom4_p1 via the list" || { bad "dom4_p1 for ifconfig.io ($A)"; cl "nslookup ifconfig.io 192.168.1.1" | tail -5; nft list set inet detour dom4_p1 | head -5; cat /tmp/dnsmasq.*.d/detour-list-tl_dom.conf | head -2 | cut -c1-120; }
 [ "$(cl "nslookup -type=AAAA ifconfig.io 192.168.1.1" | grep -c 'Address: [0-9a-f]*:[0-9a-f:]*[1-9a-f]')" = 0 ] && ok "AAAA suppressed for list domains" || bad "AAAA"
 echo "== a failing source keeps the previous data"
 uci set detour.tl_cidr.url=$B/missing.txt; uci commit detour

@@ -12,7 +12,7 @@ txb() { cat /sys/class/net/$1/statistics/tx_bytes 2>/dev/null || echo 0; }
 probe() { cl "curl -s -m 8 -o /dev/null -w '%{http_code}' https://1.0.0.1/cdn-cgi/trace"; }
 D=/etc/enodia-lab; PW=$(cat $D/ss.pw)
 
-pgrep -f sb-server.json >/dev/null || (ip netns exec ex1 sing-box run -c $D/sb-server.json > /tmp/sb-server.log 2>&1 &)
+lab tests/lab/restart-sb.sh >/dev/null   # with DNS in the netns (urltest probes resolve names)
 sleep 2
 mkdir -p /etc/detour/engines; umask 077
 cat > /etc/detour/engines/sb.json <<EOF
@@ -61,6 +61,10 @@ echo "== traffic of policy px through sing-box"
 waitfor sbx act 20 || true
 conntrack -D -d 1.0.0.1 >/dev/null 2>&1
 t0=$(txb sbtun); r=$(probe); expect "via sbtun" "$r $(( $(txb sbtun) - t0 > 0 ? 1 : 0 ))" "200 1"
+echo "== tun address flushed (netifd restart on the BE7000) -> the daemon puts it back"
+ip -4 addr flush dev sbtun
+waitfor 1 "ip -4 -o addr show dev sbtun | grep -c 'inet 172.19.'" 15 && ok "sbtun address restored" || bad "sbtun has no address"
+waitfor true "ubus call detour status | jsonfilter -e '@.exits[@.name=\"sbx\"].healthy'" 20 && ok "sbx healthy again" || bad "sbx not healthy"
 echo "== sing-box disabled -> failover to Xray"
 uci set detour.sb.enabled=0; uci commit detour; reload_config
 waitfor xrx act 30 && ok "switched to xrx" || bad "no failover ($(act))"

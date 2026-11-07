@@ -7,18 +7,18 @@ START=18
 STOP=89
 
 start() {
-	/usr/sbin/detour fw-start
+	/usr/libexec/detour/fw start
 }
 
 stop() {
-	/usr/sbin/detour fw-stop
+	/usr/libexec/detour/fw stop
 }
 
 # rc.common would run stop+start: the table would be gone for a moment and policy traffic would leak.
 restart() {
-	/usr/sbin/detour fw-start
+	/usr/libexec/detour/fw start
 }
 
 reload() {
-	/usr/sbin/detour fw-start
+	/usr/libexec/detour/fw start
 }

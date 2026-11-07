@@ -9,6 +9,8 @@ D=/etc/enodia-lab; mkdir -p $D; cd $D; umask 077
 lsmod | grep -q '^veth' || apk add -q kmod-veth >/dev/null 2>&1
 
 ip netns add $NS 2>/dev/null
+# DNS inside the exit (a proxy server there resolves domains): QEMU user-net resolver via the router WAN
+mkdir -p /etc/netns/$NS; echo "nameserver 10.0.2.3" > /etc/netns/$NS/resolv.conf
 ip link show $V >/dev/null 2>&1 || ip link add $V type veth peer name $VP
 ip link set $VP netns $NS 2>/dev/null
 ip addr replace 10.199.$N.1/30 dev $V; ip link set $V up

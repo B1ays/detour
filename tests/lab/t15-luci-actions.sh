@@ -20,6 +20,9 @@ echo "$r" | grep -q '"exit_id"' && ok "engine_add: $(echo "$r" | jsonfilter -e '
 reload_config
 waitfor true "ubus call detour status | jsonfilter -e '@.exits[@.name=\"lnk1\"].healthy'" 40 && ok "exit lnk1 healthy" || bad "lnk1 not healthy"
 r=$(rpc engine_add "{\"name\":\"lnk1\",\"link\":\"$L\"}"); echo "$r" | grep -q 'already used' && ok "duplicate name refused" || bad "dup: $r"
+r=$(rpc engine_add "{\"name\":\"lnk2\",\"link\":\"$L\",\"via\":\"alt\"}")
+[ "$(uci -q get detour.lnk2_eng.via)" = alt ] && ok "engine_add with via=alt (chain)" || bad "via: $r"
+r=$(rpc engine_add "{\"name\":\"lnk3\",\"link\":\"$L\",\"via\":\"nosuch\"}"); echo "$r" | grep -q 'is not an exit' && ok "unknown via refused" || bad "via nosuch: $r"
 r=$(rpc engine_add '{"name":"bad","link":"http://x"}'); echo "$r" | grep -q 'unsupported scheme' && ok "bad link refused" || bad "bad link: $r"
 
 echo "== lists update"
@@ -34,6 +37,8 @@ uci set detour.main.warp_api=http://10.0.2.2:8767/v0a2158; uci set detour.main.w
 detour warp-unregister warpui >/dev/null 2>&1
 r=$(rpc warp_register '{"name":"warpui"}'); echo "$r" | grep -q '"exit_id"' && ok "warp_register" || bad "warp_register: $r"
 r=$(rpc warp_unregister '{"name":"warpui"}'); echo "$r" | grep -q '"deregistered":true' && ok "warp_unregister" || bad "warp_unregister: $r"
+r=$(rpc warp_register '{"name":"warpaw","awg":true}'); [ "$(uci -q get network.warpaw.proto)" = amneziawg ] && ok "warp_register with AmneziaWG masking" || bad "awg: $r"
+rpc warp_unregister '{"name":"warpaw"}' >/dev/null
 
 echo "== import (file as LuCI uploads it)"
 [ -s /tmp/stock.tgz ] || lab tests/lab/t13-import.sh >/dev/null 2>&1
@@ -48,7 +53,7 @@ r=$(curl -s http://127.0.0.1/ubus -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\
 echo "$r" | grep -q 'Access denied' && ok "read-only session cannot add exits" || bad "ro: $r"
 
 echo "== cleanup"
-for s in lnk1 lnk1_eng tl_ui; do uci -q delete detour.$s; done; uci -q delete network.lnk1
+for s in lnk1 lnk1_eng lnk2 lnk2_eng tl_ui; do uci -q delete detour.$s; done; uci -q delete network.lnk1; uci -q delete network.lnk2; uci -q del_list firewall.vpn.network=lnk2
 uci -q del_list firewall.vpn.network=lnk1; uci -q delete detour.main.warp_api; uci -q delete detour.main.warp_peer; uci -q delete detour.main.warp_port
-uci commit; rm -f /etc/detour/engines/lnk1.json /tmp/detour-import.tgz; /etc/init.d/network reload; reload_config
+uci commit; rm -f /etc/detour/engines/lnk1.json /etc/detour/engines/lnk2.json /tmp/detour-import.tgz; /etc/init.d/network reload; reload_config
 echo "RESULT: $([ $FAIL = 0 ] && echo PASS || echo FAIL)"

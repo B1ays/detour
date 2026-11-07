@@ -7,7 +7,8 @@
 
 import * as fs from 'fs';
 import { cursor } from 'uci';
-import { run, shq, log, PERSIST, RUN, M_UNDERLAY } from 'detour.core';
+import { run, shq, log, load, PERSIST, RUN, M_UNDERLAY } from 'detour.core';
+import { dev_up } from 'detour.net';
 
 export const API = 'https://api.cloudflareclient.com/v0a2158';
 const UA = 'okhttp/3.12.1', CV = 'a-6.10-2158';
@@ -72,24 +73,66 @@ export function ensure_zone(c, iface) {
 }
 
 // opts: { name, api, peer_key, port, awg }
+// where the API is asked from: via=<exit> -> only through it; else direct, then every enabled exit that is up
+function api_routes(via) {
+	const cfg = load();
+	if (via) {
+		const e = filter(cfg.exits, (x) => x.name == via)[0];
+		if (!e) return [ { error: 'via: "' + via + '" is not an exit' } ];
+		return [ e.device ];
+	}
+	const out = [ null ];
+	for (let e in cfg.exits) if (e.enabled && dev_up(e.device)) push(out, e.device);
+	return out;
+}
+
+// Other addresses of the API host: on the BE7000's ISP the DNS answer (8.47.69.0) is cut even through a
+// Russian exit, while 162.159.137.105/138.105 answer there (the SNI is the same; directly the SNI is cut).
+const API_HOST = 'api.cloudflareclient.com';
+const API_IPS = [ '162.159.137.105', '162.159.138.105' ];
+
+// curl to the API over each route (see api_routes) and, for the real API host, each known address;
+// stops at the first answer. args: everything after "curl -s" except the URL. -> { code, dev, ip }
+function api_try(url, args, via, skip_dev) {
+	const routes = api_routes(via);
+	if (type(routes[0]) == 'object') return { error: routes[0].error };
+	const ips = (index(url, 'https://' + API_HOST + '/') == 0) ? [ null, ...API_IPS ] : [ null ];
+	let code = '';
+	for (let dev in routes) {
+		if (dev != null && dev == skip_dev) continue;
+		for (let ip in ips) {
+			const t = run(sprintf("curl -s --connect-timeout 8 -m 15 %s %s %s %s",
+				dev ? '--interface ' + shq(dev) : '', ip ? '--resolve ' + shq(API_HOST + ':443:' + ip) : '', args, shq(url)));
+			code = trim(t.out);
+			if (code != '000' && code != '') return { code, dev, ip };
+		}
+	}
+	return { code };
+}
+
 export function register(opts) {
 	const name = opts.name;
 	if (!match(name ?? '', /^[a-z][a-z0-9_]{0,11}$/)) return { error: 'name: a-z, 0-9, _ (max 12, starts with a letter)' };
 	const c = cursor();
 	if (c.get('network', name)) return { error: 'network interface ' + name + ' already exists' };
-	const tool = opts.awg ? 'awg' : 'wg';
+	// AmneziaWG keys are WireGuard keys: awg when present, else wg (the tunnel itself needs kmod-amneziawg)
+	const tool = (opts.awg && fs.access('/usr/bin/awg')) ? 'awg' : 'wg';
 	const kp = keypair(tool);
 	if (!kp) return { error: tool + ' genkey failed (is ' + (opts.awg ? 'amneziawg-tools' : 'wireguard-tools') + ' installed?)' };
 
 	const api = opts.api ?? API;
 	const body = tmpfile('warp.req', sprintf('%J', { key: kp.pub, install_id: '', fcm_token: '', tos: iso_now(),
 		model: 'PC', serial_number: '', locale: 'en_US' }));
-	const r = run(sprintf("curl -s -m 20 -X POST -H %s -H %s -H 'Content-Type: application/json' --data-binary @%s -o %s/warp.resp -w '%%{http_code}' %s",
-		shq('User-Agent: ' + UA), shq('CF-Client-Version: ' + CV), body, RUN, shq(api + '/reg')));
+	// ISPs that filter WARP drop the API too (BE7000: the SNI is cut over the WAN; the stock warp.sh notes
+	// the API answers only through a tunnel): direct first, then through each enabled exit that is up
+	const r = api_try(api + '/reg', sprintf("-X POST -H %s -H %s -H 'Content-Type: application/json' --data-binary @%s -o %s/warp.resp -w '%%{http_code}'",
+		shq('User-Agent: ' + UA), shq('CF-Client-Version: ' + CV), body, RUN), opts.via, null);
+	if (r.error) { fs.unlink(body); return r; }
+	if (r.dev || r.ip) log(sprintf('WARP %s: API reached %s%s', name, r.dev ? 'through ' + r.dev : 'directly', r.ip ? ' at ' + r.ip : ''));
 	fs.unlink(body);
 	const resp_s = fs.readfile(RUN + '/warp.resp');
 	fs.unlink(RUN + '/warp.resp');
-	if (trim(r.out) != '200') return { error: 'registration failed, HTTP ' + trim(r.out) };
+	if (r.code != '200') return { error: 'registration failed, HTTP ' + r.code };
 	let j;
 	try { j = json(resp_s); } catch (e) { return { error: 'bad API answer' }; }
 	const peer = j?.config?.peers?.[0];
@@ -112,9 +155,11 @@ export function register(opts) {
 	c.set('network', name, 'addresses', [ v4 + '/32' ]);
 	c.set('network', name, 'mtu', '1280');
 	c.set('network', name, 'fwmark', sprintf('0x%x', M_UNDERLAY));
-	if (opts.awg) {   // stock WARP masking parameters (I1 is not generated here yet) - hardware only
+	if (opts.awg) {   // stock WARP masking: junk packets + I1 = a real QUIC Initial (warp-i1); kmod-amneziawg needed
 		for (let k, v in { awg_jc: '4', awg_jmin: '40', awg_jmax: '70', awg_s1: '0', awg_s2: '0', awg_h1: '1', awg_h2: '2', awg_h3: '3', awg_h4: '4' })
 			c.set('network', name, k, v);
+		const i1 = trim(run('/usr/libexec/detour/warp-i1 ' + shq(opts.mask ?? 'quic')).out);
+		if (match(i1, /^(<(b 0x[0-9a-fA-F]+|r [0-9]+)>)+$/)) c.set('network', name, 'awg_i1', i1);
 	}
 	const ps = (opts.awg ? 'amneziawg_' : 'wireguard_') + name;
 	const psec = c.add('network', ps);
@@ -144,12 +189,13 @@ export function unregister(name) {
 	let reg;
 	try { reg = json(fs.readfile(f)); } catch (e) { return { error: 'no WARP registration ' + name }; }
 	let api_ok = false;
+	const c0 = cursor();
 	if (match(reg.id ?? '', RE_ID) && match(reg.token ?? '', RE_ID)) {
 		const k = tmpfile('warp.curl', sprintf('header = "Authorization: Bearer %s"\n', reg.token));
-		const r = run(sprintf("curl -s -m 15 -X DELETE -K %s -H %s -H %s -o /dev/null -w '%%{http_code}' %s",
-			k, shq('User-Agent: ' + UA), shq('CF-Client-Version: ' + CV), shq(reg.api + '/reg/' + reg.id)));
+		const r = api_try(reg.api + '/reg/' + reg.id, sprintf("-X DELETE -K %s -H %s -H %s -o /dev/null -w '%%{http_code}'",
+			k, shq('User-Agent: ' + UA), shq('CF-Client-Version: ' + CV)), null, c0.get('network', name, 'device') ?? name);   // not through itself
+		api_ok = (substr(r.code ?? '', 0, 1) == '2');
 		fs.unlink(k);
-		api_ok = (substr(trim(r.out), 0, 1) == '2');
 	}
 	const c = cursor();
 	c.delete('detour', name);

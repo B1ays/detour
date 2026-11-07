@@ -27,7 +27,8 @@
 					"warp_unregister",
 					"import_check",
 					"import_apply",
-					"lists_update"
+					"lists_update",
+					"sub_update"
 				]
 			},
 			"uci": [

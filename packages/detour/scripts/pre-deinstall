@@ -10,5 +10,5 @@ sed -i '\#/usr/libexec/detour/#d' /etc/crontabs/root 2>/dev/null
 rm -rf /tmp/detour/lists
 for f in /tmp/dnsmasq.*.d/detour-list-*.conf; do [ -e "$f" ] && rm -f "$f"; done
 # leave a stock router: no table/rules, dnsmasq back on its own upstreams, rpcd ACL restored
-/usr/sbin/detour purge
+/usr/libexec/detour/fw purge
 exit 0

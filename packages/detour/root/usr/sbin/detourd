@@ -23,7 +23,7 @@ let dns_mode = null;      // 'tunnel' | 'fallback'
 let events = [];
 let switches = 0, last_switch = null, auth_state = 'ok';
 let down_noted = {};
-let lists_busy = false;
+let lists_busy = false, subs_busy = false;
 
 function ev(msg) {
 	push(events, sprintf('%d %s', time(), msg));
@@ -136,6 +136,18 @@ function load_all(reason) {
 	dns_mode = null;
 	ev(sprintf('%s: %d exits, %d policies', reason, length(cfg.exits), length(cfg.policies)));
 	// lists: rebuild the sets for the current policies, download lists that have no data yet
+	// subscriptions that have no exit yet (new, imported): first download now, not at night
+	if (!subs_busy) {
+		const todo = [];
+		cursor().foreach('detour', 'subscription', (s) => {
+			if (s.enabled != '0' && cursor().get('detour', s['.name'] + '_sub') != 'exit') push(todo, s['.name']);
+		});
+		if (length(todo)) {
+			subs_busy = true;
+			uloop.process('/bin/sh', [ '-c', join('; ', map(todo, (n) => '/usr/sbin/detour sub-update ' + core.shq(n) + ' >/dev/null 2>&1')) ], {},
+				function() { subs_busy = false; });
+		}
+	}
 	if (fw.has_lists() && !lists_busy) {
 		lists_busy = true;
 		uloop.process('/usr/libexec/detour/lists-update', [ '--missing' ], {}, function(code) { lists_busy = false; });
@@ -143,9 +155,9 @@ function load_all(reason) {
 	return res;
 }
 
-function lists_status() {
+function lists_status(dir) {
 	const out = [];
-	for (let f in fs.glob(core.RUN + '/lists/*.status') ?? []) {
+	for (let f in fs.glob(core.RUN + '/' + (dir ?? 'lists') + '/*.status') ?? []) {
 		try { push(out, json(fs.readfile(f))); } catch (e) { }
 	}
 	return out;
@@ -157,6 +169,7 @@ function status() {
 		const h = health[e.id] ?? {};
 		push(ex, { name: e.name, id: e.id, device: e.device, enabled: e.enabled, up: net.dev_up(e.device),
 			healthy: healthy(e), probe: e.probe, fails: h.fails ?? 0, last_ok: h.last_ok, drops: nft.counter_drops(e.id),
+			colo: trim(fs.readfile(sprintf('%s/warp-%s.colo', core.RUN, e.name)) ?? '') || null,
 			rx: int(fs.readfile(sprintf('/sys/class/net/%s/statistics/rx_bytes', e.device)) ?? 0),
 			tx: int(fs.readfile(sprintf('/sys/class/net/%s/statistics/tx_bytes', e.device)) ?? 0) });
 	}
@@ -165,7 +178,7 @@ function status() {
 		push(pol, { name: p.name, id: p.id, enabled: p.enabled, exits: p.exits,
 			active: exit_name(active['' + p.id]), pinned: pins[p.name] });
 	return { version: core.VERSION, uptime: time() - t0, exits: ex, policies: pol, dns: dns_mode ?? cfg.main.dns,
-		switches, last_switch, engines: engines.list(), lists: lists_status(), auth: auth.status(), notify_queued: notify.queued(), errors: cfg.errors, events };
+		switches, last_switch, engines: engines.list(), lists: lists_status(), subscriptions: lists_status('subs'), auth: auth.status(), notify_queued: notify.queued(), errors: cfg.errors, events };
 }
 
 function do_pin(pol, ex) {
@@ -233,11 +246,12 @@ conn.publish('detour', {
 	unpin:  { call: (req) => do_pin(req.args.policy, null), args: { policy: '', ...S } },
 	notify_test: { call: () => ({ queued: notify.test() }), args: { ...S } },
 	// LuCI actions: run the CLI asynchronously (deferred reply), so probes keep running meanwhile
-	engine_add:      { call: (req) => cli_job(req, [ 'engine-add', req.args.name, req.args.link ]), args: { name: '', link: '', ...S } },
-	warp_register:   { call: (req) => cli_job(req, warp_args(req.args.name)), args: { name: '', ...S } },
+	engine_add:      { call: (req) => cli_job(req, [ 'engine-add', req.args.name, req.args.link, ...(length(req.args.via ?? '') ? [ req.args.via ] : []) ]), args: { name: '', link: '', via: '', ...S } },
+	warp_register:   { call: (req) => cli_job(req, [ ...warp_args(req.args.name), ...(req.args.awg ? [ 'awg=1' ] : []) ]), args: { name: '', awg: false, ...S } },
 	warp_unregister: { call: (req) => cli_job(req, [ 'warp-unregister', req.args.name ]), args: { name: '', ...S } },
 	import_check:    { call: (req) => cli_job(req, [ 'import', IMPORT_FILE ]), args: { ...S } },
 	import_apply:    { call: (req) => cli_job(req, [ 'import', IMPORT_FILE, '--apply' ], true), args: { ...S } },
+	sub_update:      { call: (req) => cli_job(req, [ 'sub-update', ...(length(req.args.name ?? '') ? [ req.args.name ] : []) ]), args: { name: '', ...S } },
 	lists_update:    { call: (req) => cli_job(req, [ 'lists-update', ...(length(req.args.name ?? '') ? [ req.args.name ] : []) ]), args: { name: '', ...S } },
 });
 
@@ -250,6 +264,36 @@ conn.listener('network.interface', function(t, data) {
 		evaluate();
 	}
 });
+
+// WARP exits: check the colo every warp_check seconds (default 15 min); a WARP exit that stopped
+// answering gets checked at once (at most every 2 min) - it may have landed on a filtering colo.
+let warp_busy = false;
+const warp_last = {};
+function warp_check() {
+	if (warp_busy) return;
+	// '0' = off; the first check waits 2 min after start (exits come up, a pick at boot would cut the tunnel)
+	const every = int(cursor().get('detour', 'main', 'warp_check') ?? 900);
+	if (every <= 0 || time() - t0 < 120) return;
+	for (let e in cfg.exits) {
+		if (!e.enabled || cursor().get('detour', e.name, 'warp') != '1' || !net.dev_up(e.device)) continue;
+		const last = warp_last[e.name] ?? 0;
+		const due = (time() - last >= every) || (!healthy(e) && health[e.id]?.seen && time() - last >= 120);
+		if (!due) continue;
+		warp_busy = true;
+		warp_last[e.name] = time();
+		uloop.process('/usr/sbin/detour', [ 'warp-pick', e.name ], {}, function(code) {
+			warp_busy = false;
+			let r = null;
+			try { r = json(fs.readfile(sprintf('%s/warp-pick-%s.json', core.RUN, e.name))); } catch (x) { }
+			if (r?.moved) {
+				ev(sprintf('WARP %s moved to %s (colo %s, was %s)', e.name, r.endpoint, r.colo, r.from ?? '?'));
+				notify.event('switch', 'warp:' + e.name, sprintf('WARP %s: moved to colo %s (was %s)', e.name, r.colo, r.from ?? 'no answer'));
+			}
+			else if (r?.note) ev(sprintf('WARP %s: %s', e.name, r.note));
+		});
+		return;   // one at a time
+	}
+}
 
 let tick;
 let n = 0;
@@ -273,6 +317,7 @@ tick = uloop.timer(500, function() {
 		if (a != 'ok') ev('2FA guard: ' + a);
 		auth_state = a;
 	}
+	warp_check();
 	tick.set(cfg.main.probe_period * 1000);
 });
 

@@ -10,7 +10,7 @@ waitfor() { i=0; while [ $i -lt ${3:-15} ]; do [ "$(eval "$2")" = "$1" ] && retu
 txb() { cat /sys/class/net/$1/statistics/tx_bytes 2>/dev/null || echo 0; }
 D=/etc/enodia-lab; S=/tmp/stock-state
 cleanup() {
-	for s in $(uci show detour | sed -n "s/^detour\.\(st_[a-z0-9_]*\)=.*/\1/p"); do uci delete detour.$s; done
+	uci -q delete detour.st_smyprov; for s in $(uci show detour | sed -n "s/^detour\.\(st_[a-z0-9_]*\)=.*/\1/p"); do uci delete detour.$s; done
 	for s in $(uci show network | sed -n "s/^network\.\(st_[a-z0-9_]*\)=.*/\1/p"); do uci delete network.$s; done
 	for s in $(uci show network | sed -n "s/^network\.\(@wireguard_st_[a-z0-9_]*\[0\]\)=.*/\1/p"); do uci delete network.$s; done
 	uci -q del_list firewall.vpn.network=st_main; uci -q del_list firewall.vpn.network=st_s2
@@ -63,6 +63,10 @@ printf '52:54:00:aa:00:01\t192.168.1.201\n52:54:00:aa:00:02\t192.168.1.202\n' > 
 printf '52:54:00:aa:00:01\ttv\n' > $S/.dev-names
 printf 'TG_TOKEN="123456:IMPORTED_lab_token_xxxxxxxxxxxxxxxxxxxx"\nTG_CHAT="777"\n' > $S/notify-tg.conf
 echo 'hash' > $S/.panel-pass; echo 'x y z' > $S/.totp
+printf 'myprov	http://10.0.2.2:8768/sub/IMPORTED/b64	My provider
+' > $S/.subs
+printf 'myprov	happ	Happ/2.0	1	abc-123	gen
+' > $S/.sub-client
 # lists registry (lists-lib.sh): id type enabled format count ts label value; file/text in blob/<id>
 L=http://10.0.2.2:8765/tests/stub/lists
 mkdir -p $S/lists/tunnel-cidr/blob $S/lists/tunnel-domains $S/lists/bypass-ip $S/lists/adblock
@@ -83,6 +87,7 @@ echo "$OUT" | grep -q '"direct": "1 addresses, 1 devices, 1 domains"' && ok "alw
 echo "$OUT" | grep -q '192.168.1.250: device past VPN: no DHCP reservation' && ok "device without reservation reported" || bad "missing-MAC report"
 echo "$OUT" | grep -q 'group devgroup' && ok "device-bound group reported" || bad "src group report"
 echo "$OUT" | grep -q '.totp: 2FA secret' && ok "2FA secret deliberately not carried over" || bad "totp report"
+echo "$OUT" | grep -q 'st_smyprov: My provider (the address is kept secret)' && ok "subscription in the plan, address hidden" || bad "subs: $(echo "$OUT" | grep -A2 subscriptions)"
 echo "$OUT" | grep -q 'dry run' && [ -z "$(uci -q get detour.st_main)" ] && ok "dry run changed nothing" || bad "dry run wrote config"
 echo "$OUT" | grep -q 'st_l_tunnel_cidr -> vpn: .*cidr.txt + local entries (from lists/tunnel-cidr)' && ok "list registry: URL + text source" || bad "cidr list: $(echo "$OUT" | grep l_tunnel)"
 echo "$OUT" | grep -q 'st_l_tunnel_domains -> vpn' && echo "$OUT" | grep -q 'st_l_bypass_ip -> direct' && ok "domain and bypass lists" || bad "other lists"
@@ -96,6 +101,7 @@ detour import $S2 | grep -q 'data=cidr4&site=steampowered.com&site=discord.com +
 echo "== apply"
 detour import /tmp/stock.tgz --apply > /tmp/import.out
 grep -q 'exit st_main' /tmp/import.out && ok "applied" || bad "apply: $(cat /tmp/import.out)"
+[ "$(uci -q get detour.st_smyprov.user_agent)" = Happ/2.0 ] && [ "$(uci -q get detour.st_smyprov.hwid)" = abc-123 ] && ok "subscription with its client UA and hwid" || bad "sub fields"
 [ "$(uci -q get network.st_main.proto)" = wireguard ] && ok "netifd st_main" || bad "network st_main"
 [ "$(uci -q get detour.st_s2_eng.type)" = xray ] && ok "engine for s2" || bad "engine"
 uci -q get detour.direct.device | grep -q 52:54:00:aa:00:02 && ok "bypass device -> direct by MAC" || bad "direct device"

@@ -147,8 +147,8 @@ U
 reload_config; sleep 4
 expect "created" "$(nft list table inet detour | grep -cE 'chain (exit7|ks7)|set (dst4_p9|dom4_p9)')" "4"
 uci delete detour.tmpx; uci delete detour.tmpp; uci commit detour; reload_config; sleep 4
-expect "removed" "$(nft list table inet detour | grep -cE 'chain (exit7|ks7)|set (dst4_p9|dom4_p9)')" "0"
-expect "rule 11007 removed" "$(ip rule show | grep -c '^11007:')" "0"
+waitfor 0 "nft list table inet detour | grep -cE 'chain (exit7|ks7)|set (dst4_p9|dom4_p9)'" 20 && ok "removed" || bad "chains/sets of the removed exit/policy still there"
+waitfor 0 "ip rule show | grep -c '^11007:'" 20 && ok "rule 11007 removed" || bad "rule 11007 still there"
 expect "no config/nft errors" "$(ubus call detour status | jsonfilter -e '@.errors[*]' | wc -l)" "0"
 
 echo "== K. kill-switch counters"

@@ -3,7 +3,13 @@
 'require form';
 'require uci';
 'require network';
+'require rpc';
+'require ui';
 'require tools.widgets as widgets';
+
+const callStatus = rpc.declare({ object: 'detour', method: 'status' });
+const callSubUpdate = rpc.declare({ object: 'detour', method: 'sub_update', params: [ 'name' ] });
+let subState = {};
 
 function nextId(type) {
 	const used = {};
@@ -22,7 +28,11 @@ function uniqueId(type) {
 
 return view.extend({
 	load: function() {
-		return Promise.all([ uci.load('detour'), network.getNetworks() ]);
+		return Promise.all([ uci.load('detour'), network.getNetworks(), callStatus().catch(function() { return {}; }) ]).then(function(r) {
+			subState = {};
+			((r[2] || {}).subscriptions || []).forEach(function(s) { subState[s.name] = s; });
+			return r;
+		});
 	},
 
 	render: function() {
@@ -69,6 +79,67 @@ return view.extend({
 		o.rmempty = false;
 		o.cfgvalue = function(section_id) { return uci.get('detour', section_id, 'id') || nextId('exit'); };
 		o.validate = uniqueId('exit');
+
+		// subscriptions: one exit "<name>_sub" per subscription, its servers in an automatic group
+		const ss = m.section(form.GridSection, 'subscription', _('Subscriptions'),
+			_('An address from your VPN provider that returns the current list of servers. ' +
+			  'All its servers form one exit (named NAME_sub) that picks a working, fast one by itself. Updated every night. ' +
+			  'Name: up to 11 characters a-z, 0-9, _.'));
+		ss.addremove = true;
+		ss.anonymous = false;
+		ss.nodescriptions = true;
+		ss.addbtntitle = _('Add subscription');
+
+		o = ss.option(form.Flag, 'enabled', _('Enabled'));
+		o.default = '1';
+		o.editable = true;
+
+		o = ss.option(form.Value, 'label', _('Description'));
+		o.optional = true;
+
+		o = ss.option(form.Value, 'url', _('Subscription address'), _('Kept secret: it is shown only here and never logged.'));
+		o.password = true;
+		o.rmempty = false;
+		o.modalonly = true;
+		o.validate = function(id, v) { return /^https?:\/\/\S+$/.test(v || '') ? true : _('http(s) address'); };
+
+		o = ss.option(form.ListValue, 'via', _('Connect to the servers'));
+		o.value('', _('directly'));
+		uci.sections('detour', 'exit').forEach(function(e) {
+			if (!/_sub$/.test(e['.name'])) o.value(e['.name'], _('through %s').format(e.label || e['.name']));
+		});
+		o.modalonly = true;
+
+		o = ss.option(form.Value, 'user_agent', _('Client name (User-Agent)'), _('Some providers choose the format by it.'));
+		o.placeholder = 'v2rayNG/1.10.0';
+		o.optional = true;
+		o.modalonly = true;
+
+		o = ss.option(form.Value, 'hwid', _('Device id (x-hwid)'), _('Only if your provider counts devices.'));
+		o.optional = true;
+		o.modalonly = true;
+
+		o = ss.option(form.DummyValue, '_state', _('State'));
+		o.modalonly = false;
+		o.textvalue = function(id) {
+			const st = (subState || {})[id];
+			if (!st) return E('em', {}, _('not loaded yet'));
+			return E('span', { 'style': st.ok ? '' : 'color:#c62828' }, [ st.message || '', ' ',
+				E('small', {}, '(' + new Date(st.ts * 1000).toLocaleString() + ')') ]);
+		};
+
+		o = ss.option(form.Button, '_update', _('Update'));
+		o.modalonly = false;
+		o.editable = true;
+		o.inputtitle = _('Update now');
+		o.inputstyle = 'action';
+		o.onclick = function(ev, id) {
+			return callSubUpdate(id).then(function(r) {
+				if (r && r.error) ui.addNotification(null, E('p', r.error), 'danger');
+				else ui.addNotification(null, E('p', _('%d servers').format((r && r.servers) || 0)), 'info');
+				window.setTimeout(function() { location.reload(); }, 800);
+			});
+		};
 
 		return m.render();
 	}

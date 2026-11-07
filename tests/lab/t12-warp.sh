@@ -36,9 +36,9 @@ reload_config
 waitfor true "ubus call detour status | jsonfilter -e '@.exits[@.name=\"warp1\"].healthy'" 40 && ok "warp1 exit healthy (handshake + probe)" || bad "warp1 not healthy: $(wg show warp1 2>&1 | head -5)"
 conntrack -D -d 9.9.9.9 >/dev/null 2>&1
 t0=$(cat /sys/class/net/warp1/statistics/tx_bytes 2>/dev/null || echo 0)
-r=$(cl "curl -s -m 8 -o /dev/null -w '%{http_code}' https://9.9.9.9/")
+for i in 1 2 3; do r=$(cl "curl -s -m 8 -o /dev/null -w '%{http_code}' https://9.9.9.9/"); [ "$r" != 000 ] && break; sleep 3; done
 t1=$(cat /sys/class/net/warp1/statistics/tx_bytes 2>/dev/null || echo 0)
-[ "$r" != 000 ] && [ $((t1 - t0)) -gt 0 ] && ok "policy traffic via warp1 (http $r)" || bad "via warp1: http=$r tx+$((t1 - t0))"
+[ "$r" != 000 ] && [ $((t1 - t0)) -gt 0 ] && ok "policy traffic via warp1 (http $r)" || { bad "via warp1: http=$r tx+$((t1 - t0))"; ip rule | grep 1100; ip route show table 1005; ubus call detour status | jsonfilter -e "@.policies[@.name=\"pw\"]"; wg show warp1 | grep -E "endpoint|handshake|transfer"; ip netns exec ex3 wg show wgex | grep -B1 -A4 "0.0.0.0"; }
 
 echo "== wrong server key is refused"
 wget -qO- "$S/setpeer?key=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA%3D" >/dev/null

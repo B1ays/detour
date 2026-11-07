@@ -4,8 +4,8 @@
 'require ui';
 'require uci';
 
-const callEngineAdd = rpc.declare({ object: 'detour', method: 'engine_add', params: [ 'name', 'link' ] });
-const callWarpReg = rpc.declare({ object: 'detour', method: 'warp_register', params: [ 'name' ] });
+const callEngineAdd = rpc.declare({ object: 'detour', method: 'engine_add', params: [ 'name', 'link', 'via' ] });
+const callWarpReg = rpc.declare({ object: 'detour', method: 'warp_register', params: [ 'name', 'awg' ] });
 const callWarpDel = rpc.declare({ object: 'detour', method: 'warp_unregister', params: [ 'name' ] });
 const callImportCheck = rpc.declare({ object: 'detour', method: 'import_check' });
 const callImportApply = rpc.declare({ object: 'detour', method: 'import_apply' });
@@ -30,10 +30,12 @@ return view.extend({
 	renderLink: function() {
 		const name = E('input', { 'class': 'cbi-input-text', 'placeholder': 'vless1', 'maxlength': 11 });
 		const link = E('textarea', { 'class': 'cbi-input-textarea', 'rows': 3, 'style': 'width:100%', 'placeholder': 'vless://… / ss://… / trojan://… / hysteria2://…' });
+		const via = E('select', { 'class': 'cbi-input-select' }, [ E('option', { 'value': '' }, _('directly')) ].concat(
+			uci.sections('detour', 'exit').map(function(s) { return E('option', { 'value': s['.name'] }, _('through %s').format(s.label || s['.name'])); })));
 		const box = E('div');
 		const btn = E('button', { 'class': 'btn cbi-button-action', 'click': function() {
 			busy(btn, true);
-			return callEngineAdd(name.value.trim(), link.value.trim()).then(function(r) {
+			return callEngineAdd(name.value.trim(), link.value.trim(), via.value).then(function(r) {
 				result(box, r, function(x) { return _('Exit %s added (%s to %s). Put it into a policy on the Policies page.').format(x.name, x.type, x.server); });
 			}).finally(function() { busy(btn, false); });
 		} }, _('Add exit'));
@@ -42,16 +44,19 @@ return view.extend({
 			E('p', {}, _('A link from your VPN provider or your own server. The exit runs on sing-box (install the sing-box package).')),
 			E('div', { 'class': 'cbi-value' }, [ E('label', { 'class': 'cbi-value-title' }, _('Name')), E('div', { 'class': 'cbi-value-field' }, name) ]),
 			E('div', { 'class': 'cbi-value' }, [ E('label', { 'class': 'cbi-value-title' }, _('Link')), E('div', { 'class': 'cbi-value-field' }, link) ]),
+			E('div', { 'class': 'cbi-value' }, [ E('label', { 'class': 'cbi-value-title' }, _('Connect to the server')), E('div', { 'class': 'cbi-value-field' }, [ via,
+				E('div', { 'class': 'cbi-value-description' }, _('Through another exit (for example WARP) when the server itself is blocked by the provider. If that exit fails, this one stops too - nothing goes directly.')) ]) ]),
 			btn, box
 		]);
 	},
 
 	renderWarp: function() {
 		const name = E('input', { 'class': 'cbi-input-text', 'placeholder': 'warp1', 'maxlength': 12 });
+		const awg = E('input', { 'type': 'checkbox' });
 		const box = E('div');
 		const btn = E('button', { 'class': 'btn cbi-button-action', 'click': function() {
 			busy(btn, true);
-			return callWarpReg(name.value.trim()).then(function(r) {
+			return callWarpReg(name.value.trim(), awg.checked).then(function(r) {
 				result(box, r, function(x) { return _('WARP exit %s registered (address %s, server %s).').format(x.name, x.address, x.endpoint); });
 			}).finally(function() { busy(btn, false); });
 		} }, _('Register WARP'));
@@ -69,6 +74,8 @@ return view.extend({
 			E('h3', {}, _('Cloudflare WARP')),
 			E('p', {}, _('Registers a new free WARP device at Cloudflare and adds it as an exit.')),
 			E('div', { 'class': 'cbi-value' }, [ E('label', { 'class': 'cbi-value-title' }, _('Name')), E('div', { 'class': 'cbi-value-field' }, name) ]),
+			E('div', { 'class': 'cbi-value' }, [ E('label', { 'class': 'cbi-value-title' }, _('AmneziaWG masking')), E('div', { 'class': 'cbi-value-field' }, [ awg,
+				E('div', { 'class': 'cbi-value-description' }, _('When plain WARP is blocked by the provider. Needs the AmneziaWG kernel module and openssl-util.')) ]) ]),
 			btn, box,
 			warps.length ? E('div', { 'style': 'margin-top:1em' }, [ sel, ' ', btn2, box2 ]) : ''
 		]);

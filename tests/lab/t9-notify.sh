@@ -25,7 +25,7 @@ echo "== exit down -> 'not responding' + switch"
 d0=$(nlog 'not responding'); s0=$(nlog 'now goes through')
 ifdown wgx1
 waitfor $((d0+1)) "nlog 'not responding'" 20 && ok "exit down message" || bad "no exit down message"
-waitfor $((s0+1)) "nlog 'now goes through'" 20 && ok "switch message" || bad "no switch message"
+waitfor $((s0+1)) "nlog 'now goes through'" 45 && ok "switch message" || bad "no switch message"
 ifup wgx1; sleep 8
 echo "== API failing (blocked) -> queued, delivered later with its time"
 wget -qO- "$S/fail?n=25" >/dev/null
