@@ -2,12 +2,42 @@
 	"luci-app-detour": {
 		"description": "Grant access to Detour",
 		"read": {
-			"ubus": { "detour": [ "status" ], "luci": [ "getFeatures" ] },
-			"uci": [ "detour", "network" ]
+			"ubus": {
+				"detour": [
+					"status"
+				],
+				"luci": [
+					"getFeatures"
+				]
+			},
+			"uci": [
+				"detour",
+				"network"
+			]
 		},
 		"write": {
-			"ubus": { "detour": [ "pin", "unpin", "reload", "notify_test" ] },
-			"uci": [ "detour" ]
+			"ubus": {
+				"detour": [
+					"pin",
+					"unpin",
+					"reload",
+					"notify_test",
+					"engine_add",
+					"warp_register",
+					"warp_unregister",
+					"import_check",
+					"import_apply",
+					"lists_update"
+				]
+			},
+			"uci": [
+				"detour"
+			],
+			"file": {
+				"/tmp/detour-import.tgz": [
+					"write"
+				]
+			}
 		}
 	}
 }

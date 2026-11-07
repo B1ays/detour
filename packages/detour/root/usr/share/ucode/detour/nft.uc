@@ -22,10 +22,10 @@ export function exit_mark(id) { return id << 16; }
 
 // names of sets/chains/maps this config needs
 function wanted(cfg) {
-	const sets = { direct4: 1, direct6: 1, lan_ifs: 1, bypass4: 1, exit_devs: 1, direct_dev: 1, dom_direct4: 1 };
+	const sets = { direct4: 1, direct6: 1, lan_ifs: 1, bypass4: 1, exit_devs: 1, direct_dev: 1, dom_direct4: 1, lst4_direct: 1 };
 	const chains = { classify: 1, prerouting: 1, output: 1, killswitch: 1, v6block: 1, dnsredir: 1, dotblock: 1 };
 	for (let p in cfg.policies) {
-		for (let k in [ 'dev', 'dst4', 'dst6', 'dom4', 'dom6' ]) sets[sprintf('%s_p%d', k, p.id)] = 1;
+		for (let k in [ 'dev', 'dst4', 'dst6', 'dom4', 'dom6', 'lst4' ]) sets[sprintf('%s_p%d', k, p.id)] = 1;
 	}
 	for (let e in cfg.exits) {
 		chains[sprintf('exit%d', e.id)] = 1;
@@ -65,7 +65,10 @@ export function render(cfg, active, opts) {
 	add('\tset direct6 { type ipv6_addr; flags interval; auto-merge; }');
 	add('\tset direct_dev { type ether_addr; }');
 	add(sprintf('\tset dom_direct4 { type ipv4_addr; flags timeout; timeout %s; }', to));
+	// big downloaded lists: filled by lists-update, never flushed by a rules reload
+	add('\tset lst4_direct { type ipv4_addr; flags interval; auto-merge; }');
 	for (let p in cfg.policies) {
+		add(sprintf('\tset lst4_p%d { type ipv4_addr; flags interval; auto-merge; }', p.id));
 		add(sprintf('\tset dev_p%d { type ether_addr; }', p.id));
 		add(sprintf('\tset dst4_p%d { type ipv4_addr; flags interval; auto-merge; }', p.id));
 		add(sprintf('\tset dst6_p%d { type ipv6_addr; flags interval; auto-merge; }', p.id));
@@ -134,12 +137,14 @@ export function render(cfg, active, opts) {
 	add(sprintf('add rule %s classify ip6 daddr @direct6 return', T));
 	add(sprintf('add rule %s classify ether saddr @direct_dev return comment "device never via VPN"', T));
 	add(sprintf('add rule %s classify ip daddr @dom_direct4 return comment "domain never via VPN"', T));
+	add(sprintf('add rule %s classify ip daddr @lst4_direct return comment "list: never via VPN"', T));
 	const setp = (id) => sprintf('meta mark set meta mark & %s | %s return', hex(~M_POL & 0xffffffff), hex(pol_mark(id)));
 	for (let p in cfg.policies) {
 		if (!p.enabled) continue;
 		add(sprintf('add rule %s classify ether saddr @dev_p%d %s', T, p.id, setp(p.id)));
 		add(sprintf('add rule %s classify ip daddr @dst4_p%d %s', T, p.id, setp(p.id)));
 		add(sprintf('add rule %s classify ip daddr @dom4_p%d %s', T, p.id, setp(p.id)));
+		add(sprintf('add rule %s classify ip daddr @lst4_p%d %s', T, p.id, setp(p.id)));
 	}
 
 	// 8. LAN ingress: established flows keep their decision (ct mark pins policy+exit)

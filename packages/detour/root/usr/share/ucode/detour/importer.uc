@@ -124,6 +124,64 @@ function classify_member(m, dst, doms) {
 	return true;
 }
 
+// --- big lists (stock lists-lib.sh registry, iplist-update.sh legacy config) ---------------
+const OPENCCK = 'https://iplist.opencck.org/?format=text&data=cidr4';
+const LIST_CATS = {
+	'tunnel-cidr': { policy: 'vpn', kind: 'cidr' },
+	'tunnel-domains': { policy: 'vpn', kind: 'domain' },
+	'bypass-ip': { policy: 'direct', kind: 'cidr' },
+};
+
+// stock conf files are KEY=value / KEY="value" (read, never sourced)
+function conf_get(text, key) {
+	for (let l in split(text ?? '', '\n')) {
+		const m = match(trim(l), regexp('^' + key + '=(.*)$'));
+		if (m) return replace(m[1], /^["']|["']$/g, '');
+	}
+	return null;
+}
+
+function plan_lists(dir, skipped, have_vpn, full_tunnel) {
+	const out = [];
+	for (let cat, t in LIST_CATS) {
+		const reg = tsv(dir, 'lists/' + cat + '/sources.tsv');
+		if (!length(reg)) continue;
+		const urls = [], texts = [];
+		for (let r in reg) {
+			// id type enabled format count ts label value
+			if (r[2] != '1') { push(skipped, { what: sprintf('list %s source %s', cat, r[6] ?? r[0]), why: 'switched off in stock' }); continue; }
+			if (r[1] == 'url' && match(r[7] ?? '', /^https?:\/\//)) push(urls, r[7]);
+			else if (r[1] == 'file' || r[1] == 'text') {
+				const b = rd(dir, 'lists/' + cat + '/blob/' + r[0]);
+				if (b) push(texts, b); else push(skipped, { what: sprintf('list %s source %s', cat, r[6] ?? r[0]), why: 'its file is not in the backup' });
+			}
+		}
+		if (length(urls) || length(texts))
+			push(out, { name: 'l_' + replace(cat, '-', '_'), policy: t.policy, kind: t.kind, urls, text: length(texts) ? join('\n', texts) : null, from: 'lists/' + cat });
+	}
+	for (let c in [ 'adblock', 'ipblock', 'zapret-cidr', 'zapret-dom' ])
+		if (fs.access(dir + '/lists/' + c)) push(skipped, { what: 'lists/' + c, why: 'blocking/desync lists are not part of Detour for OpenWrt' });
+
+	// no registry for tunnel-cidr: the legacy iplist.conf / iplist.custom, or the stock default (opencck)
+	if (!length(filter(out, (l) => l.name == 'l_tunnel_cidr')) && !full_tunnel) {
+		const c = rd(dir, 'iplist.conf');
+		let url = conf_get(c, 'IPLIST_URL');
+		const sites = conf_get(c, 'IPLIST_SITES'), base = conf_get(c, 'IPLIST_BASE') ?? OPENCCK;
+		const mode = conf_get(c, 'IPLIST_CUSTOM_MODE');
+		if (!url && sites) { url = base; for (let s in split(trim(sites), /\s+/)) url += '&site=' + s; }
+		const custom = rd(dir, 'iplist.custom');
+		const l = { name: 'l_tunnel_cidr', policy: 'vpn', kind: 'cidr', urls: [], text: null, from: c ? 'iplist.conf' : 'stock default list' };
+		if (mode != 'only') push(l.urls, url ?? base);
+		if (custom && (mode == 'only' || mode == 'merge')) l.text = custom;
+		push(out, l);
+	}
+	if (!have_vpn) {
+		for (let l in out) if (l.policy == 'vpn') push(skipped, { what: 'list ' + l.name, why: 'the main policy could not be carried over' });
+		return filter(out, (l) => l.policy != 'vpn');
+	}
+	return out;
+}
+
 export function plan(dir) {
 	const skipped = [], exits = [], policies = [];
 	const direct = { dst: [], device: [], domain: [] };
@@ -220,15 +278,15 @@ export function plan(dir) {
 		'sched': 'access schedules: use firewall rules with a time window',
 		'.zapret-on': 'zapret: install the zapret package and choose a strategy',
 		'.subs': 'subscriptions: not supported yet',
-		'lists': 'big IP/geo lists: not supported yet',
-		'iplist.custom': 'big IP/geo lists: not supported yet',
 		'.port-rules': 'port rules: not supported yet',
+		'geo/actions.tsv': 'geo categories: add their sources as lists',
 		'.doh-on': 'encrypted DNS: set "Router DNS" in Detour settings',
 		'.warp-reg': 'WARP registration: register WARP again from Detour (new device)',
 	};
 	for (let f, why in not) if (fs.access(dir + '/' + f)) push(skipped, { what: f, why });
 
-	return { exits, policies, direct, notify, hosts, skipped };
+	const lists = plan_lists(dir, skipped, length(vpn.exits) > 0, word(dir, '.full-tunnel') == '1');
+	return { exits, policies, direct, notify, hosts, skipped, lists };
 }
 
 function uniq(l) { const o = []; for (let x in l) if (index(o, x) < 0) push(o, x); return o; }
@@ -334,6 +392,21 @@ export function apply(p, prefix) {
 		c.set('detour', 'direct', k, uniq([ ...cur, ...p.direct[k] ]));
 	}
 	push(done, sprintf('always direct: %d addresses, %d devices, %d domains', length(p.direct.dst), length(p.direct.device), length(p.direct.domain)));
+	for (let l in p.lists ?? []) {
+		const n = prefix + l.name;
+		c.set('detour', n, 'list');
+		c.set('detour', n, 'policy', (l.policy == 'direct') ? 'direct' : prefix + 'p_' + l.policy);
+		c.set('detour', n, 'kind', l.kind);
+		if (length(l.urls)) c.set('detour', n, 'url', l.urls); else c.delete('detour', n, 'url');
+		if (l.text) {
+			fs.mkdir(PERSIST + '/lists');
+			const f = sprintf('%s/lists/%s.txt', PERSIST, n);
+			fs.writefile(f, l.text + '\n');
+			c.set('detour', n, 'file', f);
+		}
+		else c.delete('detour', n, 'file');
+		push(done, sprintf('list %s -> %s: %d URL(s)%s (from %s)', n, c.get('detour', n, 'policy'), length(l.urls), l.text ? ' + local entries' : '', l.from));
+	}
 	if (p.notify) {
 		c.set('detour', 'notify', 'notify');
 		for (let k, v in p.notify) if (v != null) c.set('detour', 'notify', k, v);

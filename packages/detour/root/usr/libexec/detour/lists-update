@@ -1,0 +1,164 @@
+#!/bin/sh
+# Big IP / domain lists (stock: lists-update.sh / iplist-update.sh) for OpenWrt.
+#   config list 'ru'
+#     option policy 'vpn'            # a policy name, or 'direct' (never via VPN)
+#     list url 'https://iplist.opencck.org/?format=text&data=cidr4'
+#     option file '/etc/detour/lists/ru.txt'     # optional local part
+#     option kind 'auto'             # auto | cidr | domain
+#     option min_lines '10'          # fewer lines = treat the update as a failure
+#     option enabled '1'
+# Data lives in RAM (/tmp/detour/lists); a snapshot goes to flash only up to MAXSNAP lines, so a
+# huge de-aggregated list cannot fill the flash. A failed or suspicious download keeps the
+# previous data (RAM, then snapshot) - the routing never empties because a source is down.
+# CIDR lists -> nft set lst4_<policy>/lst4_direct (one atomic transaction per set);
+# domain lists -> dnsmasq nftset files in every instance's conf-dir (+ AAAA suppression for policies).
+#   lists-update [--restore] [name...]   --restore: no downloads, load from RAM/snapshots (boot)
+. /lib/functions.sh
+
+RUN=/tmp/detour/lists
+SNAP=/etc/detour/lists
+MAXSNAP=${MAXSNAP:-40000}
+T='inet detour'
+mkdir -p "$RUN" "$SNAP"
+RESTORE=0; MISSING=0
+[ "$1" = --restore ] && { RESTORE=1; shift; }
+[ "$1" = --missing ] && { MISSING=1; shift; }   # download only lists that have no data yet
+ONLY=" $* "
+: > "$RUN/.targets"
+
+status() {  # status <list> <ok 0|1> <count> <kind> <target> <message>
+	printf '{"name":"%s","ok":%s,"count":%d,"kind":"%s","target":"%s","ts":%d,"message":"%s"}\n' \
+		"$1" "$([ "$2" = 1 ] && echo true || echo false)" "${3:-0}" "$4" "$5" "$(date +%s)" "$(printf '%s' "$6" | tr -d '"\\\n')" > "$RUN/$1.status"
+}
+
+norm_cidr() {
+	grep -oE '^[[:space:]]*[0-9]{1,3}(\.[0-9]{1,3}){3}(/[0-9]{1,2})?' | tr -d ' \t' | \
+		awk -F'[./]' '$1<=255 && $2<=255 && $3<=255 && $4<=255 && (NF<5 || $5<=32) && $1!=0 && $1!=127 && $1<224' | sort -u
+}
+
+norm_domains() {
+	tr 'A-Z' 'a-z' | sed 's/\r$//' | awk '
+		/^[[:space:]]*($|#|!|\[)/ { next }
+		{ sub(/[[:space:]]+#.*$/, "") }
+		/^(server|ipset|nftset|address|local)=\// { n = split($0, a, "/"); for (i = 2; i < n; i++) print a[i]; next }
+		/^\|\|/ { d = substr($0, 3); sub(/[\^$].*$/, "", d); print d; next }
+		/^(0\.0\.0\.0|127\.0\.0\.1|::1?)[[:space:]]/ { print $2; next }
+		{ print $1 }' | sed 's/^\*\.//; s/^\.//; s/\.$//' | \
+		grep -E '^[a-z0-9_]([a-z0-9_.-]*[a-z0-9])?\.[a-z][a-z0-9-]*[a-z0-9]$|^[a-z0-9_]([a-z0-9_.-]*[a-z0-9])?\.[a-z]{2,}$' | \
+		grep -vE '^(localhost|local|broadcasthost)$' | sort -u
+}
+
+# more IPv4 lines than anything else -> cidr
+detect_kind() {
+	_ip=$(grep -cE '^[[:space:]]*[0-9]{1,3}(\.[0-9]{1,3}){3}' "$1")
+	_all=$(grep -cvE '^[[:space:]]*($|#|!)' "$1")
+	[ "$_all" -gt 0 ] && [ $((_ip * 2)) -ge "$_all" ] && echo cidr || echo domain
+}
+
+handle_list() {
+	local s=$1 en pol kind minl file urls tgt pid raw n fail=0 msg skip
+	config_get_bool en "$s" enabled 1
+	config_get pol "$s" policy
+	config_get kind "$s" kind auto
+	config_get minl "$s" min_lines 10
+	config_get file "$s" file
+	config_get urls "$s" url
+	case "$minl" in ''|*[!0-9]*) minl=10 ;; esac
+	if [ "$en" != 1 ]; then rm -f "$RUN/$s.data"; status "$s" 1 0 "$kind" "-" "disabled"; return; fi
+	if [ "$pol" = direct ]; then tgt=direct
+	else
+		pid=$(uci -q get detour."$pol".id)
+		[ "$(uci -q get detour."$pol")" = policy ] && [ -n "$pid" ] || { status "$s" 0 0 "$kind" "-" "unknown policy '$pol'"; return; }
+		tgt=p$pid
+	fi
+	[ "$MISSING" = 1 ] && { [ -s "$RUN/$s.data" ] || [ -s "$SNAP/$s.snap" ]; } && skip=1 || skip=0
+	if [ "$RESTORE" = 1 ] || [ "$skip" = 1 ] || { [ "$ONLY" != "  " ] && [ "${ONLY#* $s }" = "$ONLY" ]; }; then
+		# no download: keep RAM data, else take the snapshot
+		[ -s "$RUN/$s.data" ] || { [ -s "$SNAP/$s.snap" ] && cp "$SNAP/$s.snap" "$RUN/$s.data" && cp "$SNAP/$s.kind" "$RUN/$s.kind" 2>/dev/null; }
+		[ -s "$RUN/$s.data" ] && echo "$s $tgt $(cat "$RUN/$s.kind" 2>/dev/null || echo cidr)" >> "$RUN/.targets"
+		[ "$RESTORE" = 1 ] && [ -s "$RUN/$s.data" ] && status "$s" 1 "$(wc -l < "$RUN/$s.data")" "$(cat "$RUN/$s.kind" 2>/dev/null)" "$tgt" "restored from snapshot"
+		return
+	fi
+	raw="$RUN/$s.raw"
+	: > "$raw"
+	for u in $urls; do
+		curl -fsSL -m 180 --retry 2 "$u" >> "$raw" 2>/dev/null || { fail=1; msg="download failed: $u"; }
+		echo >> "$raw"
+	done
+	[ -n "$file" ] && { [ -r "$file" ] && cat "$file" >> "$raw" || { fail=1; msg="file missing: $file"; }; }
+	[ "$kind" = auto ] && kind=$(detect_kind "$raw")
+	if [ "$kind" = cidr ]; then norm_cidr < "$raw" > "$RUN/$s.new"; else norm_domains < "$raw" > "$RUN/$s.new"; fi
+	rm -f "$raw"
+	n=$(wc -l < "$RUN/$s.new")
+	[ "$fail" = 0 ] && [ "$n" -lt "$minl" ] && { fail=1; msg="only $n entries (minimum $minl)"; }
+	if [ "$fail" = 1 ]; then
+		rm -f "$RUN/$s.new"
+		[ -s "$RUN/$s.data" ] || { [ -s "$SNAP/$s.snap" ] && cp "$SNAP/$s.snap" "$RUN/$s.data" && cp "$SNAP/$s.kind" "$RUN/$s.kind" 2>/dev/null; }
+		status "$s" 0 "$( [ -s "$RUN/$s.data" ] && wc -l < "$RUN/$s.data" || echo 0)" "$kind" "$tgt" "$msg; previous data kept"
+		logger -t detour "list $s: $msg; previous data kept"
+	else
+		mv "$RUN/$s.new" "$RUN/$s.data"; echo "$kind" > "$RUN/$s.kind"
+		if [ "$n" -le "$MAXSNAP" ]; then cp "$RUN/$s.data" "$SNAP/$s.snap.tmp" && mv "$SNAP/$s.snap.tmp" "$SNAP/$s.snap"; echo "$kind" > "$SNAP/$s.kind"
+		else rm -f "$SNAP/$s.snap"; msg="(too big for a flash snapshot)"; fi
+		status "$s" 1 "$n" "$kind" "$tgt" "updated $msg"
+	fi
+	[ -s "$RUN/$s.data" ] && echo "$s $tgt $(cat "$RUN/$s.kind" 2>/dev/null || echo "$kind")" >> "$RUN/.targets"
+}
+
+config_load detour
+config_foreach handle_list list
+
+# --- CIDR: one transaction per set (flush + add) -------------------------------------------
+nft list table $T >/dev/null 2>&1 || { logger -t detour "lists: table $T missing"; exit 1; }
+sets="lst4_direct $(nft -a list table $T | sed -n 's/^[[:space:]]*set \(lst4_p[0-9]*\) {.*/\1/p')"
+for set in $sets; do
+	tgt=${set#lst4_}
+	f="$RUN/.$set.nft"
+	echo "flush set $T $set" > "$f"
+	awk -v t="$tgt" '$2 == t && $3 == "cidr" { print $1 }' "$RUN/.targets" | while read -r s; do
+		awk -v set="$set" -v T="$T" 'NR % 1000 == 1 { if (NR > 1) print " }"; printf "add element %s %s { %s", T, set, $0; next } { printf ", %s", $0 } END { if (NR) print " }" }' "$RUN/$s.data"
+	done >> "$f"
+	nft -f "$f" || logger -t detour "lists: loading $set failed"
+	rm -f "$f"
+done
+
+# --- domains: dnsmasq files (restart only when something changed) -------------------------
+changed=0
+dirs=""
+for d in $(uci -X show dhcp 2>/dev/null | sed -n 's/^dhcp\.\([^.=]*\)=dnsmasq$/\1/p'); do
+	c=$(uci -q get dhcp."$d".confdir); c=${c%%,*}
+	dirs="$dirs ${c:-/tmp/dnsmasq.$d.d}"
+done
+for dir in $dirs; do
+	mkdir -p "$dir"
+	keep=" "
+	while read -r s tgt kind; do
+		[ "$kind" = domain ] || continue
+		keep="$keep$s "
+		out="$dir/detour-list-$s.conf"
+		if [ "$tgt" = direct ]; then set4=dom_direct4; set6=""; else set4=dom4_$tgt; set6=dom6_$tgt; fi
+		awk -v s4="$set4" -v s6="$set6" -v direct="$([ "$tgt" = direct ] && echo 1 || echo 0)" '
+			{ d[++n] = $0 }
+			END {
+				for (i = 1; i <= n; i += 40) {
+					l = d[i]; for (j = i + 1; j < i + 40 && j <= n; j++) l = l "/" d[j]
+					printf "nftset=/%s/4#inet#detour#%s%s\n", l, s4, (s6 != "" ? ",6#inet#detour#" s6 : "")
+					if (!direct) printf "address=/%s/::\n", l
+				}
+			}' "$RUN/$s.data" > "$out.tmp"
+		if cmp -s "$out.tmp" "$out"; then rm -f "$out.tmp"; else mv "$out.tmp" "$out"; changed=1; fi
+	done < "$RUN/.targets"
+	for f in "$dir"/detour-list-*.conf; do
+		[ -e "$f" ] || continue
+		s=${f##*/detour-list-}; s=${s%.conf}
+		[ "${keep#* $s }" = "$keep" ] && { rm -f "$f"; changed=1; }
+	done
+done
+[ "$changed" = 1 ] && pidof dnsmasq >/dev/null && /etc/init.d/dnsmasq restart >/dev/null 2>&1
+# snapshots of lists that are gone from the config
+for f in "$SNAP"/*.snap; do
+	[ -e "$f" ] || continue
+	s=${f##*/}; s=${s%.snap}
+	[ "$(uci -q get detour."$s")" = list ] || rm -f "$f" "$SNAP/$s.kind" "$RUN/$s.data" "$RUN/$s.kind" "$RUN/$s.status"
+done
+exit 0

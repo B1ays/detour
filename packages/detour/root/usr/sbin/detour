@@ -63,6 +63,12 @@ case 'link': {
 	else print(text);
 	exit(0);
 }
+case 'engine-add': {
+	// detour engine-add <name> '<share link>'
+	const r = engines.add_from_link(ARGV[1], ARGV[2]);
+	printf('%.J\n', r);
+	exit(r.error ? 1 : 0);
+}
 case 'warp-register': {
 	// detour warp-register <name> [api=URL] [peer=KEY] [port=N] [awg=1]   (api/peer: lab stubs only)
 	const o = { name: ARGV[1] };
@@ -91,6 +97,7 @@ case 'import': {
 		exits: map(p.exits, (e) => sprintf('%s%s: %s from %s', prefix, e.name, e.kind, e.from)),
 		policies: map(p.policies, (x) => sprintf('%sp_%s via %s: %d addresses, %d domains, %d devices', prefix, x.name, join(' -> ', x.exits), length(x.dst), length(x.domain), length(x.device))),
 		direct: sprintf('%d addresses, %d devices, %d domains', length(p.direct.dst), length(p.direct.device), length(p.direct.domain)),
+		lists: map(p.lists, (l) => sprintf('%s%s -> %s: %s%s (from %s)', prefix, l.name, l.policy, join(' ', l.urls), l.text ? ' + local entries' : '', l.from)),
 		notify: p.notify ? 'Telegram' : null,
 		dhcp_hosts: length(p.hosts),
 		not_carried_over: map(p.skipped, (s) => s.what + ': ' + s.why),
@@ -100,6 +107,9 @@ case 'import': {
 	printf('%.J\n', out);
 	exit(0);
 }
+case 'lists-update':
+	// detour lists-update [--restore|--missing] [name...]
+	exit(system([ '/usr/libexec/detour/lists-update', ...slice(ARGV, 1) ]));
 case 'status': call('status'); break;
 case 'reload': call('reload'); break;
 case 'pin': call('pin', { policy: ARGV[1], exit: ARGV[2] }); break;

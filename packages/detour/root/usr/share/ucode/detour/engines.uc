@@ -10,10 +10,48 @@
 
 import * as fs from 'fs';
 import { cursor } from 'uci';
-import { M_UNDERLAY, RUN } from 'detour.core';
+import { M_UNDERLAY, RUN, PERSIST, run } from 'detour.core';
+import * as links from 'detour.links';
+import { ensure_zone } from 'detour.warp';
 
 export const DIR = RUN + '/engines';
 const BIN = { singbox: '/usr/bin/sing-box', xray: '/usr/bin/xray' };
+
+// a share link -> sing-box engine + netifd interface (proto none) + firewall zone + Detour exit
+export function add_from_link(name, link) {
+	if (!match(name ?? '', /^[a-z][a-z0-9_]{0,10}$/)) return { error: 'name: a-z, 0-9, _ (max 11, starts with a letter)' };
+	const c = cursor();
+	if (c.get('detour', name) || c.get('network', name)) return { error: name + ' is already used' };
+	if (!fs.access(BIN.singbox)) return { error: 'sing-box is not installed (apk add sing-box)' };
+	const r = links.parse(link);
+	if (r.error) return r;
+	fs.mkdir(PERSIST); fs.mkdir(PERSIST + '/engines');
+	const f = sprintf('%s/engines/%s.json', PERSIST, name);
+	fs.writefile(f, ''); fs.chmod(f, 0600);
+	fs.writefile(f, sprintf('%.J\n', r.outbound));
+	const dev = name + 'tun';
+	const used = {};
+	c.foreach('detour', 'exit', (s) => { used[int(s.id)] = true; });
+	let id = 1;
+	while (id <= 250 && used[id]) id++;
+	c.set('detour', name + '_eng', 'engine');
+	c.set('detour', name + '_eng', 'type', 'singbox');
+	c.set('detour', name + '_eng', 'device', dev);
+	c.set('detour', name + '_eng', 'outbound', f);
+	c.set('detour', name, 'exit');
+	c.set('detour', name, 'id', '' + id);
+	c.set('detour', name, 'iface', name);
+	c.set('detour', name, 'device', dev);
+	c.set('detour', name, 'label', r.remark ?? name);
+	c.set('detour', name, 'probe', 'https://1.1.1.1/cdn-cgi/trace');
+	c.set('network', name, 'interface');
+	c.set('network', name, 'proto', 'none');
+	c.set('network', name, 'device', dev);
+	ensure_zone(c, name);
+	c.commit('detour'); c.commit('network'); c.commit('firewall');
+	run('/etc/init.d/network reload; fw4 -q reload');
+	return { name, exit_id: id, device: dev, server: r.outbound.server, type: r.outbound.type };
+}
 
 export function list() {
 	const out = [];

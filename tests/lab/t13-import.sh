@@ -17,7 +17,7 @@ cleanup() {
 	for s in $(uci show dhcp | grep -E "mac='(52:54:00:aa:00:01|52:54:00:aa:00:02)'" | cut -d. -f2); do uci delete dhcp.$s; done
 	uci -q delete detour.direct.device; uci -q delete detour.direct.domain; uci -q delete detour.direct.dst
 	uci -q delete detour.notify
-	uci commit; rm -f /etc/detour/engines/st_*.json
+	uci commit; rm -f /etc/detour/engines/st_*.json /etc/detour/lists/st_*
 }
 cleanup
 
@@ -63,6 +63,14 @@ printf '52:54:00:aa:00:01\t192.168.1.201\n52:54:00:aa:00:02\t192.168.1.202\n' > 
 printf '52:54:00:aa:00:01\ttv\n' > $S/.dev-names
 printf 'TG_TOKEN="123456:IMPORTED_lab_token_xxxxxxxxxxxxxxxxxxxx"\nTG_CHAT="777"\n' > $S/notify-tg.conf
 echo 'hash' > $S/.panel-pass; echo 'x y z' > $S/.totp
+# lists registry (lists-lib.sh): id type enabled format count ts label value; file/text in blob/<id>
+L=http://10.0.2.2:8765/tests/stub/lists
+mkdir -p $S/lists/tunnel-cidr/blob $S/lists/tunnel-domains $S/lists/bypass-ip $S/lists/adblock
+printf 's1\turl\t1\tcidr\t22\t0\topencck\t%s/cidr.txt\ns2\ttext\t1\tcidr\t1\t0\tmy own\t\ns3\turl\t0\tcidr\t0\t0\toff\thttp://off.example/x\n' "$L" > $S/lists/tunnel-cidr/sources.tsv
+printf '100.64.200.0/24\n' > $S/lists/tunnel-cidr/blob/s2
+printf 's1\turl\t1\tauto\t0\t0\tdoms\t%s/domains.txt\n' "$L" > $S/lists/tunnel-domains/sources.tsv
+printf 's1\turl\t1\tcidr\t0\t0\tdirect\t%s/direct.txt\n' "$L" > $S/lists/bypass-ip/sources.tsv
+printf 's1\turl\t1\tauto\t0\t0\tads\thttp://ads.example/x\n' > $S/lists/adblock/sources.tsv
 tar -czf /tmp/stock.tgz -C $S .
 
 echo "== dry run"
@@ -76,6 +84,14 @@ echo "$OUT" | grep -q '192.168.1.250: device past VPN: no DHCP reservation' && o
 echo "$OUT" | grep -q 'group devgroup' && ok "device-bound group reported" || bad "src group report"
 echo "$OUT" | grep -q '.totp: 2FA secret' && ok "2FA secret deliberately not carried over" || bad "totp report"
 echo "$OUT" | grep -q 'dry run' && [ -z "$(uci -q get detour.st_main)" ] && ok "dry run changed nothing" || bad "dry run wrote config"
+echo "$OUT" | grep -q 'st_l_tunnel_cidr -> vpn: .*cidr.txt + local entries (from lists/tunnel-cidr)' && ok "list registry: URL + text source" || bad "cidr list: $(echo "$OUT" | grep l_tunnel)"
+echo "$OUT" | grep -q 'st_l_tunnel_domains -> vpn' && echo "$OUT" | grep -q 'st_l_bypass_ip -> direct' && ok "domain and bypass lists" || bad "other lists"
+echo "$OUT" | grep -q 'source off: switched off' && ok "disabled source reported" || bad "disabled source"
+echo "$OUT" | grep -q 'lists/adblock: blocking' && ok "adblock reported as not carried over" || bad "adblock"
+# legacy config without a registry: iplist.conf sites -> opencck URL with &site=
+S2=/tmp/stock-state2; rm -rf $S2; mkdir -p $S2/configs; cp $S/configs/home.conf $S2/configs/; echo awg > $S2/.transport; echo home > $S2/.active
+printf 'IPLIST_SITES="steampowered.com discord.com"\nIPLIST_CUSTOM_MODE=merge\n' > $S2/iplist.conf; printf '100.64.201.0/24\n' > $S2/iplist.custom
+detour import $S2 | grep -q 'data=cidr4&site=steampowered.com&site=discord.com + local entries (from iplist.conf)' && ok "legacy iplist.conf (sites + merged custom list)" || bad "legacy: $(detour import $S2 | grep l_tunnel)"
 
 echo "== apply"
 detour import /tmp/stock.tgz --apply > /tmp/import.out
@@ -98,8 +114,11 @@ DEV=$(uci -q get detour.st_s2.device)
 t0=$(txb $DEV); r=$(cl "curl -s -m 8 -o /dev/null -w '%{http_code}' https://8.8.4.4/"); t1=$(txb $DEV)
 [ "$r" != 000 ] && [ $((t1 - t0)) -gt 0 ] && ok "8.8.4.4 via imported s2 ($DEV)" || bad "s2: http=$r tx+$((t1 - t0))"
 nft list set inet detour direct_dev | grep -q 52:54:00:aa:00:02 && ok "direct_dev set" || bad "direct_dev"
-cl "nslookup example.org 192.168.1.1" >/dev/null
-nft list set inet detour dom_direct4 | grep -q expires && ok "direct domain filled dom_direct4" || bad "dom_direct4 empty"
+PID=$(uci -q get detour.st_p_vpn.id)
+waitfor yes "nft get element inet detour lst4_p$PID '{ 8.8.8.8 }' >/dev/null 2>&1 && echo yes" 40 && ok "imported list loaded into lst4_p$PID" || bad "list not loaded: $(cat /tmp/detour/lists/st_l_tunnel_cidr.status 2>&1)"
+nft get element inet detour lst4_p$PID '{ 100.64.200.1 }' >/dev/null 2>&1 && ok "text source (blob) included" || bad "blob entries missing"
+waitfor yes "nft get element inet detour lst4_direct '{ 203.0.113.9 }' >/dev/null 2>&1 && echo yes" 30 && ok "bypass list -> lst4_direct" || bad "bypass list"
+waitfor yes "cl 'nslookup example.org 192.168.1.1' >/dev/null; nft list set inet detour dom_direct4 | grep -q expires && echo yes" 30 && ok "direct domain filled dom_direct4" || bad "dom_direct4 empty"
 
 echo "== importing the same archive again changes nothing (no duplicated peers)"
 detour import /tmp/stock.tgz --apply >/dev/null

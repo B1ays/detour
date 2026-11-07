@@ -7,6 +7,7 @@ import * as nft from 'detour.nft';
 import * as net from 'detour.net';
 import * as dns from 'detour.dns';
 import * as auth from 'detour.auth';
+import { cursor } from 'uci';
 
 const ACTIVE = core.RUN + '/active.json';
 const PINS = core.PERSIST + '/pins.json';
@@ -63,12 +64,20 @@ export function apply(cfg, active) {
 	return { ok: r.code == 0, errors, dns_restart: restart };
 }
 
+export function has_lists() {
+	let n = 0;
+	cursor().foreach('detour', 'list', () => { n++; });
+	return n > 0;
+}
+
 // early boot (START before dnsmasq): table + sets exist before dnsmasq starts filling them
 export function start() {
 	const cfg = core.load();
 	if (!cfg.main.enabled) return { ok: true, errors: [ 'disabled' ] };
 	const res = apply(cfg);
 	if (res.ok) nft.restore_dom(DOMSAVE);
+	// big lists: from RAM or the flash snapshot, no downloads (boot: before dnsmasq and WAN)
+	if (res.ok && has_lists()) core.run('/usr/libexec/detour/lists-update --restore');
 	// at boot dnsmasq starts after us and reads the files itself; later (install, upgrade) it must restart
 	if (res.dns_restart && core.run('pidof dnsmasq').code == 0) dns.restart();
 	for (let e in res.errors) core.log('fw: ' + e);

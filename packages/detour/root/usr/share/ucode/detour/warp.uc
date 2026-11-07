@@ -46,7 +46,7 @@ function free_id(c) {
 }
 
 // the firewall zone that holds the existing exits ("vpn" in the lab); created when missing
-function ensure_zone(c, iface) {
+export function ensure_zone(c, iface) {
 	let zone = null;
 	c.foreach('firewall', 'zone', function(z) {
 		const nets = (type(z.network) == 'array') ? z.network : split(z.network ?? '', /\s+/);

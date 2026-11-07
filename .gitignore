@@ -3,3 +3,4 @@ build/
 feed/
 keys/private/
 tests/stub/*.log
+tests/stub/stock-lab.tgz

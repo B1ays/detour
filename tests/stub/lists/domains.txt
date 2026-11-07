@@ -1,0 +1,21 @@
+# mixed formats
+0.0.0.0 ifconfig.io
+127.0.0.1 icanhazip.com
+||example.com^
+server=/wikipedia.org/1.1.1.1
+ipset=/a.example.net/b.example.net/detour_list
+plain-domain.org
+*.wild.example.org
+localhost
+bad_dom
+! adblock comment
+host0.example.info
+host1.example.info
+host2.example.info
+host3.example.info
+host4.example.info
+host5.example.info
+host6.example.info
+host7.example.info
+host8.example.info
+host9.example.info

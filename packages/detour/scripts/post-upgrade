@@ -4,9 +4,13 @@
 . /lib/functions.sh
 user_exists dtnotify || { g=$(group_add_next dtnotify); user_add dtnotify "$g" "$g" detour-notify /var/run /bin/false; }
 [ -f /etc/uci-defaults/90-detour ] && ( . /etc/uci-defaults/90-detour ) && rm -f /etc/uci-defaults/90-detour
+# cron: watchdog (hung daemon) and the nightly update of big lists - one managed block
+mkdir -p /etc/crontabs
+sed -i '\#/usr/libexec/detour/#d' /etc/crontabs/root 2>/dev/null
+echo '*/2 * * * * /usr/libexec/detour/watchdog' >> /etc/crontabs/root
+echo '17 5 * * * /usr/libexec/detour/lists-update' >> /etc/crontabs/root
+/etc/init.d/cron restart
 # rules are reloaded in place (sets with dnsmasq data are kept), then the daemon restarts with new code
-sed -i '\#/usr/libexec/detour/watchdog#d' /etc/crontabs/root 2>/dev/null
-echo '*/2 * * * * /usr/libexec/detour/watchdog' >> /etc/crontabs/root; /etc/init.d/cron restart
 /usr/sbin/detour fw-start
 /etc/init.d/detour enabled && /etc/init.d/detour restart
 exit 0

@@ -14,6 +14,7 @@ import * as fw from 'detour.fw';
 import * as auth from 'detour.auth';
 import * as notify from 'detour.notify';
 import * as engines from 'detour.engines';
+import { cursor } from 'uci';
 
 const t0 = time();
 let cfg, active, pins;
@@ -22,6 +23,7 @@ let dns_mode = null;      // 'tunnel' | 'fallback'
 let events = [];
 let switches = 0, last_switch = null, auth_state = 'ok';
 let down_noted = {};
+let lists_busy = false;
 
 function ev(msg) {
 	push(events, sprintf('%d %s', time(), msg));
@@ -133,7 +135,20 @@ function load_all(reason) {
 	for (let e in res.errors) ev('config: ' + e);
 	dns_mode = null;
 	ev(sprintf('%s: %d exits, %d policies', reason, length(cfg.exits), length(cfg.policies)));
+	// lists: rebuild the sets for the current policies, download lists that have no data yet
+	if (fw.has_lists() && !lists_busy) {
+		lists_busy = true;
+		uloop.process('/usr/libexec/detour/lists-update', [ '--missing' ], {}, function(code) { lists_busy = false; });
+	}
 	return res;
+}
+
+function lists_status() {
+	const out = [];
+	for (let f in fs.glob(core.RUN + '/lists/*.status') ?? []) {
+		try { push(out, json(fs.readfile(f))); } catch (e) { }
+	}
+	return out;
 }
 
 function status() {
@@ -150,7 +165,7 @@ function status() {
 		push(pol, { name: p.name, id: p.id, enabled: p.enabled, exits: p.exits,
 			active: exit_name(active['' + p.id]), pinned: pins[p.name] });
 	return { version: core.VERSION, uptime: time() - t0, exits: ex, policies: pol, dns: dns_mode ?? cfg.main.dns,
-		switches, last_switch, engines: engines.list(), auth: auth.status(), notify_queued: notify.queued(), errors: cfg.errors, events };
+		switches, last_switch, engines: engines.list(), lists: lists_status(), auth: auth.status(), notify_queued: notify.queued(), errors: cfg.errors, events };
 }
 
 function do_pin(pol, ex) {
@@ -174,6 +189,41 @@ if (!conn) { warn('detourd: no ubus\n'); exit(1); }
 fs.mkdir(core.RUN);
 load_all('start');
 
+// --- LuCI actions ------------------------------------------------------------------------------
+const IMPORT_FILE = '/tmp/detour-import.tgz';   // LuCI uploads the stock backup here (ACL: write)
+let job_busy = false;
+
+function cli_job(req, argv, reload_after) {
+	if (job_busy) return { error: 'another action is running, try again in a moment' };
+	for (let a in argv) if (type(a) != 'string' || !length(a)) return { error: 'missing argument' };
+	job_busy = true;
+	req.defer();
+	const out = core.RUN + '/job.out';
+	const cmd = '/usr/sbin/detour ' + join(' ', map(argv, (a) => core.shq(a))) + ' > ' + out + ' 2>&1';
+	uloop.process('/bin/sh', [ '-c', cmd ], {}, function(code) {
+		job_busy = false;
+		const text = fs.readfile(out) ?? '';
+		let res;
+		try { res = json(text); } catch (e) { res = { output: trim(text) }; }
+		if (type(res) != 'object') res = { output: trim(text) };
+		res.code = code;
+		if (code != 0 && !res.error) res.error = trim(text) || ('exit code ' + code);
+		ev(sprintf('LuCI: %s -> %s', argv[0], code == 0 ? 'ok' : 'error'));
+		if (reload_after && code == 0) { load_all('import'); evaluate(); }
+		req.reply(res);
+	});
+}
+
+// lab only: main.warp_api / warp_peer / warp_port point the registration at a stub
+function warp_args(name) {
+	const m = cursor().get_all('detour', 'main') ?? {};
+	const a = [ 'warp-register', name ];
+	if (m.warp_api) push(a, 'api=' + m.warp_api);
+	if (m.warp_peer) push(a, 'peer=' + m.warp_peer);
+	if (m.warp_port) push(a, 'port=' + m.warp_port);
+	return a;
+}
+
 const S = { ubus_rpc_session: '' };
 conn.publish('detour', {
 	status: { call: () => status(), args: { ...S } },
@@ -182,6 +232,13 @@ conn.publish('detour', {
 	switch: { call: (req) => do_pin(req.args.policy, req.args.exit), args: { policy: '', exit: '', ...S } },
 	unpin:  { call: (req) => do_pin(req.args.policy, null), args: { policy: '', ...S } },
 	notify_test: { call: () => ({ queued: notify.test() }), args: { ...S } },
+	// LuCI actions: run the CLI asynchronously (deferred reply), so probes keep running meanwhile
+	engine_add:      { call: (req) => cli_job(req, [ 'engine-add', req.args.name, req.args.link ]), args: { name: '', link: '', ...S } },
+	warp_register:   { call: (req) => cli_job(req, warp_args(req.args.name)), args: { name: '', ...S } },
+	warp_unregister: { call: (req) => cli_job(req, [ 'warp-unregister', req.args.name ]), args: { name: '', ...S } },
+	import_check:    { call: (req) => cli_job(req, [ 'import', IMPORT_FILE ]), args: { ...S } },
+	import_apply:    { call: (req) => cli_job(req, [ 'import', IMPORT_FILE, '--apply' ], true), args: { ...S } },
+	lists_update:    { call: (req) => cli_job(req, [ 'lists-update', ...(length(req.args.name ?? '') ? [ req.args.name ] : []) ]), args: { name: '', ...S } },
 });
 
 // netifd: put the exit route back on ifup (netifd does not restore routes in our tables)
