@@ -7,6 +7,11 @@ import * as core from 'detour.core';
 import * as nft from 'detour.nft';
 import * as fw from 'detour.fw';
 import * as dns from 'detour.dns';
+import * as engines from 'detour.engines';
+import * as links from 'detour.links';
+import * as warp from 'detour.warp';
+import * as importer from 'detour.importer';
+import * as fs from 'fs';
 
 const cmd = ARGV[0];
 
@@ -42,6 +47,58 @@ case 'check': {
 	for (let e in cfg.errors) print(e, '\n');
 	printf('%d exits, %d policies, %d errors\n', length(cfg.exits), length(cfg.policies), length(cfg.errors));
 	exit(length(cfg.errors) ? 1 : 0);
+}
+case 'engines': {
+	const r = engines.prepare();
+	for (let e in r.errors) warn('detour: ' + e + '\n');
+	for (let l in r.lines) print(l, '\n');
+	exit(0);
+}
+case 'link': {
+	// detour link '<share link>' [outbound file]: print (or write, mode 600) a sing-box outbound
+	const r = links.parse(ARGV[1]);
+	if (r.error) { warn('detour: ' + r.error + '\n'); exit(1); }
+	const text = sprintf('%.J\n', r.outbound);
+	if (ARGV[2]) { fs.writefile(ARGV[2], text); fs.chmod(ARGV[2], 0600); }
+	else print(text);
+	exit(0);
+}
+case 'warp-register': {
+	// detour warp-register <name> [api=URL] [peer=KEY] [port=N] [awg=1]   (api/peer: lab stubs only)
+	const o = { name: ARGV[1] };
+	for (let a in slice(ARGV, 2)) {
+		const i = index(a, '=');
+		if (i > 0) o[substr(a, 0, i)] = substr(a, i + 1);
+	}
+	const r = warp.register({ name: o.name, api: o.api, peer_key: o.peer, port: o.port ? int(o.port) : null, awg: o.awg == '1' });
+	printf('%.J\n', r);
+	exit(r.error ? 1 : 0);
+}
+case 'warp-unregister': {
+	const r = warp.unregister(ARGV[1]);
+	printf('%.J\n', r);
+	exit(r.error ? 1 : 0);
+}
+case 'import': {
+	// detour import <backup.tar.gz | state dir> [--apply] [prefix=st_]
+	const u = importer.unpack(ARGV[1] ?? '');
+	if (u.error) { warn('detour: ' + u.error + '\n'); exit(1); }
+	const p = importer.plan(u.dir);
+	const apply = index(ARGV, '--apply') >= 0;
+	let prefix = 'st_';
+	for (let a in ARGV) if (substr(a, 0, 7) == 'prefix=') prefix = substr(a, 7);
+	const out = {
+		exits: map(p.exits, (e) => sprintf('%s%s: %s from %s', prefix, e.name, e.kind, e.from)),
+		policies: map(p.policies, (x) => sprintf('%sp_%s via %s: %d addresses, %d domains, %d devices', prefix, x.name, join(' -> ', x.exits), length(x.dst), length(x.domain), length(x.device))),
+		direct: sprintf('%d addresses, %d devices, %d domains', length(p.direct.dst), length(p.direct.device), length(p.direct.domain)),
+		notify: p.notify ? 'Telegram' : null,
+		dhcp_hosts: length(p.hosts),
+		not_carried_over: map(p.skipped, (s) => s.what + ': ' + s.why),
+	};
+	if (apply) out.applied = importer.apply(p, prefix);
+	else out.note = 'dry run - nothing changed; add --apply to write the settings';
+	printf('%.J\n', out);
+	exit(0);
 }
 case 'status': call('status'); break;
 case 'reload': call('reload'); break;

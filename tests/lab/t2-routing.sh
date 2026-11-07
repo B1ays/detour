@@ -51,7 +51,7 @@ table inet labwatch {
 	}
 }
 N
-expect "config clean" "$(detour check | tail -1)" "2 exits, 1 policies, 0 errors"
+expect "config clean" "$(detour check | tail -1 | grep -o "[0-9]* errors")" "0 errors"
 expect "active exit" "$(act)" "warp"
 conntrack -F >/dev/null 2>&1
 

@@ -18,7 +18,7 @@ expect "dnsmasq serversfile" "$(uci -q get dhcp.@dnsmasq[0].serversfile)" "/tmp/
 expect "noresolv" "$(uci -q get dhcp.@dnsmasq[0].noresolv)" "1"
 expect "servers file" "$(cat /tmp/detour/dns.servers | tr '\n' ' ')" "server=1.1.1.1 server=1.0.0.1 "
 waitfor dnsproxy "ps w | grep '[d]nsproxy -l 127.0.0.1' | awk '{print \$2}' | head -n1" 15 && ok "dnsproxy runs as user dnsproxy" || bad "dnsproxy user: $(ps w | grep '[d]nsproxy -l')"
-expect "skuid exemption rule (uid)" "$(skuid)" "$(id -u dnsproxy)"
+expect "skuid exemption rule for dnsproxy" "$(skuid | grep -cx "$(id -u dnsproxy)")" "1"
 expect "mode" "$(dmode)" "tunnel"
 a=$(excnt 1); r=$(q example.net); expect "client DNS via tunnel" "$r $(( $(excnt 1) - a > 0 ? 1 : 0 ))" "ok 1"
 

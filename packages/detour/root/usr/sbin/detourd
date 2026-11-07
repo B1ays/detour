@@ -12,6 +12,8 @@ import * as net from 'detour.net';
 import * as dns from 'detour.dns';
 import * as fw from 'detour.fw';
 import * as auth from 'detour.auth';
+import * as notify from 'detour.notify';
+import * as engines from 'detour.engines';
 
 const t0 = time();
 let cfg, active, pins;
@@ -19,6 +21,7 @@ let health = {};          // exit id -> { ok, fails, seen, last_ok, rtt }
 let dns_mode = null;      // 'tunnel' | 'fallback'
 let events = [];
 let switches = 0, last_switch = null, auth_state = 'ok';
+let down_noted = {};
 
 function ev(msg) {
 	push(events, sprintf('%d %s', time(), msg));
@@ -69,7 +72,18 @@ function evaluate() {
 		if (!p.enabled) continue;
 		const want = choose(p);
 		const cur = active['' + p.id];
-		if (want == null || want == cur) continue;
+		if (want == null) {
+			if (!down_noted[p.name]) {
+				down_noted[p.name] = time();
+				notify.event('all_down', 'all_down:' + p.name, sprintf('policy %s: no working exit, its traffic is blocked', p.name));
+			}
+			continue;
+		}
+		if (down_noted[p.name]) {
+			notify.event('all_down', null, sprintf('policy %s works again (was blocked for %d s)', p.name, time() - down_noted[p.name]));
+			delete down_noted[p.name];
+		}
+		if (want == cur) continue;
 		const r = nft.set_policy_exit(p.id, want);
 		if (r.code != 0) { ev(sprintf('policy %s: switch failed: %s', p.name, trim(r.out))); continue; }
 		// flows of this policy pinned to the old exit are dropped, the next packet re-classifies
@@ -78,6 +92,7 @@ function evaluate() {
 		changed = true;
 		switches++; last_switch = time();
 		ev(sprintf('policy %s: %s -> %s%s', p.name, cur ? exit_name(cur) : '-', exit_name(want), pins[p.name] ? ' (pinned ' + pins[p.name] + ')' : ''));
+		notify.event('switch', 'switch:' + p.name, sprintf('policy %s now goes through %s (was %s)', p.name, exit_name(want), cur ? exit_name(cur) : '-'));
 	}
 	if (changed) fw.save_active(active);
 	update_dns();
@@ -94,7 +109,10 @@ function probe(e) {
 		if (code == 0) { h.ok = true; h.fails = 0; h.last_ok = time(); }
 		else { h.fails++; if (h.fails >= cfg.main.fails) h.ok = false; }
 		const now = h.ok && h.fails < cfg.main.fails;
-		if (was != now) ev(sprintf('exit %s %s', e.name, now ? 'up' : 'down'));
+		if (was != now) {
+			ev(sprintf('exit %s %s', e.name, now ? 'up' : 'down'));
+			notify.event(now ? 'exit_up' : 'exit_down', 'exit:' + e.name, sprintf('exit %s is %s', e.label ?? e.name, now ? 'working again' : 'not responding'));
+		}
 		evaluate();
 	});
 }
@@ -123,14 +141,16 @@ function status() {
 	for (let e in cfg.exits) {
 		const h = health[e.id] ?? {};
 		push(ex, { name: e.name, id: e.id, device: e.device, enabled: e.enabled, up: net.dev_up(e.device),
-			healthy: healthy(e), probe: e.probe, fails: h.fails ?? 0, last_ok: h.last_ok, drops: nft.counter_drops(e.id) });
+			healthy: healthy(e), probe: e.probe, fails: h.fails ?? 0, last_ok: h.last_ok, drops: nft.counter_drops(e.id),
+			rx: int(fs.readfile(sprintf('/sys/class/net/%s/statistics/rx_bytes', e.device)) ?? 0),
+			tx: int(fs.readfile(sprintf('/sys/class/net/%s/statistics/tx_bytes', e.device)) ?? 0) });
 	}
 	const pol = [];
 	for (let p in cfg.policies)
 		push(pol, { name: p.name, id: p.id, enabled: p.enabled, exits: p.exits,
 			active: exit_name(active['' + p.id]), pinned: pins[p.name] });
 	return { version: core.VERSION, uptime: time() - t0, exits: ex, policies: pol, dns: dns_mode ?? cfg.main.dns,
-		switches, last_switch, auth: auth.status(), errors: cfg.errors, events };
+		switches, last_switch, engines: engines.list(), auth: auth.status(), notify_queued: notify.queued(), errors: cfg.errors, events };
 }
 
 function do_pin(pol, ex) {
@@ -161,6 +181,7 @@ conn.publish('detour', {
 	pin:    { call: (req) => do_pin(req.args.policy, req.args.exit), args: { policy: '', exit: '', ...S } },
 	switch: { call: (req) => do_pin(req.args.policy, req.args.exit), args: { policy: '', exit: '', ...S } },
 	unpin:  { call: (req) => do_pin(req.args.policy, null), args: { policy: '', ...S } },
+	notify_test: { call: () => ({ queued: notify.test() }), args: { ...S } },
 });
 
 // netifd: put the exit route back on ifup (netifd does not restore routes in our tables)
@@ -182,7 +203,13 @@ tick = uloop.timer(500, function() {
 		// devices can appear late (tun of a proxy engine): keep the route in place
 		if (e.enabled && net.dev_up(e.device)) net.ensure_route(e);
 	}
+	engines.devices_up();
 	evaluate();
+	if (notify.queued()) {
+		const devs = [];
+		for (let e in cfg.exits) if (healthy(e)) push(devs, e.device);
+		notify.flush(devs);
+	}
 	fs.writefile(core.RUN + '/heartbeat', sprintf('%d\n', time()));
 	if (n++ % 30 == 0) {
 		const a = guard();

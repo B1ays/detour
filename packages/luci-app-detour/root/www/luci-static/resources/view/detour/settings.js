@@ -45,10 +45,36 @@ return view.extend({
 		o.placeholder = 'quic://dns.adguard-dns.com';
 		o.depends('dns', 'tunnel');
 
+		if (!uci.get('detour', 'notify')) uci.add('detour', 'notify', 'notify');
+		s = m.section(form.NamedSection, 'notify', 'notify', _('Telegram notifications'),
+			_('Create a bot with @BotFather, paste its token, write /start to the bot and put your chat id here. ' +
+			  'Messages go through a working tunnel first, then directly; undelivered ones wait and are sent later.'));
+		o = s.option(form.Flag, 'enabled', _('Enabled'));
+		o = s.option(form.Value, 'tg_token', _('Bot token'));
+		o.password = true;
+		o.validate = function(section_id, v) { return (!v || /^[0-9]+:[A-Za-z0-9_-]{30,}$/.test(v)) ? true : _('Looks like 123456:ABC… from @BotFather'); };
+		o = s.option(form.Value, 'tg_chat', _('Chat id'));
+		o.datatype = 'integer';
+		o = s.option(form.MultiValue, 'event', _('Notify about'));
+		o.value('exit_down', _('an exit stopped responding'));
+		o.value('exit_up', _('an exit works again'));
+		o.value('switch', _('a policy switched to another exit'));
+		o.value('all_down', _('a policy has no working exit (its traffic is blocked)'));
+		o.default = 'exit_down exit_up all_down switch';
+		o = s.option(form.Value, 'tg_api', _('Own Bot API address'), _('Only if api.telegram.org is blocked for you and you run a Bot API proxy.'));
+		o.placeholder = 'https://api.telegram.org';
+		o.datatype = 'string';
+		o.optional = true;
+		o.validate = function(section_id, v) { return (!v || /^https?:\/\/[^\s]+$/.test(v)) ? true : _('http(s) address'); };
+
 		s = m.section(form.NamedSection, 'direct', 'direct', _('Always direct'),
 			_('Addresses that never go through a tunnel, whatever the policies say.'));
 		o = s.option(form.DynamicList, 'dst', _('Addresses'));
 		o.datatype = 'ipaddr';
+		o = s.option(form.DynamicList, 'device', _('Devices'), _('MAC addresses of devices that never use a tunnel.'));
+		o.datatype = 'macaddr';
+		o = s.option(form.DynamicList, 'domain', _('Domains'));
+		o.datatype = 'hostname';
 
 		return m.render();
 	}

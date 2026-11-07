@@ -151,6 +151,16 @@ export function load(conf) {
 
 	const d = c.get_all(name, 'direct') ?? {};
 	const da = split_addrs(as_list(d.dst), errors, 'direct');
+	const ddev = [], ddom = [];
+	for (let x in as_list(d.device)) {
+		if (match(x, RE_MAC)) push(ddev, lc(x));
+		else push(errors, sprintf('direct: bad device MAC "%s"', x));
+	}
+	for (let x in as_list(d.domain)) {
+		x = lc(trim(x));
+		if (match(x, RE_DOMAIN)) push(ddom, x);
+		else push(errors, sprintf('direct: bad domain "%s"', x));
+	}
 
 	if (main.dns == 'tunnel') {
 		let ok = false;
@@ -161,10 +171,11 @@ export function load(conf) {
 	if (main.force_dns == null) {
 		main.force_dns = false;
 		for (let p in policies) if (p.enabled && length(p.domains)) main.force_dns = true;
+		if (length(ddom)) main.force_dns = true;
 	}
 	else main.force_dns = bool(main.force_dns, true);
 
-	return { main, exits, policies, direct4: da.v4, direct6: da.v6, errors, by_name };
+	return { main, exits, policies, direct4: da.v4, direct6: da.v6, direct_dev: ddev, direct_dom: ddom, errors, by_name };
 }
 
 export function exit_by_id(cfg, id) {

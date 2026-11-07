@@ -1,6 +1,7 @@
 #!/bin/sh
 # A-8: 2FA on -> session.login over HTTP /ubus closed; rpcd reinstall reopens it -> daemon closes again;
 # 2FA off -> stock ACL back. LuCI login itself is not affected (checked in the browser separately).
+uci set detour.main.ssh_guard=0; uci commit detour   # A-9 would restart dropbear and cut this SSH session (tested in t8)
 P=bb4ea47fcffb44ec9bb3d3673c9b4ed2
 F=/usr/share/rpcd/acl.d/unauthenticated.json
 FAIL=0; ok() { echo "  ok   $*"; }; bad() { echo "  FAIL $*"; FAIL=1; }
@@ -25,3 +26,4 @@ ubus call detour reload >/dev/null
 waitfor true open_ 10 && ok "restored" || bad "not restored"
 grep -q '"login"' $F && ok "file grants login again" || bad "file"
 echo "RESULT: $([ $FAIL = 0 ] && echo PASS || echo FAIL)"
+uci -q delete detour.main.ssh_guard; uci commit detour

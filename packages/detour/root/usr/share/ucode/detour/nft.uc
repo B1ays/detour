@@ -22,7 +22,7 @@ export function exit_mark(id) { return id << 16; }
 
 // names of sets/chains/maps this config needs
 function wanted(cfg) {
-	const sets = { direct4: 1, direct6: 1, lan_ifs: 1, bypass4: 1 };
+	const sets = { direct4: 1, direct6: 1, lan_ifs: 1, bypass4: 1, exit_devs: 1, direct_dev: 1, dom_direct4: 1 };
 	const chains = { classify: 1, prerouting: 1, output: 1, killswitch: 1, v6block: 1, dnsredir: 1, dotblock: 1 };
 	for (let p in cfg.policies) {
 		for (let k in [ 'dev', 'dst4', 'dst6', 'dom4', 'dom6' ]) sets[sprintf('%s_p%d', k, p.id)] = 1;
@@ -59,9 +59,12 @@ export function render(cfg, active, opts) {
 	// 1. declarations (add semantics: existing objects are kept, with their elements)
 	add('table inet detour {');
 	add('\tset lan_ifs { type ifname; }');
+	add('\tset exit_devs { type ifname; }');
 	add(sprintf('\tset bypass4 { type ipv4_addr; flags interval; elements = { %s }; }', BYPASS4));
 	add('\tset direct4 { type ipv4_addr; flags interval; auto-merge; }');
 	add('\tset direct6 { type ipv6_addr; flags interval; auto-merge; }');
+	add('\tset direct_dev { type ether_addr; }');
+	add(sprintf('\tset dom_direct4 { type ipv4_addr; flags timeout; timeout %s; }', to));
 	for (let p in cfg.policies) {
 		add(sprintf('\tset dev_p%d { type ether_addr; }', p.id));
 		add(sprintf('\tset dst4_p%d { type ipv4_addr; flags interval; auto-merge; }', p.id));
@@ -88,7 +91,7 @@ export function render(cfg, active, opts) {
 	for (let e in cfg.exits) { push(chains, sprintf('exit%d', e.id)); push(chains, sprintf('ks%d', e.id)); }
 	for (let ch in chains) add(sprintf('flush chain %s %s', T, ch));
 	add(sprintf('flush map %s pol2exit', T));
-	for (let s in [ 'lan_ifs', 'direct4', 'direct6' ]) add(sprintf('flush set %s %s', T, s));
+	for (let s in [ 'lan_ifs', 'exit_devs', 'direct4', 'direct6', 'direct_dev' ]) add(sprintf('flush set %s %s', T, s));
 	for (let p in cfg.policies)
 		for (let k in [ 'dev', 'dst4', 'dst6' ]) add(sprintf('flush set %s %s_p%d', T, k, p.id));
 
@@ -99,8 +102,14 @@ export function render(cfg, active, opts) {
 
 	// 4. static elements
 	if (length(cfg.main.lan)) add(sprintf('add element %s lan_ifs { %s }', T, elems(cfg.main.lan, true)));
+	if (length(cfg.exits)) {
+		let devs = [];
+		for (let e in cfg.exits) if (index(devs, e.device) < 0) push(devs, e.device);
+		add(sprintf('add element %s exit_devs { %s }', T, elems(devs, true)));
+	}
 	if (length(cfg.direct4)) add(sprintf('add element %s direct4 { %s }', T, elems(cfg.direct4)));
 	if (length(cfg.direct6)) add(sprintf('add element %s direct6 { %s }', T, elems(cfg.direct6)));
+	if (length(cfg.direct_dev)) add(sprintf('add element %s direct_dev { %s }', T, elems(cfg.direct_dev)));
 	for (let p in cfg.policies) {
 		if (!p.enabled) continue;
 		if (length(p.devices)) add(sprintf('add element %s dev_p%d { %s }', T, p.id, elems(p.devices)));
@@ -123,6 +132,8 @@ export function render(cfg, active, opts) {
 	add(sprintf('add rule %s classify ip daddr @bypass4 return', T));
 	add(sprintf('add rule %s classify ip daddr @direct4 return', T));
 	add(sprintf('add rule %s classify ip6 daddr @direct6 return', T));
+	add(sprintf('add rule %s classify ether saddr @direct_dev return comment "device never via VPN"', T));
+	add(sprintf('add rule %s classify ip daddr @dom_direct4 return comment "domain never via VPN"', T));
 	const setp = (id) => sprintf('meta mark set meta mark & %s | %s return', hex(~M_POL & 0xffffffff), hex(pol_mark(id)));
 	for (let p in cfg.policies) {
 		if (!p.enabled) continue;
@@ -140,8 +151,10 @@ export function render(cfg, active, opts) {
 
 	// 9. router's own traffic (type route: routing is redone after the mark change)
 	add(sprintf('add rule %s output meta mark & %s != 0 return comment "underlay 0x10000000 + nfqws 0x40000000"', T, hex(M_SKIP)));
-	if (opts.skip_uid != null)
-		add(sprintf('add rule %s output meta skuid %d return comment "dns fallback resolver goes direct"', T, opts.skip_uid));
+	for (let u in opts.skip_uid ?? [])
+		add(sprintf('add rule %s output meta skuid %d return comment "always direct (DNS fallback, notifications)"', T, u));
+	// sockets bound to an exit device (health probes, notifications via a tunnel) already chose their path
+	add(sprintf('add rule %s output oifname @exit_devs return comment "bound to an exit device"', T));
 	add(sprintf('add rule %s output meta mark & %s != 0 return', T, hex(M_BOTH)));
 	add(sprintf('add rule %s output meta nfproto ipv4 jump classify', T));
 	add(sprintf('add rule %s output meta mark & %s != 0 meta mark & %s vmap @pol2exit', T, hex(M_POL), hex(M_POL)));

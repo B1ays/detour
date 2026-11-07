@@ -33,8 +33,13 @@ export function active_map(cfg) {
 
 export function save_active(m) { fs.mkdir(core.RUN); core.write_json(ACTIVE, m); }
 
+// system users whose traffic always goes direct (never classified): the DNS fallback resolver and
+// the direct attempt of notifications ("VPN is down" must not run into the dead tunnel)
 export function skip_uid(cfg) {
-	return cfg.main.dns == 'tunnel' ? core.uid_of('dnsproxy') : null;
+	const out = [];
+	if (cfg.main.dns == 'tunnel' && core.uid_of('dnsproxy') != null) push(out, core.uid_of('dnsproxy'));
+	if (core.uid_of('dtnotify') != null) push(out, core.uid_of('dtnotify'));
+	return out;
 }
 
 // full (re)apply; returns { ok, errors[], dns_restart }

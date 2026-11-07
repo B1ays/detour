@@ -152,7 +152,7 @@ export function ssh_apply(on) {
 
 // returns 'closed' | 'reopened' (we closed it again) | 'restored' | 'ok'
 export function guard() {
-	ssh_apply(twofa_enabled());
+	ssh_apply(twofa_enabled() && cursor().get('detour', 'main', 'ssh_guard') != '0');
 	if (twofa_enabled()) {
 		if (!grants_login()) return 'ok';
 		fs.mkdir(PERSIST);

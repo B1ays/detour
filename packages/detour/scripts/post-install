@@ -1,5 +1,8 @@
 #!/bin/sh
 [ -n "$IPKG_INSTROOT" ] && exit 0
+# system user for notifications: its direct attempt is exempt from the policies (meta skuid)
+. /lib/functions.sh
+user_exists dtnotify || { g=$(group_add_next dtnotify); user_add dtnotify "$g" "$g" detour-notify /var/run /bin/false; }
 [ -f /etc/uci-defaults/90-detour ] && ( . /etc/uci-defaults/90-detour ) && rm -f /etc/uci-defaults/90-detour
 grep -qs '/usr/libexec/detour/watchdog' /etc/crontabs/root || { mkdir -p /etc/crontabs; echo '*/2 * * * * /usr/libexec/detour/watchdog' >> /etc/crontabs/root; /etc/init.d/cron restart; }
 /etc/init.d/detour-fw enable

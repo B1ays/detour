@@ -2,6 +2,7 @@
 # uninstall with everything switched on (dns=tunnel + 2FA guard active) -> stock router
 CL=192.168.1.145
 cl() { ssh -y -i /root/.ssh/id_dropbear root@$CL "$@" 2>/dev/null; }
+uci set detour.main.ssh_guard=0; uci commit detour   # A-9 would restart dropbear and cut this SSH session (tested in t8)
 P=bb4ea47fcffb44ec9bb3d3673c9b4ed2; F=/usr/share/rpcd/acl.d/unauthenticated.json
 FAIL=0; ok() { echo "  ok   $*"; }; bad() { echo "  FAIL $*"; FAIL=1; }
 waitfor() { i=0; while [ $i -lt ${3:-15} ]; do [ "$(eval "$2")" = "$1" ] && return 0; sleep 1; i=$((i+1)); done; return 1; }
@@ -21,3 +22,4 @@ uci set luci_plugins.$P.enabled=0; uci set luci_plugins.global.auth_login_enable
 uci set detour.main.dns=off; uci commit detour
 apk add -q detour luci-app-detour >/dev/null 2>&1
 echo "RESULT: $([ $FAIL = 0 ] && echo PASS || echo FAIL)"
+uci -q delete detour.main.ssh_guard; uci commit detour
