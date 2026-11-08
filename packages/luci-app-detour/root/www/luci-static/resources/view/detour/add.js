@@ -90,7 +90,7 @@ return view.extend({
 				if (!sel.value || !confirm(_('Remove WARP exit %s and its registration?').format(sel.value))) return;
 				busy(btn2, true);
 				return callWarpDel(sel.value).then(function(r) {
-					result(box2, r, function(x) { return _('Removed%s.').format(x.deregistered ? '' : _(' (the registration could not be deleted at Cloudflare)')); });
+					result(box2, r, function(x) { return _('Removed%s.').format(x.deregistered ? '' : ' ' + _('(the registration could not be deleted at Cloudflare)')); });
 				}).finally(function() { busy(btn2, false); });
 			} }, _('Remove'));
 			body.push(row(_('Registered WARP exits'), sel), actions([ btn2 ]), box2);
@@ -119,6 +119,7 @@ return view.extend({
 					list(_('Subscriptions'), r.subscriptions),
 					E('div', {}, _('Always direct: %s').format(r.direct)),
 					r.notify ? E('div', {}, _('Notifications: %s').format(r.notify)) : '',
+					r.dns ? E('div', {}, _('Encrypted DNS: %s').format(r.dns)) : '',
 					E('div', {}, _('DHCP reservations: %d').format(r.dhcp_hosts || 0)),
 					list(_('Not carried over'), r.not_carried_over)
 				]));

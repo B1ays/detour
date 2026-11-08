@@ -21,10 +21,10 @@ return view.extend({
 		const show = function(t) {
 			t = t || {};
 			info.replaceChildren(
-				E('div', {}, [ E('strong', {}, _('State: ')), !t.on ? _('off') : (t.connected ? _('connected') : (t.running ? _('connecting…') : _('not running (check the connection first)'))) ]),
-				t.target ? E('div', {}, [ E('strong', {}, _('Leads to: ')), t.target, ' ', E('span', { 'class': 'cbi-value-description' }, (/:443$/.test(t.target) ? _('(LuCI over HTTPS: the VPS sees nothing)') : _('(LuCI over HTTP: the VPS can see the pages - enable HTTPS in uhttpd)'))) ]) : '',
+				E('div', {}, [ E('strong', {}, (_('State:') + ' ')), !t.on ? _('off') : (t.connected ? _('connected') : (t.running ? _('connecting…') : _('not running (check the connection first)'))) ]),
+				t.target ? E('div', {}, [ E('strong', {}, (_('Leads to:') + ' ')), t.target, ' ', E('span', { 'class': 'cbi-value-description' }, (/:443$/.test(t.target) ? _('(LuCI over HTTPS: the VPS sees nothing)') : _('(LuCI over HTTP: the VPS can see the pages - enable HTTPS in uhttpd)'))) ]) : '',
 				t.pubkey ? E('div', {}, [ E('strong', {}, _('Router key - put it into ~/.ssh/authorized_keys of the user on the VPS:')), E('pre', { 'class': 'detour-key' }, t.pubkey) ]) : E('div', {}, _('No router key yet.')),
-				t.host_fp ? E('div', {}, [ E('strong', {}, _('Server key: ')), E('code', {}, t.host_fp), E('div', { 'class': 'cbi-value-description' }, _('Compare with ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub on the VPS.')) ]) : '',
+				t.host_fp ? E('div', {}, [ E('strong', {}, (_('Server key:') + ' ')), E('code', {}, t.host_fp), E('div', { 'class': 'cbi-value-description' }, _('Compare with ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub on the VPS.')) ]) : '',
 				t.last ? E('div', { 'class': 'cbi-value-description' }, _('Last: %s').format(t.last)) : '');
 		};
 		const refresh = function() { return L.resolveDefault(callTunStatus(), {}).then(show); };
@@ -51,23 +51,28 @@ return view.extend({
 		const m = new form.Map('detour', _('Detour settings'));
 
 		let s = m.section(form.NamedSection, 'main', 'main', _('General'));
-		let o = s.option(form.Flag, 'enabled', _('Enabled'));
+		let o = s.option(form.Flag, 'enabled', _('Enabled'),
+			_('Off: no policy works, all traffic goes directly through the provider.'));
 		o.default = '1';
 
-		o = s.option(form.Value, 'probe_period', _('Check exits every (s)'));
+		o = s.option(form.Value, 'probe_period', _('Check exits every (s)'),
+			_('How often each exit is checked with a real request. Shorter: a failure is noticed sooner, a little more traffic.'));
 		o.datatype = 'range(1,60)';
 		o.placeholder = '2';
 
-		o = s.option(form.Value, 'fails', _('Failed checks before switching'));
+		o = s.option(form.Value, 'fails', _('Failed checks before switching'),
+			_('How many checks in a row must fail before a policy moves to its next exit. 2 with checks every 2 s: about 4-6 s.'));
 		o.datatype = 'range(1,10)';
 		o.placeholder = '2';
 
 		s = m.section(form.NamedSection, 'main', 'main', _('Router DNS'),
 			_('Through the tunnel: the router resolves names via the exits of the selected policy, so the provider does not see the queries. ' +
-			  'If all of its exits are down, it switches to an encrypted resolver (DoH/DoT/DoQ) directly; traffic of the policies stays blocked.'));
+			  'If all of its exits are down, it switches to an encrypted resolver (DoH/DoT/DoQ) directly; traffic of the policies stays blocked. ' +
+			  'Encrypted: the router always asks the encrypted resolvers directly, whatever the exits do.'));
 		o = s.option(form.ListValue, 'dns', _('Mode'));
 		o.value('off', _('Not managed (provider DNS)'));
 		o.value('tunnel', _('Through the tunnel'));
+		o.value('encrypted', _('Encrypted (DoH/DoT/DoQ), directly'));
 		o.default = 'off';
 
 		o = s.option(form.ListValue, 'dns_policy', _('Policy'));
@@ -79,10 +84,11 @@ return view.extend({
 		o.placeholder = '1.1.1.1';
 		o.depends('dns', 'tunnel');
 
-		o = s.option(form.DynamicList, 'dns_fallback', _('Encrypted fallback resolvers'),
-			_('quic://, tls:// or https:// addresses. Needs the dnsproxy package.'));
+		o = s.option(form.DynamicList, 'dns_fallback', _('Encrypted resolvers'),
+			_('quic://, tls:// or https:// addresses, asked in parallel. Through the tunnel: used when its exits are down; encrypted: always. Needs the dnsproxy package.'));
 		o.placeholder = 'quic://dns.adguard-dns.com';
 		o.depends('dns', 'tunnel');
+		o.depends('dns', 'encrypted');
 
 		if (!uci.get('detour', 'notify')) uci.add('detour', 'notify', 'notify');
 		s = m.section(form.NamedSection, 'notify', 'notify', _('Telegram notifications'),

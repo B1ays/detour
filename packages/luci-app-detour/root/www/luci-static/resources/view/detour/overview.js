@@ -4,6 +4,8 @@
 'require ui';
 'require poll';
 'require dom';
+'require uci';
+'require detour.msg as msg';
 
 const callStatus = rpc.declare({ object: 'detour', method: 'status' });
 const callPin = rpc.declare({ object: 'detour', method: 'pin', params: [ 'policy', 'exit' ] });
@@ -29,8 +31,16 @@ function fmtTime(ts) {
 
 return view.extend({
 	load: function() {
-		return callStatus().catch(function() { return null; });
+		return Promise.all([ callStatus().catch(function() { return null; }), uci.load('detour') ]).then(function(r) { return r[0]; });
 	},
+
+	// names people gave to exits and policies (internal names otherwise)
+	labels: function() {
+		const out = {};
+		[ 'exit', 'policy' ].forEach(function(t) { uci.sections('detour', t).forEach(function(s) { out[s['.name']] = s.label || s['.name']; }); });
+		return out;
+	},
+	lab: function(n) { return (this.labels()[n]) || n; },
 
 	pinHandler: function(policy, sel) {
 		const v = sel.value;
@@ -50,12 +60,12 @@ return view.extend({
 		]) ];
 		(st.policies || []).forEach(function(p) {
 			const sel = E('select', { 'class': 'cbi-input-select' }, [ E('option', { 'value': '' }, _('Automatic')) ].concat(
-				p.exits.map(function(x) { return E('option', { 'value': x, 'selected': p.pinned == x ? '' : null }, x); })));
+				p.exits.map(function(x) { return E('option', { 'value': x, 'selected': p.pinned == x ? '' : null }, self.lab(x)); })));
 			sel.addEventListener('change', ui.createHandlerFn(self, 'pinHandler', p.name, sel));
 			rows.push(E('tr', { 'class': 'tr' }, [
-				td(_('Policy'), [ p.name, p.enabled ? '' : ' (' + _('disabled') + ')' ]),
-				td(_('Active exit'), E('strong', {}, p.active)),
-				td(_('Exits in order'), p.exits.join(' → ')),
+				td(_('Policy'), [ self.lab(p.name), p.enabled ? '' : ' (' + _('disabled') + ')' ]),
+				td(_('Active exit'), E('strong', {}, p.active ? self.lab(p.active) : _('none - blocked'))),
+				td(_('Exits in order'), p.exits.map(function(x) { return self.lab(x); }).join(' → ')),
 				td(_('Manual choice'), sel)
 			]));
 		});
@@ -63,6 +73,7 @@ return view.extend({
 	},
 
 	renderExits: function(st) {
+		const self = this;
 		const rows = [ E('tr', { 'class': 'tr table-titles' }, [
 			E('th', { 'class': 'th' }, _('Exit')),
 			E('th', { 'class': 'th' }, _('Device')),
@@ -72,7 +83,7 @@ return view.extend({
 		]) ];
 		(st.exits || []).forEach(function(x) {
 			rows.push(E('tr', { 'class': 'tr' }, [
-				td(_('Exit'), x.name),
+				td(_('Exit'), self.lab(x.name)),
 				td(_('Device'), x.colo ? [ x.device, ' ', E('small', { 'title': _('Cloudflare point the WARP tunnel lands on') }, '(' + x.colo + ')') ] : x.device),
 				td(_('State'), !x.enabled ? _('disabled') : badge(x.healthy, _('working'), x.up ? _('not responding') : _('down'))),
 				td(_('Last good probe'), x.probe ? fmtTime(x.last_ok) : _('device state only')),
@@ -83,7 +94,7 @@ return view.extend({
 	},
 
 	renderInfo: function(st) {
-		const dnsText = { 'off': _('not managed'), 'tunnel': _('through the tunnel'), 'fallback': _('encrypted fallback (all exits down)') }[st.dns] || st.dns;
+		const dnsText = { 'off': _('not managed'), 'tunnel': _('through the tunnel'), 'fallback': _('encrypted fallback (all exits down)'), 'encrypted': _('encrypted (DoH/DoT/DoQ)') }[st.dns] || st.dns;
 		const items = [
 			E('div', {}, [ E('strong', {}, _('Router DNS') + ': '), dnsText ]),
 			E('div', {}, [ E('strong', {}, _('Switches') + ': '), String(st.switches), st.last_switch ? ' (' + fmtTime(st.last_switch) + ')' : '' ])
@@ -95,16 +106,18 @@ return view.extend({
 			items.push(E('div', {}, [ E('strong', {}, _('SSH') + ': '),
 				_('password login only from the local network; elsewhere keys only'),
 				st.auth.root_keys ? '' : E('span', { 'class': 'detour-warn' }, ' — ' + _('no SSH key for root: SSH from outside is impossible until you add one (System → Administration → SSH-Keys)')) ]));
+		const labels = this.labels();
 		(st.errors || []).forEach(function(e) {
-			items.push(E('div', { 'class': 'alert-message warning' }, _('Configuration') + ': ' + e));
+			items.push(E('div', { 'class': 'alert-message warning' }, _('Configuration') + ': ' + msg.configError(e, labels)));
 		});
 		return E('div', { 'id': 'detour-info', 'class': 'detour-info' }, items);
 	},
 
 	renderEvents: function(st) {
+		const evl = this.labels();
 		const ev = (st.events || []).slice().reverse().map(function(l) {
 			const i = l.indexOf(' ');
-			return fmtTime(+l.substr(0, i)) + '  ' + l.substr(i + 1);
+			return fmtTime(+l.substr(0, i)) + '  ' + msg.event(l.substr(i + 1), evl);
 		});
 		return E('pre', { 'id': 'detour-events', 'class': 'detour-log' }, ev.length ? ev.join('\n') : _('No events yet.'));
 	},

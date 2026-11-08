@@ -17,9 +17,11 @@ cleanup() {
 	for s in $(uci show dhcp | grep -E "mac='(52:54:00:aa:00:01|52:54:00:aa:00:02)'" | cut -d. -f2); do uci delete dhcp.$s; done
 	uci -q delete detour.direct.device; uci -q delete detour.direct.domain; uci -q delete detour.direct.dst
 	uci -q delete detour.notify
+	uci -q delete detour.main.dns_fallback; uci -q delete detour.main.dns_bootstrap; uci -q set detour.main.dns=off
 	uci commit; rm -f /etc/detour/engines/st_*.json /etc/detour/lists/st_*
 }
 cleanup
+lab tests/lab/restart-sb.sh >/dev/null   # the shadowsocks server the imported xray exit dials (gone after a lab reboot)
 
 echo "== build a stock-format backup"
 rm -rf $S; mkdir -p $S/configs $S/xray-configs $S/groups
@@ -75,6 +77,10 @@ printf '100.64.200.0/24\n' > $S/lists/tunnel-cidr/blob/s2
 printf 's1\turl\t1\tauto\t0\t0\tdoms\t%s/domains.txt\n' "$L" > $S/lists/tunnel-domains/sources.tsv
 printf 's1\turl\t1\tcidr\t0\t0\tdirect\t%s/direct.txt\n' "$L" > $S/lists/bypass-ip/sources.tsv
 printf 's1\turl\t1\tauto\t0\t0\tads\thttp://ads.example/x\n' > $S/lists/adblock/sources.tsv
+# encrypted DNS (doh-lib.sh): resolver from the catalogue, "encrypt always"
+echo quad9 > $S/.doh-resolver; echo on > $S/.doh-on
+# port rules (port-lib.sh: src proto ports where)
+printf 'any\tudp\t443\tvpn\nany\tboth\t6000-6100,7000\ts2\nany\ttcp\tall\tvpn\n192.168.1.201\ttcp\t22\tvpn\nany\tudp\t53\tblock\n' > $S/.port-rules
 # geo categories (geo.sh registry: key action count ts slot)
 mkdir -p $S/geo
 printf 'rfgs-ru-blocked	vpn	73515	0	0
@@ -101,6 +107,10 @@ echo "$OUT" | grep -q 'st_l_tunnel_cidr -> vpn: .*cidr.txt + local entries (from
 echo "$OUT" | grep -q 'st_l_tunnel_domains -> vpn' && echo "$OUT" | grep -q 'st_l_bypass_ip -> direct' && ok "domain and bypass lists" || bad "other lists"
 echo "$OUT" | grep -q 'source off: switched off' && ok "disabled source reported" || bad "disabled source"
 echo "$OUT" | grep -q 'lists/adblock: blocking' && ok "adblock reported as not carried over" || bad "adblock"
+echo "$OUT" | grep -q '"dns": "quad9 (https://dns.quad9.net/dns-query tls://dns.quad9.net), encrypt always"' && ok "encrypted DNS: resolver + encrypt always" || bad "dns: $(echo "$OUT" | grep '"dns"')"
+echo "$OUT" | grep -q 'st_p_vpn via main: .*ports udp/443 tcp/1-65535' && ok "port rules -> main policy" || bad "vpn ports: $(echo "$OUT" | grep 'st_p_vpn via')"
+echo "$OUT" | grep -q 'st_p_s2 via s2 -> main: .*ports 6000-6100 7000' && ok "port rules -> slot policy (both protocols)" || bad "s2 ports: $(echo "$OUT" | grep 'st_p_s2 via')"
+echo "$OUT" | grep -q 'port rule 192.168.1.201 tcp/22 -> vpn: per-device' && echo "$OUT" | grep -q 'port rule any udp/53 -> block: .*port rules are not part' && ok "per-device and block port rules reported" || bad "port reports"
 echo "$OUT" | grep -q 'st_g_rfgs_ru_blocked -> vpn: https://cdn.jsdelivr.net/gh/runetfreedom/russia-blocked-geosite@release/ru-blocked.txt' && ok "geo: runetfreedom geosite -> main policy" || bad "geo rfgs: $(echo "$OUT" | grep g_rfgs)"
 echo "$OUT" | grep -q 'st_g_v2fly_youtube -> s2: v2fly:youtube' && ok "geo: v2fly category on slot 2 -> its policy" || bad "geo v2fly: $(echo "$OUT" | grep g_v2fly)"
 echo "$OUT" | grep -q 'st_g_rfip_telegram -> direct: .*russia-blocked-geoip@release/text/telegram.txt' && ok "geo: geoip CIDR -> direct" || bad "geo rfip: $(echo "$OUT" | grep g_rfip)"
@@ -124,6 +134,9 @@ detour import $S2 | grep -q 'data=cidr4&site=steampowered.com&site=discord.com +
 echo "== apply"
 detour import /tmp/stock.tgz --apply > /tmp/import.out
 grep -q 'exit st_main' /tmp/import.out && ok "applied" || bad "apply: $(cat /tmp/import.out)"
+[ "$(uci -q get detour.main.dns)" = encrypted ] && [ "$(uci -q get detour.main.dns_fallback)" = 'https://dns.quad9.net/dns-query tls://dns.quad9.net' ] && [ "$(uci -q get detour.main.dns_bootstrap)" = 9.9.9.9:53 ] && ok "router DNS: encrypted, quad9" || bad "dns: $(uci -q show detour.main | grep dns)"
+[ "$(uci -q get detour.st_p_vpn.port)" = 'udp/443 tcp/1-65535' ] && ok "policy ports written" || bad "ports: $(uci -q get detour.st_p_vpn.port)"
+[ -z "$(uci -q get detour.st_main.warp)" ] && ok "a plain WireGuard exit is not marked WARP" || bad "st_main marked warp"
 [ "$(uci -q get detour.st_g_rfip_telegram.min_lines)" = 4 ] && [ "$(uci -q get detour.st_g_rfgs_ru_blocked.min_lines)" = 10 ] && ok "geo lists: failure threshold from the stock size (8 -> 4, 73515 -> 10)" || bad "min_lines: $(uci -q get detour.st_g_rfip_telegram.min_lines) $(uci -q get detour.st_g_rfgs_ru_blocked.min_lines)"
 [ "$(uci -q get detour.st_smyprov.user_agent)" = Happ/2.0 ] && [ "$(uci -q get detour.st_smyprov.hwid)" = abc-123 ] && ok "subscription with its client UA and hwid" || bad "sub fields"
 [ "$(uci -q get network.st_main.proto)" = wireguard ] && ok "netifd st_main" || bad "network st_main"
@@ -157,6 +170,13 @@ detour import /tmp/stock.tgz --apply >/dev/null
 reload_config; sleep 3
 [ "$(wg show st_main peers | wc -l)" = 1 ] && ok "one peer in the kernel" || bad "kernel peers: $(wg show st_main peers | wc -l)"
 
+echo "== a WARP config is marked WARP (the daemon then watches its Cloudflare point)"
+S4=/tmp/stock-state4; rm -rf $S4; mkdir -p $S4/configs; echo awg > $S4/.transport; echo cf > $S4/.active
+printf '[Interface]\nPrivateKey = %s\nAddress = 172.16.0.2/32\n[Peer]\nPublicKey = bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=\nEndpoint = 162.159.192.1:2408\nAllowedIPs = 0.0.0.0/0\n' "$(wg genkey)" > $S4/configs/cf.conf
+detour import $S4 --apply prefix=w4_ >/dev/null
+[ "$(uci -q get detour.w4_main.warp)" = 1 ] && ok "WARP exit marked (warp=1)" || bad "w4_main warp='$(uci -q get detour.w4_main.warp)'"
+R=$(detour warp-unregister w4_main); echo "$R" | grep -q '"name": "w4_main"' && [ -z "$(uci -q get detour.w4_main)" ] && ok "a WARP exit without a registration file can be removed" || bad "unregister: $R"
+for s in $(uci show detour | sed -n "s/^detour\.\(w4_[a-z0-9_]*\)=.*/\1/p"); do uci -q delete detour.$s; done; for z in vpn detour; do uci -q del_list firewall.$z.network=w4_main; done; uci commit; ubus call detour reload >/dev/null
 echo "== archive with an unsafe path is refused"
 wget -qO /tmp/evil.tgz http://10.0.2.2:8765/tests/stub/evil.tgz
 detour import /tmp/evil.tgz >/dev/null 2>&1 && bad "unsafe archive accepted" || ok "unsafe archive refused"

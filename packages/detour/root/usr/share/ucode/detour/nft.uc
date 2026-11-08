@@ -151,6 +151,9 @@ export function render(cfg, active, opts) {
 		add(sprintf('add rule %s classify ip daddr @dst4_p%d %s', T, p.id, setp(p.id)));
 		add(sprintf('add rule %s classify ip daddr @dom4_p%d %s', T, p.id, setp(p.id)));
 		add(sprintf('add rule %s classify ip daddr @lst4_p%d %s', T, p.id, setp(p.id)));
+		for (let pr in [ 'tcp', 'udp' ])
+			if (length(p.ports?.[pr]))
+				add(sprintf('add rule %s classify meta l4proto %s th dport { %s } %s', T, pr, join(', ', p.ports[pr]), setp(p.id)));
 	}
 
 	// 8. LAN ingress: established flows keep their decision (ct mark pins policy+exit)
@@ -187,6 +190,9 @@ export function render(cfg, active, opts) {
 		add(sprintf('add rule %s v6block iifname @lan_ifs meta nfproto ipv6 ether saddr @dev_p%d counter reject', T, p.id));
 		add(sprintf('add rule %s v6block iifname @lan_ifs ip6 daddr @dst6_p%d counter reject', T, p.id));
 		add(sprintf('add rule %s v6block iifname @lan_ifs ip6 daddr @dom6_p%d counter reject', T, p.id));
+		for (let pr in [ 'tcp', 'udp' ])
+			if (length(p.ports?.[pr]))
+				add(sprintf('add rule %s v6block iifname @lan_ifs meta nfproto ipv6 meta l4proto %s th dport { %s } counter reject', T, pr, join(', ', p.ports[pr])));
 	}
 
 	// 12. DNS of LAN devices goes to the router (domain policies need it): redirect :53, block DoT/DoQ :853

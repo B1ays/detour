@@ -140,11 +140,21 @@ export function load(conf) {
 			if (match(d, RE_MAC)) push(devs, lc(d));
 			else push(errors, sprintf('policy %s: bad device MAC "%s"', n, d));
 		}
+		// destination ports: "443" (TCP and UDP), "udp/443", "tcp/6000-6100" - one more "or" condition
+		const ports = { tcp: [], udp: [] };
+		for (let x in as_list(s.port)) {
+			const m = match(lc(trim(x)), /^(tcp\/|udp\/)?([0-9]{1,5})(-([0-9]{1,5}))?$/);
+			const lo = m ? int(m[2]) : 0, hi = (m && m[4] != null) ? int(m[4]) : lo;
+			if (!m || lo < 1 || hi > 65535 || hi < lo) { push(errors, sprintf('policy %s: bad port "%s"', n, x)); continue; }
+			const spec = (hi > lo) ? sprintf('%d-%d', lo, hi) : sprintf('%d', lo);
+			for (let pr in (m[1] ? [ substr(m[1], 0, 3) ] : [ 'tcp', 'udp' ]))
+				if (index(ports[pr], spec) < 0) push(ports[pr], spec);
+		}
 		pids[id] = n;
 		push(policies, {
 			name: n, id, exits: ex,
 			enabled: bool(s.enabled, true),
-			dst4: a.v4, dst6: a.v6, domains: doms, devices: devs,
+			dst4: a.v4, dst6: a.v6, domains: doms, devices: devs, ports,
 			label: s.label ?? n,
 		});
 	});

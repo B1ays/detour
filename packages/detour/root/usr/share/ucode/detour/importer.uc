@@ -41,6 +41,27 @@ function ini(text) {
 	return o;
 }
 
+// the key every Cloudflare WARP endpoint presents (warp.uc WARP_PUB): a WG/AWG exit with this peer is WARP
+const WARP_PUB = 'bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=';
+
+// stock doh-lib.sh catalogue (name -> DoH URL, DoT name, bootstrap): its resolver choice (.doh-resolver)
+// becomes the encrypted resolvers of "Router DNS"; "encrypt always" (.doh-on = on) the encrypted mode
+const DOH_CATALOG = {
+	cloudflare: [ 'https://1.1.1.1/dns-query', 'cloudflare-dns.com', '1.1.1.1' ],
+	google: [ 'https://dns.google/dns-query', 'dns.google', '8.8.8.8' ],
+	quad9: [ 'https://dns.quad9.net/dns-query', 'dns.quad9.net', '9.9.9.9' ],
+	adguard: [ 'https://dns.adguard-dns.com/dns-query', 'dns.adguard-dns.com', '94.140.14.14' ],
+	controld: [ 'https://freedns.controld.com/p0', 'p0.freedns.controld.com', '1.1.1.1' ],
+	dnssb: [ 'https://doh.dns.sb/dns-query', 'dot.sb', '185.222.222.222' ],
+	mullvad: [ 'https://dns.mullvad.net/dns-query', 'dns.mullvad.net', '1.1.1.1' ],
+	wikimedia: [ 'https://wikimedia-dns.org/dns-query', 'wikimedia-dns.org', '1.1.1.1' ],
+	dns4eu: [ 'https://unfiltered.joindns4.eu/dns-query', 'unfiltered.joindns4.eu', '86.54.11.100' ],
+	opendns: [ 'https://doh.opendns.com/dns-query', 'dns.opendns.com', '208.67.222.222' ],
+	appliedprivacy: [ 'https://doh.applied-privacy.net/query', 'dot1.applied-privacy.net', '1.1.1.1' ],
+	libredns: [ 'https://doh.libredns.gr/dns-query', 'dot.libredns.gr', '1.1.1.1' ],
+	nextdns: [ 'https://dns.nextdns.io/', 'dns.nextdns.io', '45.90.28.0' ],
+};
+
 const AWG_KEYS = [ 'Jc', 'Jmin', 'Jmax', 'S1', 'S2', 'S3', 'S4', 'H1', 'H2', 'H3', 'H4', 'I1', 'I2', 'I3', 'I4', 'I5' ];
 
 function wg_exit(name, text, from) {
@@ -294,6 +315,23 @@ export function plan(dir) {
 		else { push(skipped, { what: 'group ' + gname, why: 'direction ' + gdir + ' not supported' }); continue; }
 		for (let m in mem) classify_member(m, tdst, tdom) || push(skipped, { what: 'group ' + gname + ' member ' + m, why: 'not an address/domain' });
 	}
+	// port rules of the whole network (src "any") to the VPN or an extra exit -> policy ports
+	for (let r in tsv(dir, '.port-rules')) {
+		const src = r[0], proto = r[1], plist = r[2], dest = r[3];
+		const what = sprintf('port rule %s %s/%s -> %s', src ?? '?', proto ?? '?', plist ?? '?', dest ?? '?');
+		if (src != 'any') { push(skipped, { what, why: 'per-device port rules are not carried over' }); continue; }
+		if (index([ 'tcp', 'udp', 'both' ], proto) < 0) { push(skipped, { what, why: 'unknown protocol' }); continue; }
+		let p = null;
+		if (dest == 'vpn') p = vpn;
+		else { const m = match(dest ?? '', /^s([2-7])$/); if (m && slot_pol[int(m[1])]) p = slot_pol[int(m[1])]; }
+		if (!p) { push(skipped, { what, why: (dest == 'direct' || dest == 'block') ? '"' + dest + '" port rules are not part of Detour for OpenWrt' : 'its exit is not carried over' }); continue; }
+		const items = (plist == 'all') ? [ '1-65535' ] : split(plist ?? '', ',');
+		let bad = false;
+		for (let x in items) if (!match(x, /^[0-9]{1,5}(-[0-9]{1,5})?$/)) bad = true;
+		if (bad || !length(items)) { push(skipped, { what, why: 'bad port list' }); continue; }
+		p.port ??= [];
+		for (let x in items) push(p.port, (proto == 'both') ? x : proto + '/' + x);
+	}
 	if (length(vpn.exits)) push(policies, vpn);
 	else if (length(vpn.dst) + length(vpn.domain) + length(vpn.device)) push(skipped, { what: 'main policy', why: 'its exit could not be carried over' });
 	for (let id, p in slot_pol) push(policies, p);
@@ -318,7 +356,6 @@ export function plan(dir) {
 		'server': 'home access server: set it up again (new keys)',
 		'sched': 'access schedules: use firewall rules with a time window',
 		'.zapret-on': 'zapret: install the zapret package and choose a strategy',
-		'.port-rules': 'port rules: not supported yet',
 		'.split-runet': 'split DNS for Russian domains: not needed here (the router resolves through dnsmasq)',
 		'.doh-on': 'encrypted DNS: set "Router DNS" in Detour settings',
 		'.warp-reg': 'WARP registration: register WARP again from Detour (new device)',
@@ -348,7 +385,14 @@ export function plan(dir) {
 		push(subs, { name: 's' + sn, url: r[1], label: r[2] ?? r[0], ua: (cl.ua && cl.ua != '-') ? cl.ua : null,
 			hwid: (cl.hwon && cl.hwid && cl.hwid != '-') ? cl.hwid : null });
 	}
-	return { exits, policies, direct, notify, hosts, skipped, lists, subs };
+	let dns = null;
+	const dname = word(dir, '.doh-resolver'), don = word(dir, '.doh-on') == 'on';
+	if (dname || don) {
+		const d = DOH_CATALOG[dname ?? 'cloudflare'];
+		if (d) dns = { name: dname ?? 'cloudflare', fallback: [ d[0], 'tls://' + d[1] ], bootstrap: d[2] + ':53', mode: don ? 'encrypted' : null };
+		else push(skipped, { what: 'encrypted DNS resolver ' + dname, why: 'not in the catalogue (a custom or ODoH resolver) - set it in "Router DNS"' });
+	}
+	return { exits, policies, direct, notify, hosts, skipped, lists, subs, dns };
 }
 
 function uniq(l) { const o = []; for (let x in l) if (index(o, x) < 0) push(o, x); return o; }
@@ -426,8 +470,11 @@ export function apply(p, prefix) {
 		c.set('detour', n, 'id', '' + id);
 		c.set('detour', n, 'iface', n);
 		if (!iface) c.set('detour', n, 'device', substr(n, 0, 11) + 'tun');
-		c.set('detour', n, 'label', e.label ?? ('stock ' + e.name));
+		// the name it had in stock: a slot's label, else the config's own name (the main exit), not "stock main"
+		c.set('detour', n, 'label', e.label ?? e.cfg ?? ('stock ' + e.name));
 		c.set('detour', n, 'probe', 'https://1.1.1.1/cdn-cgi/trace');
+		// a WARP device: the daemon watches its Cloudflare point and port (warppick) - stock's watchdog did too
+		if (iface && e.peer?.public_key == WARP_PUB) c.set('detour', n, 'warp', '1'); else c.delete('detour', n, 'warp');
 		push(done, sprintf('exit %s (%s from %s, id %d)', n, e.kind, e.from, id));
 	}
 	for (let e in p.exits)
@@ -449,6 +496,7 @@ export function apply(p, prefix) {
 		if (length(pol.dst)) c.set('detour', n, 'dst', uniq(pol.dst));
 		if (length(pol.domain)) c.set('detour', n, 'domain', uniq(pol.domain));
 		if (length(pol.device)) c.set('detour', n, 'device', uniq(pol.device));
+		if (length(pol.port ?? [])) c.set('detour', n, 'port', uniq(pol.port));
 		push(done, sprintf('policy %s: %d addresses, %d domains, %d devices', n, length(uniq(pol.dst)), length(uniq(pol.domain)), length(uniq(pol.device))));
 	}
 	if (!c.get('detour', 'direct')) c.set('detour', 'direct', 'direct');
@@ -484,6 +532,12 @@ export function apply(p, prefix) {
 		}
 		else c.delete('detour', n, 'file');
 		push(done, sprintf('list %s -> %s: %d URL(s)%s (from %s)', n, c.get('detour', n, 'policy'), length(l.urls), l.text ? ' + local entries' : '', l.from));
+	}
+	if (p.dns) {
+		c.set('detour', 'main', 'dns_fallback', p.dns.fallback);
+		c.set('detour', 'main', 'dns_bootstrap', [ p.dns.bootstrap ]);
+		if (p.dns.mode) c.set('detour', 'main', 'dns', p.dns.mode);
+		push(done, sprintf('encrypted DNS: %s%s', p.dns.name, p.dns.mode ? ', always on (router DNS "encrypted")' : ' (resolvers of "Router DNS"; the mode is left as it is)'));
 	}
 	if (p.notify) {
 		c.set('detour', 'notify', 'notify');

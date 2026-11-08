@@ -187,7 +187,14 @@ export function register(opts) {
 export function unregister(name) {
 	const f = DIR + '/' + name + '.json';
 	let reg;
-	try { reg = json(fs.readfile(f)); } catch (e) { return { error: 'no WARP registration ' + name }; }
+	// a WARP exit without a registration file (imported from stock: config only, no token) is removed
+	// here without asking Cloudflare
+	try { reg = json(fs.readfile(f)); } catch (e) { reg = null; }
+	if (reg == null) {
+		const c = cursor();
+		if (c.get('detour', name) != 'exit' || c.get('detour', name, 'warp') != '1') return { error: 'no WARP exit ' + name };
+		reg = {};
+	}
 	let api_ok = false;
 	const c0 = cursor();
 	if (match(reg.id ?? '', RE_ID) && match(reg.token ?? '', RE_ID)) {

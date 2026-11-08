@@ -34,8 +34,11 @@ def concat(src, i):
 def extract(root):
     out, seen = [], {}
     views = os.path.join(root, 'root/www/luci-static/resources/view/detour')
-    for f in sorted(os.listdir(views)):
-        src = open(os.path.join(views, f), encoding='utf-8').read()
+    shared = os.path.join(root, 'root/www/luci-static/resources/detour')
+    files = [ os.path.join(views, f) for f in sorted(os.listdir(views)) ] +         [ os.path.join(shared, f) for f in sorted(os.listdir(shared)) if f.endswith('.js') ]
+    for path in files:
+        f = os.path.basename(path)
+        src = open(path, encoding='utf-8').read()
         for m in re.finditer(r'(?<![\w.])(N_|_)\(', src):
             i = m.end()
             if m.group(1) == '_':

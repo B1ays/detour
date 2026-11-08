@@ -82,7 +82,7 @@ export function remove_all() {
 // under a policy. Unoffloaded, their next packet is classified anew and moves to the exit; offloaded
 // (fw4 flowtable - BE7000: software for Wi-Fi and the engines' tun, PPE for wired ports) they keep going
 // directly and never meet our rules again. Deleting the entry gives both cases the same outcome.
-export function flush_unclassified(dsts, macs) {
+export function flush_unclassified(dsts, macs, ports) {
 	let n = 0;
 	for (let d in dsts) {
 		const m = match(d, /^([0-9.]+)(\/([0-9]+))?$/);
@@ -99,6 +99,10 @@ export function flush_unclassified(dsts, macs) {
 			const x = match(l, /^([0-9.]+) .*lladdr ([0-9a-f:]+)/);
 			if (x && index(macs, x[2]) >= 0) { run(sprintf('conntrack -D -m 0/0xffff00 -s %s', x[1])); n++; }
 		}
+	}
+	for (let pp in ports ?? []) {
+		const x = match(pp, /^(tcp|udp)\/([0-9]+)$/);   // "tcp/443"; ranges are left to expire
+		if (x) { run(sprintf('conntrack -D -m 0/0xffff00 -p %s --dport %s', x[1], x[2])); n++; }
 	}
 	return n;
 }

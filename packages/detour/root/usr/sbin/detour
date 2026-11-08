@@ -13,6 +13,7 @@ import * as warp from 'detour.warp';
 import * as warppick from 'detour.warppick';
 import * as subs from 'detour.subs';
 import * as importer from 'detour.importer';
+import * as exitui from 'detour.exitui';
 import * as fs from 'fs';
 
 const cmd = ARGV[0];
@@ -84,7 +85,8 @@ case 'warp-register': {
 }
 case 'sub-update': {
 	// detour sub-update [name]
-	const r = ARGV[1] ? subs.update(ARGV[1]) : subs.update_all();
+	// --due (hourly cron): only those whose own interval has passed
+	const r = (ARGV[1] == '--due') ? subs.update_due() : ARGV[1] ? subs.update(ARGV[1]) : subs.update_all();
 	printf('%.J\n', r);
 	exit((type(r) == 'object' && r.error) ? 1 : 0);
 }
@@ -110,11 +112,13 @@ case 'import': {
 	for (let a in ARGV) if (substr(a, 0, 7) == 'prefix=') prefix = substr(a, 7);
 	const out = {
 		exits: map(p.exits, (e) => sprintf('%s%s: %s from %s%s', prefix, e.name, e.kind, e.from, e.via ? ' (connects through ' + prefix + e.via + ')' : '')),
-		policies: map(p.policies, (x) => sprintf('%sp_%s via %s: %d addresses, %d domains, %d devices', prefix, x.name, join(' -> ', x.exits), length(x.dst), length(x.domain), length(x.device))),
+		policies: map(p.policies, (x) => sprintf('%sp_%s via %s: %d addresses, %d domains, %d devices%s', prefix, x.name, join(' -> ', x.exits), length(x.dst), length(x.domain), length(x.device),
+			length(x.port ?? []) ? sprintf(', ports %s', join(' ', x.port)) : '')),
 		direct: sprintf('%d addresses, %d devices, %d domains', length(p.direct.dst), length(p.direct.device), length(p.direct.domain)),
 		lists: map(p.lists, (l) => sprintf('%s%s -> %s: %s%s (from %s)', prefix, l.name, l.policy, join(' ', l.urls), l.text ? ' + local entries' : '', l.from)),
 		subscriptions: map(p.subs, (s) => sprintf('%s%s: %s (the address is kept secret)', prefix, s.name, s.label)),
 		notify: p.notify ? 'Telegram' : null,
+		dns: p.dns ? sprintf('%s (%s)%s', p.dns.name, join(' ', p.dns.fallback), p.dns.mode ? ', encrypt always' : '') : null,
 		dhcp_hosts: length(p.hosts),
 		not_carried_over: map(p.skipped, (s) => s.what + ': ' + s.why),
 	};
@@ -145,6 +149,27 @@ case 'sshtun': {
 	printf('%.J
 ', res);
 	exit(res.error ? 1 : 0);
+}
+case 'exit-info': printf('%.J\n', exitui.info()); break;
+case 'exit-remove': {
+	// detour exit-remove <exit>: the exit with its engine, interface, peers, zone entry, subscription
+	const r = exitui.remove(ARGV[1]);
+	printf('%.J\n', r); exit(r.error ? 1 : 0);
+}
+case 'exit-pick': {
+	// detour exit-pick <subscription exit> <server key | ->  ("-" = automatic)
+	const r = exitui.pick(ARGV[1], (ARGV[2] == '-') ? null : ARGV[2]);
+	printf('%.J\n', r); exit(r.error ? 1 : 0);
+}
+case 'exit-config-set': {
+	// detour exit-config-set <exit> '<outbound JSON>'
+	const r = exitui.outbound_set(ARGV[1], ARGV[2]);
+	printf('%.J\n', r); exit(r.error ? 1 : 0);
+}
+case 'exit-set-link': {
+	// detour exit-set-link <exit> '<share link>'
+	const r = exitui.set_link(ARGV[1], ARGV[2]);
+	printf('%.J\n', r); exit(r.error ? 1 : 0);
 }
 case 'status': call('status'); break;
 case 'reload': call('reload'); break;

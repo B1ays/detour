@@ -1,3 +1,3 @@
 #!/bin/sh
-# cron: refresh every subscription (a failed download keeps the previous servers)
-exec /usr/sbin/detour sub-update >/dev/null 2>&1
+# cron, hourly: refresh the subscriptions whose own interval passed (a failed download keeps the previous servers)
+exec /usr/sbin/detour sub-update --due >/dev/null 2>&1

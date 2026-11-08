@@ -13,7 +13,10 @@ skuid() { nft list chain inet detour output | grep skuid | sed -n 's/.*skuid \([
 apk info -e dnsproxy >/dev/null || apk add -q dnsproxy
 /etc/init.d/dnsproxy disable 2>/dev/null; /etc/init.d/dnsproxy stop 2>/dev/null
 echo "== enable dns=tunnel"
-uci set detour.main.dns=tunnel; uci set detour.main.dns_policy=vpn; uci commit detour; reload_config; sleep 6
+uci set detour.main.dns=tunnel; uci set detour.main.dns_policy=vpn; uci commit detour; reload_config
+# wait for the apply (a previous one may still be restarting dnsmasq in the slow emulation), not a fixed time
+waitfor tunnel dmode 30 || true
+waitfor /tmp/detour/dns.servers "uci -q get dhcp.@dnsmasq[0].serversfile" 15 || true
 expect "dnsmasq serversfile" "$(uci -q get dhcp.@dnsmasq[0].serversfile)" "/tmp/detour/dns.servers"
 expect "noresolv" "$(uci -q get dhcp.@dnsmasq[0].noresolv)" "1"
 expect "servers file" "$(cat /tmp/detour/dns.servers | tr '\n' ' ')" "server=1.1.1.1 server=1.0.0.1 "
@@ -71,6 +74,18 @@ expect "client DNS without dnsproxy" "$(q example.org)" "ok"
 ubus call detour reload >/dev/null; ubus call detour status | jsonfilter -e "@.errors[*]" | grep -q "dnsproxy is not installed" && ok "warning shown (after a reload)" || bad "no warning"
 ifup wgx1; ifup wgx2; apk add -q dnsproxy; /etc/init.d/dnsproxy disable 2>/dev/null; /etc/init.d/dnsproxy stop 2>/dev/null
 waitfor tunnel dmode 25 && ok "back to tunnel" || bad "mode $(dmode)"
+
+echo "== dns=encrypted: the router always asks dnsproxy (DoH/DoT/DoQ), directly, whatever the exits do"
+uci set detour.main.dns=encrypted; uci commit detour; reload_config; sleep 6
+waitfor encrypted dmode 20 && ok "mode encrypted" || bad "mode $(dmode)"
+grep -qx "server=127.0.0.1#$(uci -q get detour.main.dns_fallback_port || echo 5354)" /tmp/detour/dns.servers && ok "servers file: dnsproxy" || bad "servers: $(cat /tmp/detour/dns.servers)"
+waitfor 1 "ps w | grep -c '[d]nsproxy -l 127.0.0.1'" 15 && ok "dnsproxy running" || bad "no dnsproxy"
+[ -n "$(skuid)" ] && ok "dnsproxy exempt from the policies (skuid $(skuid))" || bad "no skuid rule"
+expect "client DNS" "$(q example.org)" "ok"
+ifdown wgx1; ifdown wgx2; sleep 8
+expect "still encrypted with every exit down" "$(dmode)" "encrypted"
+waitfor ok "q example.net" 20 && ok "client DNS with every exit down" || bad "client DNS with every exit down"
+ifup wgx1; ifup wgx2
 
 echo "== dns=off restores dnsmasq"
 uci set detour.main.dns=off; uci commit detour; reload_config; sleep 6

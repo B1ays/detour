@@ -12,7 +12,7 @@ mkdir -p /etc/crontabs
 sed -i '\#/usr/libexec/detour/#d' /etc/crontabs/root 2>/dev/null
 echo '*/2 * * * * /usr/libexec/detour/watchdog' >> /etc/crontabs/root
 echo '17 5 * * * /usr/libexec/detour/lists-update' >> /etc/crontabs/root
-echo '29 5 * * * /usr/libexec/detour/sub-update' >> /etc/crontabs/root
+echo '29 * * * * /usr/libexec/detour/sub-update' >> /etc/crontabs/root
 /etc/init.d/cron restart
 # rules are reloaded in place (sets with dnsmasq data are kept), then the daemon restarts with new code
 /usr/libexec/detour/fw start

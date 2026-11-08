@@ -24,6 +24,15 @@ export function check_name(name) {
 	return match(name ?? '', /^[a-z][a-z0-9_]{0,10}$/) ? null : 'name: a-z, 0-9, _ (max 11, starts with a letter)';
 }
 
+// a subscription server's names (remarks of its links) are kept beside the outbounds: sing-box takes no
+// unknown fields. A server's identity across updates: its remark and address.
+export function names_file(exit) { return sprintf('%s/engines/%s.names.json', PERSIST, exit); }
+export function server_key(o, name) {
+	const v = o?.protocol ? (o.settings?.vnext?.[0] ?? o.settings?.servers?.[0]) : null;
+	const host = v ? v.address : o?.server, port = v ? v.port : o?.server_port;
+	return (name ?? '') + '|' + (host ?? '') + ':' + (port ?? '');
+}
+
 // write the outbound(s) of a sing-box engine; one object or an array (several -> urltest group)
 export function write_outbound(name, outbound) {
 	fs.mkdir(PERSIST); fs.mkdir(PERSIST + '/engines');
@@ -95,6 +104,7 @@ export function list() {
 			device: s.device ?? s['.name'],
 			outbound: s.outbound,
 			via: s.via, via_dev,
+			pick: s.pick,
 			enabled: s.enabled != '0',
 			installed: fs.access(BIN[t]) ? true : false,
 		});
@@ -125,8 +135,17 @@ export function render(e) {
 		// several servers (a subscription): each one dials with the underlay mark / via, a urltest
 		// group picks a working, fast one and keeps checking
 		const outs = [];
-		for (let i, x in r.all) {
-			x.tag = (length(r.all) > 1) ? sprintf('s%d', i + 1) : 'out';
+		// a subscription with one server chosen in LuCI (option pick = its key): only that one; a key that
+		// is gone after an update falls back to the automatic group
+		let all = r.all;
+		if (e.pick) {
+			let names = [];
+			try { names = json(fs.readfile(names_file(replace(e.name, /_eng$/, ''))) ?? '[]'); } catch (x) { }
+			const hit = filter(map(all, (x, i) => [ x, i ]), (p) => server_key(p[0], names[p[1]]) == e.pick);
+			if (length(hit)) all = [ hit[0][0] ];
+		}
+		for (let i, x in all) {
+			x.tag = (length(all) > 1) ? sprintf('s%d', i + 1) : 'out';
 			x.routing_mark = M_UNDERLAY;
 			if (e.via_dev) x.bind_interface = e.via_dev;
 			push(outs, x);

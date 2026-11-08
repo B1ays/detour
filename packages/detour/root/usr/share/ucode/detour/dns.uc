@@ -146,11 +146,11 @@ export function ensure_uci(enabled) {
 	return changed;
 }
 
-// mode: 'tunnel' | 'fallback'
+// mode: 'tunnel' | 'fallback' | 'encrypted' (= the fallback's resolver, permanently)
 export function write_servers(cfg, mode) {
 	fs.mkdir(RUN);
 	let L = [];
-	if (mode == 'fallback') {
+	if (mode == 'fallback' || mode == 'encrypted') {
 		// the encrypted resolver (dnsproxy, direct); without it the provider's DNS, so names still resolve
 		if (fs.access('/usr/bin/dnsproxy')) push(L, sprintf('server=127.0.0.1#%d', cfg.main.dns_fallback_port));
 		else for (let s in wan_dns()) push(L, 'server=' + s);

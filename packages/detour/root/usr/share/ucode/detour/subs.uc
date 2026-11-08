@@ -44,14 +44,14 @@ export function parse_body(body) {
 	body = trim(body ?? '');
 	let j = null;
 	if (substr(body, 0, 1) == '{' || substr(body, 0, 1) == '[') try { j = json(body); } catch (e) { }
-	const out = [], skipped = [];
+	const out = [], skipped = [], names = [];
 	if (j) {
 		const list = (type(j) == 'array') ? j : (j.outbounds ?? []);
 		for (let o in list) {
-			if (type(o) == 'object' && index(PROXY_TYPES, o.type) >= 0) { delete o.detour; push(out, o); }
+			if (type(o) == 'object' && index(PROXY_TYPES, o.type) >= 0) { delete o.detour; push(names, o.tag ?? null); push(out, o); }
 			else if (type(o) == 'object' && index([ 'direct', 'block', 'dns', 'selector', 'urltest' ], o.type) < 0) push(skipped, o.type);
 		}
-		return { outbounds: out, skipped };
+		return { outbounds: out, skipped, names };
 	}
 	if (index(body, '://') < 0) {   // base64 (also url-safe, unpadded)
 		let b = replace(replace(replace(body, /\s+/g, ''), /-/g, '+'), /_/g, '/');
@@ -64,9 +64,10 @@ export function parse_body(body) {
 		if (!length(l) || index(l, '://') < 0) continue;
 		const r = links.parse(l);
 		if (r.error) { push(skipped, r.error); continue; }
+		push(names, r.remark ?? null);
 		push(out, r.outbound);
 	}
-	return { outbounds: out, skipped };
+	return { outbounds: out, skipped, names };
 }
 
 export function update(name) {
@@ -104,6 +105,8 @@ export function update(name) {
 	// the exit is "<name>_sub" (exits and subscriptions share the UCI namespace), its tun "<name>tun"
 	const xn = name + '_sub';
 	const f = engines.write_outbound(xn, outs);
+	// the servers' names for LuCI (and for a chosen server's key): not in the outbounds, sing-box takes no unknown fields
+	fs.writefile(engines.names_file(xn), sprintf('%J\n', slice(p.names, 0, max)));
 	let created = false;
 	if (c.get('detour', xn) != 'exit') {
 		if (c.get('network', xn)) return { error: xn + ' is already used by another interface' };
@@ -119,6 +122,20 @@ export function update(name) {
 	// procd restarts the engine when its generated config changed (procd "file" param)
 	run('/etc/init.d/detour reload');
 	return { name, exit: xn, servers: length(outs), skipped: length(p.skipped), created };
+}
+
+// cron, hourly: the subscriptions whose interval (option interval, hours, default 24) has passed
+export function update_due() {
+	const out = [];
+	cursor().foreach('detour', 'subscription', function(s) {
+		if (s.enabled == '0') return;
+		const hours = int(s.interval ?? 24) || 24;
+		let st = null;
+		try { st = json(fs.readfile(sprintf('%s/%s.status', SDIR, s['.name'])) ?? 'null'); } catch (e) { }
+		if (st?.ts && time() - st.ts < hours * 3600 - 300) return;
+		push(out, update(s['.name']));
+	});
+	return out;
 }
 
 export function update_all() {

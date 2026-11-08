@@ -38,7 +38,7 @@ export function save_active(m) { fs.mkdir(core.RUN); core.write_json(ACTIVE, m);
 // the direct attempt of notifications ("VPN is down" must not run into the dead tunnel), the panel tunnel
 export function skip_uid(cfg) {
 	const out = [];
-	if (cfg.main.dns == 'tunnel' && core.uid_of('dnsproxy') != null) push(out, core.uid_of('dnsproxy'));
+	if ((cfg.main.dns == 'tunnel' || cfg.main.dns == 'encrypted') && core.uid_of('dnsproxy') != null) push(out, core.uid_of('dnsproxy'));
 	if (core.uid_of('dtnotify') != null) push(out, core.uid_of('dtnotify'));
 	if (core.uid_of('dtssh') != null) push(out, core.uid_of('dtssh'));   // the panel tunnel to a VPS (sshtun)
 	return out;
@@ -54,6 +54,8 @@ export function apply(cfg, active) {
 	if (r.code != 0) push(errors, 'nft: ' + trim(r.out));
 	if (cfg.main.dns == 'tunnel' && !fs.access('/usr/bin/dnsproxy'))
 		push(errors, 'router DNS through the tunnel: dnsproxy is not installed - when the exits of the DNS policy fail, the router falls back to the provider DNS, unencrypted');
+	if (cfg.main.dns == 'encrypted' && !fs.access('/usr/bin/dnsproxy'))
+		push(errors, 'encrypted router DNS: dnsproxy is not installed - the router uses the provider DNS, unencrypted');
 	net.sync_rules(cfg);
 	net.discard6(true);
 	for (let e in cfg.exits) (e.enabled ? net.ensure_route(e) : net.drop_route(e));
@@ -62,6 +64,12 @@ export function apply(cfg, active) {
 	let restart = dns.write_conf(cfg);
 	if (cfg.main.dns == 'tunnel') {
 		dns.write_servers(cfg, 'tunnel');
+		if (dns.ensure_uci(true)) restart = true;
+	}
+	else if (cfg.main.dns == 'encrypted') {
+		// the router always resolves through dnsproxy (the encrypted resolvers), directly - the daemon
+		// does not switch anything in this mode
+		dns.write_servers(cfg, 'encrypted');
 		if (dns.ensure_uci(true)) restart = true;
 	}
 	else if (dns.ensure_uci(false)) restart = true;

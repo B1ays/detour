@@ -68,3 +68,100 @@ pre.detour-key {
 	width: 100%;
 	max-width: 100%;
 }
+
+/* cards (exits, subscriptions): title + state + internal name, what it is, the result of a check, buttons
+ * in one row on the left */
+.detour-cards {
+	display: flex;
+	flex-direction: column;
+	gap: var(--field-gap, .75rem);
+	padding: 0 var(--section-inset, 1rem);
+}
+.detour-card {
+	display: flex;
+	flex-direction: column;
+	gap: .5rem;
+	padding: .75rem 1rem;
+	border: 1px solid rgba(128, 128, 128, .3);
+	border-radius: 6px;
+}
+.detour-card-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: .5rem;
+}
+.detour-card-title {
+	font-weight: bold;
+	font-size: 1.05rem;
+}
+/* the internal name goes to the right edge (only the last item: the policy number on the left is muted too) */
+.detour-card-head > .detour-muted:last-child {
+	margin-inline-start: auto;
+}
+.detour-card-body {
+	display: flex;
+	flex-direction: column;
+	gap: .2rem;
+	line-height: 1.5;
+}
+.detour-card .detour-card-actions,
+.detour-card .detour-check {
+	padding: 0;
+}
+.detour-check:empty {
+	display: none;
+}
+.detour-muted {
+	opacity: .65;
+	font-size: .9em;
+}
+.detour-badge.off { background: #757575; }
+.detour-details summary {
+	cursor: pointer;
+	padding: .25rem 0;
+}
+.detour-servers {
+	display: flex;
+	flex-direction: column;
+	gap: .35rem;
+	padding: .25rem 0 0 .25rem;
+	max-height: 22rem;
+	overflow: auto;
+}
+.detour-servers.spinning {
+	opacity: .5;
+	pointer-events: none;
+}
+.detour-server {
+	display: flex;
+	align-items: baseline;
+	gap: .4rem;
+	cursor: pointer;
+	line-height: 1.4;
+}
+textarea.detour-code {
+	font-family: monospace;
+	font-size: .85em;
+	width: 100%;
+	max-width: 100%;
+}
+
+/* some themes centre section content: cards read left to right */
+.detour-card, .detour-card-head, .detour-card-body {
+	text-align: start;
+	justify-content: flex-start;
+}
+.detour-picker {
+	display: flex;
+	flex-direction: column;
+	gap: .3rem;
+}
+.detour-pick-row {
+	display: flex;
+	align-items: center;
+	gap: .4rem;
+}
+.detour-pick-row > span {
+	flex: 1 1 auto;
+}

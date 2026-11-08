@@ -1,106 +1,187 @@
 'use strict';
 'require view';
-'require form';
-'require uci';
 'require rpc';
 'require ui';
+'require uci';
+'require detour.msg as msg';
+
+// Big lists as cards: a readable name (its label, else what its source is), where it goes (the policy by its
+// name, or never through a tunnel), its sources, its state; Update now / Edit / Turn off / Remove in one row.
+// Adding: a ready-made category in one click, or own sources.
 
 const callStatus = rpc.declare({ object: 'detour', method: 'status' });
 const callUpdate = rpc.declare({ object: 'detour', method: 'lists_update', params: [ 'name' ] });
+
+function busy(btn, on) { btn.disabled = on; btn.classList.toggle('spinning', on); }
+function note(text, cls) { return E('div', { 'class': 'alert-message ' + (cls || 'notice') }, text); }
+function arr(v) { return Array.isArray(v) ? v : (v ? String(v).split(/\s+/) : []); }
+function applyUci() { return uci.save().then(function() { return ui.changes.apply(); }); }
+
+function row(title, field, descr) {
+	return E('div', { 'class': 'cbi-value' }, [
+		E('label', { 'class': 'cbi-value-title' }, title),
+		E('div', { 'class': 'cbi-value-field' }, descr ? [ field, E('div', { 'class': 'cbi-value-description' }, descr) ] : field)
+	]);
+}
+
+function modal(title, body, onSave, saveText) {
+	const box = E('div', { 'class': 'detour-result' });
+	const save = E('button', { 'class': 'btn cbi-button-positive', 'click': function() {
+		busy(save, true);
+		return Promise.resolve().then(function() { return onSave(); }).then(function(done) { if (done) ui.hideModal(); })
+			.catch(function(e) { box.replaceChildren(note(e.message || String(e), 'warning')); })
+			.finally(function() { busy(save, false); });
+	} }, saveText || _('Save'));
+	ui.showModal(title, [ E('div', { 'class': 'detour-node' }, body), box,
+		E('div', { 'class': 'right' }, [ E('button', { 'class': 'btn', 'click': ui.hideModal }, _('Cancel')), ' ', save ]) ]);
+}
 
 // lists-update writes English messages (they also go to the log); the known ones are shown translated
 function failText(m) {
 	let x, kept = / ?;? previous data kept$/.test(m);
 	m = m.replace(/;? ?previous data kept$/, '');
 	let t = m;
-	if ((x = m.match(/^download failed: (.+)$/))) t = _('download failed: %s').format(x[1]);
+	if ((x = m.match(/^download failed: (.+)$/))) t = _('download failed: %s').format(msg.sourceText(x[1]));
 	else if ((x = m.match(/^only (\d+) entries \(minimum (\d+)\)$/))) t = _('only %d entries (minimum %d)').format(+x[1], +x[2]);
 	else if ((x = m.match(/^file missing: (.+)$/))) t = _('file missing: %s').format(x[1]);
 	else if ((x = m.match(/^unknown policy '(.+)'$/))) t = _('unknown policy %s').format(x[1]);
 	return kept ? t + '; ' + _('the previous list stays in use') : t;
 }
 
+function policyLabel(n) {
+	if (n == 'direct') return _('never through a tunnel');
+	if (uci.get('detour', n, '.type') != 'policy') return _('nowhere: its policy «%s» no longer exists - choose another in «Edit»').format(n);
+	return _('through the policy «%s»').format(uci.get('detour', n, 'label') || n);
+}
+
 return view.extend({
 	load: function() {
-		return Promise.all([ uci.load('detour'), callStatus().catch(() => ({})) ]);
+		return Promise.all([ uci.load('detour'), L.resolveDefault(callStatus(), {}) ]);
+	},
+
+	renderList: function(l, st) {
+		const self = this;
+		const name = l['.name'];
+		const s = st[name];
+		const enabled = l.enabled != '0';
+		const body = [ E('div', {}, [ E('strong', {}, (_('Goes:') + ' ')), policyLabel(l.policy || '') ]) ];
+		const srcs = arr(l.url).map(function(u) { return msg.sourceText(u); });
+		if (l.file) srcs.push(_('file %s').format(l.file));
+		if (srcs.length) body.push(E('div', { 'class': 'detour-muted' }, _('Source: %s').format(srcs.join(', '))));
+		if (s) {
+			const kind = { 'cidr': _('addresses'), 'domain': _('domains') }[s.kind] || '';
+			body.push(E('div', {}, [ N_(s.count || 0, '%d entry', '%d entries').format(s.count || 0), kind ? ' · ' + kind : '',
+				s.ts ? ' · ' + _('updated %s').format(new Date(s.ts * 1000).toLocaleString()) : '' ]));
+			if (!s.ok && s.message) body.push(note(failText(s.message), 'warning'));
+		}
+		else if (enabled) body.push(E('em', {}, _('not loaded yet')));
+
+		const bUpdate = E('button', { 'class': 'btn cbi-button-action', 'click': function() {
+			busy(bUpdate, true);
+			return callUpdate(name).then(function(r) {
+				if (r && r.error) ui.addNotification(null, E('p', r.error), 'danger');
+				else location.reload();
+			}).finally(function() { busy(bUpdate, false); });
+		} }, _('Update now'));
+		const bEdit = E('button', { 'class': 'btn cbi-button-edit', 'click': function() { self.edit(l); } }, _('Edit'));
+		const bToggle = E('button', { 'class': 'btn', 'click': function() { uci.set('detour', name, 'enabled', enabled ? '0' : '1'); return applyUci(); } },
+			enabled ? _('Turn off') : _('Turn on'));
+		const bRemove = E('button', { 'class': 'btn cbi-button-negative', 'click': function() {
+			ui.showModal(_('Remove the list «%s»?').format(msg.listTitle(l)), [
+				E('p', {}, _('What came only from this list goes directly from now on.')),
+				E('div', { 'class': 'right' }, [ E('button', { 'class': 'btn', 'click': ui.hideModal }, _('Cancel')), ' ',
+					E('button', { 'class': 'btn cbi-button-negative', 'click': function() { uci.remove('detour', name); ui.hideModal(); return applyUci(); } }, _('Remove')) ]) ]);
+		} }, _('Remove'));
+
+		return E('div', { 'class': 'detour-card' }, [
+			E('div', { 'class': 'detour-card-head' }, [ E('span', { 'class': 'detour-card-title' }, msg.listTitle(l)), ' ',
+				E('span', { 'class': 'detour-badge ' + (!enabled ? 'off' : (s && !s.ok ? 'bad' : 'ok')) }, !enabled ? _('off') : (s && !s.ok ? _('update failed') : _('on'))),
+				E('span', { 'class': 'detour-muted', 'title': _('Internal name: used in the configuration and the log') }, name) ]),
+			E('div', { 'class': 'detour-card-body' }, body),
+			E('div', { 'class': 'detour-actions detour-card-actions' }, [ bUpdate, bEdit, bToggle, bRemove ])
+		]);
+	},
+
+	policySelect: function(cur) {
+		return E('select', { 'class': 'cbi-input-select' }, uci.sections('detour', 'policy').map(function(p) {
+			return E('option', { 'value': p['.name'], 'selected': cur == p['.name'] ? '' : null }, _('through the policy «%s»').format(p.label || p['.name']));
+		}).concat([ E('option', { 'value': 'direct', 'selected': cur == 'direct' ? '' : null }, _('never through a tunnel')) ]));
+	},
+
+	edit: function(l) {
+		const isNew = !l;
+		l = l || {};
+		const name = E('input', { 'class': 'cbi-input-text', 'placeholder': 'yt', 'maxlength': 20 });
+		const preset = E('select', { 'class': 'cbi-input-select' }, [ E('option', { 'value': '' }, _('— own sources (below) —')) ]
+			.concat(msg.PRESETS.map(function(p) { return E('option', { 'value': p[0] }, p[1]); })));
+		const label = E('input', { 'class': 'cbi-input-text', 'value': l.label || '', 'placeholder': isNew ? '' : msg.listTitle(l) });
+		const policy = this.policySelect(l.policy || (uci.sections('detour', 'policy')[0] || {})['.name']);
+		const url = E('textarea', { 'class': 'cbi-input-textarea', 'rows': 3, 'placeholder': 'https://…\nv2fly:youtube' }, arr(l.url).join('\n'));
+		const file = E('input', { 'class': 'cbi-input-text', 'value': l.file || '', 'placeholder': '/etc/detour/lists/my.txt' });
+		const kind = E('select', { 'class': 'cbi-input-select' }, [ [ 'auto', _('detect by itself') ], [ 'cidr', _('addresses') ], [ 'domain', _('domains') ] ].map(function(k) {
+			return E('option', { 'value': k[0], 'selected': (l.kind || 'auto') == k[0] ? '' : null }, k[1]); }));
+		const minl = E('input', { 'class': 'cbi-input-text', 'value': l.min_lines || '', 'placeholder': '10' });
+		preset.addEventListener('change', function() {
+			const p = msg.PRESETS.filter(function(x) { return x[0] == preset.value; })[0];
+			if (!p) return;
+			url.value = p[2]; kind.value = p[3]; if (!label.value) label.value = p[1];
+			if (isNew && !name.value) name.value = 'l_' + p[0];
+		});
+		const body = [];
+		if (isNew) body.push(row(_('Ready-made list'), preset, _('Popular categories, kept up to date by their authors (runetfreedom, v2fly). Or give your own sources below.')),
+			row(_('Internal name'), name, _('Latin letters, digits and _; used in the configuration.')));
+		body.push(
+			row(_('Name'), label, _('How the list is shown everywhere. Empty: made from its source.')),
+			row(_('Goes'), policy, _('Through which policy (its exits) the addresses of the list go - or never through a tunnel, whatever the policies say.')),
+			row(_('Sources'), url, _('One per line: an http(s) address of a list, or a v2fly category as v2fly:NAME (for example v2fly:youtube). Address lists: one IP or range per line; domain lists: plain, hosts, dnsmasq, adblock or v2fly/geosite text.')),
+			row(_('Local file'), file, _('Optional: a file on the router with more entries.')),
+			row(_('Contents'), kind, _('Usually detected by itself.')),
+			row(_('Minimum entries'), minl, _('A download with fewer entries is treated as a failure, and the previous list stays in use.'))
+		);
+		modal(isNew ? _('New list') : _('List «%s»').format(msg.listTitle(l)), body, function() {
+			let n = l['.name'];
+			if (isNew) {
+				n = name.value.trim();
+				if (!/^[a-z][a-z0-9_]{0,19}$/.test(n)) throw new Error(_('Internal name: a-z, 0-9, _, starts with a letter'));
+				if (uci.get('detour', n)) throw new Error(_('This name is already used'));
+			}
+			const urls = url.value.split(/\s+/).filter(function(x) { return x; });
+			const bad = urls.filter(function(u) { return !/^https?:\/\/\S+$/.test(u) && !/^v2fly:[a-z0-9!._-]+$/.test(u); });
+			if (bad.length) throw new Error(_('Not a source: %s').format(bad.join(', ')));
+			if (!urls.length && !file.value.trim()) throw new Error(_('Give a source or a file'));
+			if (minl.value.trim() && !/^\d+$/.test(minl.value.trim())) throw new Error(_('Minimum entries: a number'));
+			if (isNew) uci.add('detour', 'list', n);
+			const set = function(k, v) { if (v && (!Array.isArray(v) || v.length)) uci.set('detour', n, k, v); else uci.unset('detour', n, k); };
+			set('label', label.value.trim());
+			set('policy', policy.value);
+			set('url', urls);
+			set('file', file.value.trim());
+			set('kind', kind.value == 'auto' ? '' : kind.value);
+			set('min_lines', minl.value.trim());
+			return applyUci().then(function() { return callUpdate(n); }).then(function() { return true; });
+		}, isNew ? _('Add') : _('Save'));
 	},
 
 	render: function(data) {
+		const self = this;
 		const st = {};
 		((data[1] || {}).lists || []).forEach(function(l) { st[l.name] = l; });
+		const all = uci.sections('detour', 'list');
+		return E('div', {}, [
+			E('link', { 'rel': 'stylesheet', 'href': L.resource('detour/detour.css') }),
+			E('h2', {}, _('Lists')),
+			E('div', { 'class': 'cbi-map-descr' }, _('Big sets of sites or addresses from the internet: everything blocked in Russia, a service (YouTube, Telegram…). Each list goes through a policy or never through a tunnel. They are updated every night; if a source does not answer, the previous list stays in use.')),
+			E('div', { 'class': 'cbi-section' }, [
+				E('div', { 'class': 'cbi-section-node detour-node' }, [
+					all.length ? E('div', { 'class': 'detour-cards' }, all.map(function(l) { return self.renderList(l, st); }))
+						: E('div', { 'class': 'detour-result' }, E('em', {}, _('No lists yet.'))),
+					E('div', { 'class': 'detour-actions' }, [ E('button', { 'class': 'btn cbi-button-add', 'click': function() { self.edit(null); } }, _('Add list')) ])
+				])
+			])
+		]);
+	},
 
-		const m = new form.Map('detour', _('Lists'),
-			_('Big lists of addresses or domains from the internet or a local file. ' +
-			  'They are updated every night; if a source does not answer, the previous list stays in use. ' +
-			  'Address lists: one IP or range (CIDR) per line. Domain lists: plain, hosts, dnsmasq, adblock or v2fly/geosite text (domain:, full:). ' +
-			  'A v2fly domain-list-community category is given as v2fly:NAME (for example v2fly:youtube), its include: lines are followed.'));
-
-		const s = m.section(form.GridSection, 'list');
-		s.addremove = true;
-		s.anonymous = false;
-		s.nodescriptions = true;
-		s.addbtntitle = _('Add list');
-
-		let o = s.option(form.Flag, 'enabled', _('Enabled'));
-		o.default = '1';
-		o.editable = true;
-
-		o = s.option(form.ListValue, 'policy', _('Goes'));
-		uci.sections('detour', 'policy').forEach(function(p) { o.value(p['.name'], _('through policy %s').format(p.label || p['.name'])); });
-		o.value('direct', _('never through a tunnel'));
-		o.rmempty = false;
-
-		o = s.option(form.DynamicList, 'url', _('Sources (URL)'));
-		o.datatype = 'string';
-		o.validate = function(id, v) { return (!v || /^https?:\/\/\S+$/.test(v) || /^v2fly:[a-z0-9!._-]+$/.test(v)) ? true : _('http(s) address or v2fly:NAME'); };
-		o.modalonly = true;
-
-		o = s.option(form.Value, 'file', _('Local file'), _('Optional: a file on the router with more entries.'));
-		o.optional = true;
-		o.modalonly = true;
-
-		o = s.option(form.ListValue, 'kind', _('Contents'));
-		o.value('auto', _('detect'));
-		o.value('cidr', _('addresses'));
-		o.value('domain', _('domains'));
-		o.default = 'auto';
-		o.modalonly = true;
-
-		o = s.option(form.Value, 'min_lines', _('Minimum entries'), _('A download with fewer entries is treated as a failure.'));
-		o.datatype = 'uinteger';
-		o.placeholder = '10';
-		o.modalonly = true;
-
-		o = s.option(form.DummyValue, '_state', _('State'));
-		o.modalonly = false;
-		o.textvalue = function(id) {
-			const l = st[id];
-			if (!l) return E('em', {}, _('not loaded yet'));
-			const when = l.ts ? new Date(l.ts * 1000).toLocaleString() : '';
-			const kind = { 'cidr': _('addresses'), 'domain': _('domains') }[l.kind] || l.kind || '';
-			return E('span', { 'class': l.ok ? '' : 'detour-warn' }, [
-				N_(l.count || 0, '%d entry', '%d entries').format(l.count || 0), ' ', E('small', {}, '(' + kind + ', ' + when + ')'),
-				l.ok ? '' : E('div', {}, failText(l.message || ''))
-			]);
-		};
-
-		o = s.option(form.Button, '_update', _('Update'));
-		o.modalonly = false;
-		o.editable = true;   // a grid shows non-editable options as text ("none")
-		o.inputtitle = _('Update now');
-		o.inputstyle = 'action';
-		o.onclick = function(ev, id) {
-			return callUpdate(id).then(function(r) {
-				if (r && r.error) ui.addNotification(null, E('p', r.error), 'danger');
-				else ui.addNotification(null, E('p', _('List %s updated').format(id)), 'info');
-				return window.setTimeout(function() { location.reload(); }, 800);
-			});
-		};
-
-		// detour.css: the last field of a card must not touch its bottom (Argon gives the node no padding)
-		return m.render().then(function(node) {
-			node.insertBefore(E('link', { 'rel': 'stylesheet', 'href': L.resource('detour/detour.css') }), node.firstChild);
-			return node;
-		});
-	}
+	handleSave: null,
+	handleSaveApply: null,
+	handleReset: null
 });

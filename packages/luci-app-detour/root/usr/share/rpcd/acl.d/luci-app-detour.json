@@ -5,15 +5,21 @@
 			"ubus": {
 				"detour": [
 					"status",
-					"sshtun_status"
+					"sshtun_status",
+					"exits_info"
 				],
 				"luci": [
 					"getFeatures"
+				],
+				"luci-rpc": [
+					"getHostHints",
+					"getDHCPLeases"
 				]
 			},
 			"uci": [
 				"detour",
-				"network"
+				"network",
+				"dhcp"
 			]
 		},
 		"write": {
@@ -32,11 +38,18 @@
 					"sub_update",
 					"sshtun_keygen",
 					"sshtun_test",
-					"sshtun_forget"
+					"sshtun_forget",
+					"exit_check",
+					"exit_remove",
+					"exit_pick",
+					"exit_config_get",
+					"exit_config_set",
+					"exit_set_link"
 				]
 			},
 			"uci": [
-				"detour"
+				"detour",
+				"network"
 			],
 			"file": {
 				"/tmp/detour-import.tgz": [

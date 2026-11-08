@@ -8,7 +8,7 @@ USE_PROCD=1
 dnsproxy_instance() {
 	local dns port
 	config_get dns main dns off
-	[ "$dns" = tunnel ] || return 0
+	[ "$dns" = tunnel ] || [ "$dns" = encrypted ] || return 0
 	[ -x /usr/bin/dnsproxy ] || return 0
 	grep -q '^dnsproxy:' /etc/passwd || return 0
 	config_get port main dns_fallback_port 5354
