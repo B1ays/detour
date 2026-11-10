@@ -4,6 +4,7 @@
 'require ui';
 'require uci';
 'require dom';
+'require detour.outform as outform';
 
 // Exits and subscriptions as cards: what each exit is (protocol, server, the exit it rides), its state,
 // a real check, editing of what belongs to it, removal with everything it owns. The daemon describes the
@@ -20,6 +21,10 @@ const callSubUpdate = rpc.declare({ object: 'detour', method: 'sub_update', para
 const callStatus = rpc.declare({ object: 'detour', method: 'status' });
 const callSubState = rpc.declare({ object: 'detour', method: 'sub_state', params: [ 'name' ] });
 const callSubCheck = rpc.declare({ object: 'detour', method: 'sub_check', params: [ 'name', 'index' ] });
+const callExport = rpc.declare({ object: 'detour', method: 'exit_export', params: [ 'name' ] });
+const callSpeed = rpc.declare({ object: 'detour', method: 'exit_speed', params: [ 'name', 'direct' ] });
+const callDiag = rpc.declare({ object: 'detour', method: 'exit_diag', params: [ 'name' ] });
+const callSetVia = rpc.declare({ object: 'detour', method: 'exit_set_via', params: [ 'name', 'via' ] });
 const callReload = rpc.declare({ object: 'detour', method: 'reload' });
 
 // AmneziaWG masking parameters (amneziawg-tools 3.1 names, network UCI options awg_*), with what they do
@@ -63,7 +68,8 @@ function modal(title, body, onSave, saveText) {
 	const box = E('div', { 'class': 'detour-result' });
 	const save = E('button', { 'class': 'btn cbi-button-positive', 'click': function() {
 		busy(save, true);
-		return Promise.resolve(onSave(box)).then(function(done) { if (done) ui.hideModal(); })
+		// through then(): a wrong field throws inside onSave, and the message must land in the box
+		return Promise.resolve().then(function() { return onSave(box); }).then(function(done) { if (done) ui.hideModal(); })
 			.catch(function(e) { box.replaceChildren(note(e.message || String(e), 'warning')); })
 			.finally(function() { busy(save, false); });
 	} }, saveText || _('Save'));
@@ -103,11 +109,28 @@ return view.extend({
 			busy(bCheck, true);
 			result.replaceChildren(E('em', {}, _('Checking…')));
 			return callCheck(x.name).then(function(r) {
-				result.replaceChildren(r && r.ok
-					? note(_('Works: answer in %d ms, the internet sees the address %s (%s).').format(r.ms, r.ip, r.loc + (r.colo ? ', ' + _('Cloudflare point %s').format(r.colo) : '')), 'success')
-					: note((r && r.error) ? _('No answer through this exit (%s).').format(r.error) : _('No answer from the router'), 'warning'));
+				if (r && r.ok) return result.replaceChildren(note(_('Works: answer in %d ms, the internet sees the address %s (%s).').format(r.ms, r.ip, r.loc + (r.colo ? ', ' + _('Cloudflare point %s').format(r.colo) : '')), 'success'));
+				const failed = note((r && r.error) ? _('No answer through this exit (%s).').format(r.error) : _('No answer from the router'), 'warning');
+				result.replaceChildren(failed, E('em', {}, _('Finding out why…')));
+				// why: does the server answer directly, through another exit
+				return L.resolveDefault(callDiag(x.name), null).then(function(d) { result.replaceChildren(failed, self.diagNote(x, d)); });
 			}).finally(function() { busy(bCheck, false); });
 		} }, _('Check'));
+		const bSpeed = E('button', { 'class': 'btn', 'click': function() {
+			busy(bSpeed, true);
+			result.replaceChildren(E('em', {}, _('Measuring through the exit (up to 15 s)…')));
+			let viaExit = null;
+			return callSpeed(x.name, false).then(function(r) {
+				viaExit = r;
+				result.replaceChildren(E('em', {}, _('Measuring directly, to compare…')));
+				return L.resolveDefault(callSpeed(x.name, true), null);
+			}).then(function(d) {
+				const t = function(r) { return (r && r.ok) ? _('%s Mbit/s').format(r.mbps) : _('failed') + ((r && r.error) ? ' (' + r.error + ')' : ''); };
+				result.replaceChildren(note(_('Download speed: through the exit %s, directly %s.').format(t(viaExit), t(d)), (viaExit && viaExit.ok) ? 'success' : 'warning'),
+					E('div', { 'class': 'detour-muted' }, _('A 25 MB download from speed.cloudflare.com. The speed of one download, not of the whole line.')));
+			}).finally(function() { busy(bSpeed, false); });
+		} }, _('Speed'));
+		const bShare = E('button', { 'class': 'btn', 'click': function() { self.exportExit(x); } }, _('Share'));
 		const bEdit = E('button', { 'class': 'btn cbi-button-edit', 'click': function() { self.editExit(x, by); } }, _('Edit'));
 		const bToggle = E('button', { 'class': 'btn', 'click': function() {
 			uci.set('detour', x.name, 'enabled', x.enabled ? '0' : '1');
@@ -120,8 +143,61 @@ return view.extend({
 				E('span', { 'class': 'detour-muted', 'title': _('Internal name: used in the configuration and the log') }, x.name) ]),
 			E('div', { 'class': 'detour-card-body' }, lines),
 			result,
-			E('div', { 'class': 'detour-actions detour-card-actions' }, [ bCheck, bEdit, bToggle, bRemove ])
+			E('div', { 'class': 'detour-actions detour-card-actions' }, [ bCheck, bSpeed, bEdit, bShare, bToggle, bRemove ])
 		]);
+	},
+
+	// what diag_exit found, in words; for a blocked address of a proxy exit - connect it through the exit that works
+	diagNote: function(x, d) {
+		if (!d) return '';
+		const V = {
+			blocked: _('The server\'s address seems blocked by the provider: directly it is silent, through «%s» it answers.').format(d.other_label || d.other),
+			down: _('The server answers neither directly nor through another exit: it is down, or blocked everywhere.'),
+			silent: _('The server does not answer. There is no other working exit to tell whether the provider blocks it.'),
+			reachable: _('The server answers: the connection itself fails - wrong keys or settings, or the provider filters this protocol.'),
+			dns: _('The server\'s name is not found in DNS.'),
+			udp: _('The server works over UDP: the router cannot tell from here whether the provider blocks it.')
+		};
+		const items = [ E('div', {}, V[d.verdict] || '') ];
+		if (d.verdict == 'blocked' && x.engine && d.other && !x.via)
+			items.push(E('div', { 'class': 'detour-actions' }, [ E('button', { 'class': 'btn cbi-button-action', 'click': function(ev) {
+				busy(ev.target, true);
+				return callSetVia(x.name, d.other).then(function(r) {
+					if (!r || r.error) ui.addNotification(null, E('p', (r && r.error) || _('No answer from the router')), 'danger');
+					else location.reload();
+				}).finally(function() { busy(ev.target, false); });
+			} }, _('Connect through «%s»').format(d.other_label || d.other)) ]));
+		return E('div', { 'class': 'alert-message notice' }, items);
+	},
+
+	// the exit as a link or a .conf, with a QR code: to set it up on a phone or a computer
+	exportExit: function(x) {
+		const body = E('div', {}, E('em', {}, _('Loading…')));
+		ui.showModal(_('Share «%s»').format(x.label), [ body,
+			E('div', { 'class': 'right' }, [ E('button', { 'class': 'btn', 'click': ui.hideModal }, _('Close')) ]) ]);
+		callExport(x.name).then(function(r) {
+			if (!r || r.error) return body.replaceChildren(note((r && r.error) || _('No answer from the router'), 'warning'));
+			const ta = E('textarea', { 'class': 'cbi-input-textarea detour-code', 'rows': r.link ? 4 : 12, 'readonly': '', 'spellcheck': 'false' }, r.text);
+			const url = URL.createObjectURL(new Blob([ r.text ], { type: 'text/plain' }));
+			const kind = r.link ? _('A link for v2rayN, v2rayNG, Hiddify, NekoBox, Streisand…')
+				: (/\.conf$/.test(r.filename) ? _('A config for the WireGuard or AmneziaWG app.') : _('The engine\'s settings (JSON).'));
+			const items = [
+				note(_('This holds the keys of the exit: whoever has it can use your server. Share it only with your own devices.'), 'warning'),
+				E('div', {}, kind),
+				ta,
+				E('div', { 'class': 'detour-actions' }, [
+					E('button', { 'class': 'btn', 'click': function(ev) {
+						ta.select();
+						try { navigator.clipboard.writeText(r.text); } catch (e) { document.execCommand('copy'); }
+						ev.target.textContent = _('Copied');
+					} }, _('Copy')),
+					E('a', { 'class': 'btn', 'href': url, 'download': r.filename }, _('Download %s').format(r.filename))
+				])
+			];
+			if (r.qr_svg) items.push(E('div', { 'class': 'detour-qr' }, E('img', { 'src': 'data:image/svg+xml;base64,' + btoa(r.qr_svg), 'alt': 'QR' })));
+			else if (r.qr_missing) items.push(E('div', { 'class': 'detour-muted' }, _('For a QR code install the qrencode package (System → Software).')));
+			body.replaceChildren.apply(body, items);
+		});
 	},
 
 	removeExit: function(x) {
@@ -169,24 +245,43 @@ return view.extend({
 		const via = this.viaSelect(x, x.via || '', by);
 		const link = E('textarea', { 'class': 'cbi-input-textarea', 'rows': 2, 'placeholder': 'vless://… / trojan://… / ss://… / hysteria2://…' });
 		const cfg = E('textarea', { 'class': 'cbi-input-textarea detour-code', 'rows': 14, 'spellcheck': 'false' }, _('Loading…'));
-		let cfgOrig = null;
+		// the fields of the server (sing-box exits); JSON stays for what the form does not show
+		const fieldsBox = E('div', {}, E('em', {}, _('Loading…')));
+		let cfgOrig = null, form = null, fieldsOrig = null;
 		callCfgGet(x.name).then(function(r) {
 			cfgOrig = (r && r.config) || '';
 			cfg.value = (r && r.error) ? r.error : cfgOrig;
+			let o = null;
+			try { o = JSON.parse(cfgOrig); } catch (e) { }
+			if (o && outform.supported(o)) {
+				form = outform.build(o);
+				fieldsBox.replaceChildren(form.node);
+				fieldsOrig = JSON.stringify(form.read());
+			}
+			else fieldsBox.replaceChildren(E('div', { 'class': 'cbi-value-description' },
+				x.kind == 'xray' ? _('This exit runs on Xray: its settings are edited as JSON below, or replaced by a link (the exit then moves to sing-box).')
+					: _('This kind of server is edited as JSON below.')));
 		});
 		modal(_('Exit «%s»').format(x.label), [
 			row(_('Name'), label, _('Shown in policies, on the overview and in notifications.')),
 			row(_('Connect to the server'), via, _('Through another exit when the provider blocks this server (for example through WARP). If that exit stops, this one stops too - nothing goes directly.')),
+			E('h4', {}, _('Server')),
+			fieldsBox,
 			row(_('Another server from a link'), link, _('Paste a link to replace the server of this exit. Policies keep using the exit.')),
-			row(_('Configuration'), cfg, _('The exit\'s settings as the engine sees them (%s). For those who know the format; a wrong value stops the exit.').format(x.kind == 'xray' ? 'Xray outbound' : 'sing-box outbound'))
+			E('details', { 'class': 'detour-details' }, [ E('summary', {}, _('For experts: the configuration as JSON')),
+				row(_('Configuration'), cfg, _('The exit\'s settings as the engine sees them (%s). A wrong value stops the exit. Changed here, it wins over the fields above.').format(x.kind == 'xray' ? 'Xray outbound' : 'sing-box outbound')) ])
 		], function(box) {
 			const jobs = [];
 			if (label.value.trim() && label.value.trim() != x.label) uci.set('detour', x.name, 'label', label.value.trim());
 			if ((via.value || '') != (x.via || '')) {
 				if (via.value) uci.set('detour', x.engine, 'via', via.value); else uci.unset('detour', x.engine, 'via');
 			}
+			// one change of the server: a link, else the JSON edited by hand, else the fields
+			let fieldsNew = null;
+			if (form) fieldsNew = JSON.stringify(form.read());   // throws with the reason of a wrong field
 			if (link.value.trim()) jobs.push(function() { return callSetLink(x.name, link.value.trim()); });
 			else if (cfgOrig != null && cfg.value != cfgOrig) jobs.push(function() { return callCfgSet(x.name, cfg.value); });
+			else if (form && fieldsNew != fieldsOrig) jobs.push(function() { return callCfgSet(x.name, JSON.stringify(JSON.parse(fieldsNew), null, '\t')); });
 			let p = Promise.resolve();
 			jobs.forEach(function(j) { p = p.then(j).then(function(r) { if (!r || r.error) throw new Error((r && r.error) || _('No answer from the router')); }); });
 			return p.then(function() { return applyUci(); }).then(function() { return true; });

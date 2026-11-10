@@ -182,3 +182,15 @@ textarea.detour-code {
 .detour-pick-row > span {
 	flex: 1 1 auto;
 }
+
+/* a QR code of an exported exit: on white, whatever the theme, so a phone camera reads it */
+.detour-qr {
+	margin-top: .75rem;
+}
+.detour-qr img {
+	width: 260px;
+	max-width: 100%;
+	background: #fff;
+	padding: 8px;
+	border-radius: 4px;
+}

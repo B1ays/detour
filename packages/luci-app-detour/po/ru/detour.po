@@ -4,6 +4,66 @@ msgstr ""
 "Language: ru\n"
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
 
+msgid "the scheme «%s» is not supported"
+msgstr "схема «%s» не поддерживается"
+
+msgid "the type «%s» is not supported"
+msgstr "тип «%s» не поддерживается"
+
+msgid "the transport «%s» is not supported"
+msgstr "транспорт «%s» не поддерживается"
+
+msgid "the name %s is already used, skipped"
+msgstr "имя %s уже занято, пропущено"
+
+msgid "%s: the %s package is not installed"
+msgstr "%s: не установлен пакет %s"
+
+msgid "this key needs the ucode-mod-zlib package (System → Software)"
+msgstr "для этого ключа нужен пакет ucode-mod-zlib («Система» → «Программное обеспечение»)"
+
+msgid "the vpn:// key has no AmneziaWG, WireGuard or Xray (other Amnezia protocols are not supported)"
+msgstr "в ключе vpn:// нет AmneziaWG, WireGuard или Xray (другие протоколы Amnezia не поддерживаются)"
+
+msgid "the vpn:// key could not be read"
+msgstr "ключ vpn:// не удалось прочитать"
+
+msgid "not a WireGuard config (keys or the server address missing)"
+msgstr "это не конфиг WireGuard (нет ключей или адреса сервера)"
+
+msgid "a key does not look like a WireGuard key"
+msgstr "ключ не похож на ключ WireGuard"
+
+msgid "the config has no IPv4 address"
+msgstr "в конфиге нет IPv4-адреса"
+
+msgid "nothing recognised: a link, a key, a WireGuard config, JSON or Clash YAML is expected"
+msgstr "ничего не распознано: нужна ссылка, ключ, конфиг WireGuard, JSON или YAML Clash"
+
+msgid "not a link"
+msgstr "не ссылка"
+
+msgid "not valid JSON"
+msgstr "неверный JSON"
+
+msgid "no proxy in this JSON"
+msgstr "в этом JSON нет прокси"
+
+msgid "the proxies list is empty"
+msgstr "список proxies пуст"
+
+msgid "empty"
+msgstr "пусто"
+
+msgid "nothing usable was chosen"
+msgstr "не выбрано ничего подходящего"
+
+msgid "the link could not be read"
+msgstr "ссылку не удалось прочитать"
+
+msgid "a proxy without a server or port"
+msgstr "прокси без сервера или порта"
+
 msgid "No answer from the router"
 msgstr "Роутер не ответил"
 
@@ -244,32 +304,59 @@ msgstr[2] "%d закреплённых адресов DHCP"
 msgid "Not carried over"
 msgstr "Не переносится"
 
+msgid "The file is too big for a config (over 256 KB)."
+msgstr "Файл слишком большой для конфига (больше 256 КБ)."
+
+msgid "Choose a file…"
+msgstr "Выбрать файл…"
+
 msgid "through %s"
 msgstr "через %s"
 
-msgid "Exit %s added (%s to %s). Put it into a policy on the Policies page."
-msgstr "Выход %s добавлен (%s, сервер %s). Добавьте его в политику на странице «Политики»."
+msgid "Tick at least one server."
+msgstr "Отметьте хотя бы один сервер."
 
-msgid "Add exit"
-msgstr "Добавить выход"
+msgid "Name: Latin letters, digits and _, up to 11, starting with a letter."
+msgstr "Имя: латинские буквы, цифры и _, до 11 символов, начинается с буквы."
 
-msgid "Exit from a link"
-msgstr "Выход из ссылки"
+msgid "Exit %s added. Put it into a policy on the Policies page."
+msgid_plural "Exits %s added. Put them into a policy on the Policies page."
+msgstr[0] "Выход %s добавлен. Добавьте его в политику на странице «Политики»."
+msgstr[1] "Выходы %s добавлены. Добавьте их в политику на странице «Политики»."
+msgstr[2] "Выходы %s добавлены. Добавьте их в политику на странице «Политики»."
 
-msgid "A link from your VPN provider or your own server. The exit runs on sing-box (install the sing-box package)."
-msgstr "Ссылка от вашего VPN-провайдера или со своего сервера. Выход работает на sing-box (нужен пакет sing-box)."
+msgid "Add the chosen"
+msgstr "Добавить отмеченные"
+
+msgid "Nothing here can become an exit."
+msgstr "Здесь нет ничего, что может стать выходом."
+
+msgid "Several servers: each ticked one becomes its own exit, named %s1, %s2…"
+msgstr "Несколько серверов: каждый отмеченный станет отдельным выходом с именами %s1, %s2…"
+
+msgid "Check what is inside"
+msgstr "Посмотреть, что внутри"
+
+msgid "Exit from a link, a key or a file"
+msgstr "Выход из ссылки, ключа или файла"
+
+msgid "Paste one or more links (vless, vmess, trojan, ss, hysteria2, tuic, wireguard), an Amnezia vpn:// key, a WireGuard / AmneziaWG config, a sing-box or Xray JSON or a Clash YAML - or choose such a file. Proxies run on sing-box (Xray for Xray configs), WireGuard and AmneziaWG on the router itself."
+msgstr "Вставьте одну или несколько ссылок (vless, vmess, trojan, ss, hysteria2, tuic, wireguard), ключ Amnezia vpn://, конфиг WireGuard / AmneziaWG, JSON sing-box или Xray, YAML Clash — или выберите такой файл. Прокси работают на sing-box (конфиги Xray — на Xray), WireGuard и AmneziaWG — средствами самого роутера."
+
+msgid "Link, key or config"
+msgstr "Ссылка, ключ или конфиг"
 
 msgid "Name"
 msgstr "Имя"
 
-msgid "Link"
-msgstr "Ссылка"
+msgid "Latin letters, digits and _, up to 11. Several servers: name1, name2…"
+msgstr "Латинские буквы, цифры и _, до 11 символов. Несколько серверов: имя1, имя2…"
 
 msgid "Connect to the server"
 msgstr "Подключаться к серверу"
 
-msgid "Through another exit (for example WARP) when the server itself is blocked by the provider. If that exit fails, this one stops too - nothing goes directly."
-msgstr "Через другой выход (например, WARP), когда сам сервер заблокирован провайдером. Если тот выход упадёт, этот тоже остановится — напрямую ничего не пойдёт."
+msgid "Through another exit (for example WARP) when the server itself is blocked by the provider. If that exit fails, this one stops too - nothing goes directly. WireGuard always connects directly."
+msgstr "Через другой выход (например, WARP), когда сам сервер заблокирован провайдером. Если тот выход упадёт, этот тоже остановится — напрямую ничего не пойдёт. WireGuard всегда подключается напрямую."
 
 msgid "WARP exit %s registered (address %s, server %s)."
 msgstr "Выход WARP %s зарегистрирован (адрес %s, сервер %s)."
@@ -412,8 +499,35 @@ msgstr "точка Cloudflare %s"
 msgid "No answer through this exit (%s)."
 msgstr "Через этот выход нет ответа (%s)."
 
+msgid "Finding out why…"
+msgstr "Выясняю причину…"
+
 msgid "Check"
 msgstr "Проверить"
+
+msgid "Measuring through the exit (up to 15 s)…"
+msgstr "Замер через выход (до 15 с)…"
+
+msgid "Measuring directly, to compare…"
+msgstr "Замер напрямую, для сравнения…"
+
+msgid "%s Mbit/s"
+msgstr "%s Мбит/с"
+
+msgid "failed"
+msgstr "не удалось"
+
+msgid "Download speed: through the exit %s, directly %s."
+msgstr "Скорость загрузки: через выход %s, напрямую %s."
+
+msgid "A 25 MB download from speed.cloudflare.com. The speed of one download, not of the whole line."
+msgstr "Загрузка 25 МБ с speed.cloudflare.com. Это скорость одной загрузки, а не всей линии."
+
+msgid "Speed"
+msgstr "Скорость"
+
+msgid "Share"
+msgstr "Поделиться"
 
 msgid "Edit"
 msgstr "Изменить"
@@ -427,6 +541,60 @@ msgstr "Включить"
 msgid "Internal name: used in the configuration and the log"
 msgstr "Внутреннее имя: используется в конфигурации и журнале"
 
+msgid "The server's address seems blocked by the provider: directly it is silent, through «%s» it answers."
+msgstr "Похоже, адрес сервера заблокирован провайдером: напрямую он молчит, а через «%s» отвечает."
+
+msgid "The server answers neither directly nor through another exit: it is down, or blocked everywhere."
+msgstr "Сервер не отвечает ни напрямую, ни через другой выход: он выключен или заблокирован везде."
+
+msgid "The server does not answer. There is no other working exit to tell whether the provider blocks it."
+msgstr "Сервер не отвечает. Другого работающего выхода нет, поэтому нельзя понять, блокирует ли его провайдер."
+
+msgid "The server answers: the connection itself fails - wrong keys or settings, or the provider filters this protocol."
+msgstr "Сервер отвечает, но само подключение не проходит: неверные ключи или настройки, либо провайдер фильтрует этот протокол."
+
+msgid "The server's name is not found in DNS."
+msgstr "Имя сервера не находится в DNS."
+
+msgid "The server works over UDP: the router cannot tell from here whether the provider blocks it."
+msgstr "Сервер работает по UDP: отсюда роутер не может понять, блокирует ли его провайдер."
+
+msgid "Connect through «%s»"
+msgstr "Подключаться через «%s»"
+
+msgid "Loading…"
+msgstr "Загрузка…"
+
+msgid "Share «%s»"
+msgstr "Поделиться «%s»"
+
+msgid "Close"
+msgstr "Закрыть"
+
+msgid "A link for v2rayN, v2rayNG, Hiddify, NekoBox, Streisand…"
+msgstr "Ссылка для v2rayN, v2rayNG, Hiddify, NekoBox, Streisand…"
+
+msgid "A config for the WireGuard or AmneziaWG app."
+msgstr "Конфиг для приложения WireGuard или AmneziaWG."
+
+msgid "The engine's settings (JSON)."
+msgstr "Настройки движка (JSON)."
+
+msgid "This holds the keys of the exit: whoever has it can use your server. Share it only with your own devices."
+msgstr "Здесь ключи выхода: у кого они есть, тот может пользоваться вашим сервером. Передавайте только на свои устройства."
+
+msgid "Copied"
+msgstr "Скопировано"
+
+msgid "Copy"
+msgstr "Копировать"
+
+msgid "Download %s"
+msgstr "Скачать %s"
+
+msgid "For a QR code install the qrencode package (System → Software)."
+msgstr "Для QR-кода установите пакет qrencode («Система» → «Программное обеспечение»)."
+
 msgid "Remove «%s»?"
 msgstr "Удалить «%s»?"
 
@@ -439,8 +607,11 @@ msgstr "Будет удалён выход и всё, что к нему отн�
 msgid "through «%s»"
 msgstr "через «%s»"
 
-msgid "Loading…"
-msgstr "Загрузка…"
+msgid "This exit runs on Xray: its settings are edited as JSON below, or replaced by a link (the exit then moves to sing-box)."
+msgstr "Этот выход работает на Xray: его настройки правятся в JSON ниже или заменяются ссылкой (тогда выход переходит на sing-box)."
+
+msgid "This kind of server is edited as JSON below."
+msgstr "Такой сервер правится в JSON ниже."
 
 msgid "Exit «%s»"
 msgstr "Выход «%s»"
@@ -451,17 +622,23 @@ msgstr "Показывается в политиках, на обзоре и в 
 msgid "Through another exit when the provider blocks this server (for example through WARP). If that exit stops, this one stops too - nothing goes directly."
 msgstr "Через другой выход, когда провайдер блокирует этот сервер (например, через WARP). Если тот выход остановится, этот тоже — напрямую ничего не пойдёт."
 
+msgid "Server"
+msgstr "Сервер"
+
 msgid "Another server from a link"
 msgstr "Другой сервер по ссылке"
 
 msgid "Paste a link to replace the server of this exit. Policies keep using the exit."
 msgstr "Вставьте ссылку, чтобы заменить сервер этого выхода. Политики продолжат им пользоваться."
 
+msgid "For experts: the configuration as JSON"
+msgstr "Для опытных: настройки в JSON"
+
 msgid "Configuration"
 msgstr "Конфигурация"
 
-msgid "The exit's settings as the engine sees them (%s). For those who know the format; a wrong value stops the exit."
-msgstr "Настройки выхода в том виде, как их видит движок (%s). Для тех, кто знает формат: ошибка остановит выход."
+msgid "The exit's settings as the engine sees them (%s). A wrong value stops the exit. Changed here, it wins over the fields above."
+msgstr "Настройки выхода в том виде, в каком их видит движок (%s). Неверное значение остановит выход. Если изменить здесь, это важнее полей выше."
 
 msgid "Server address"
 msgstr "Адрес сервера"
@@ -1177,9 +1354,6 @@ msgstr "Панель через свой VPS (SSH)"
 msgid "Open LuCI from outside without a public address and without opening ports: the router itself connects to your server over SSH and holds a port there that leads to LuCI at home. The connection always goes directly, around the policies. Then open https://127.0.0.1:PORT through ssh -L on your computer, or https://VPS:PORT when the port is public (PORT is the port on the VPS below)."
 msgstr "Открывайте LuCI снаружи без белого адреса и без проброса портов: роутер сам подключается к вашему серверу по SSH и держит на нём порт, который ведёт на LuCI дома. Соединение всегда идёт напрямую, мимо политик. Затем откройте https://127.0.0.1:ПОРТ через ssh -L на своём компьютере или https://VPS:ПОРТ, если порт открыт для всех (ПОРТ — порт на VPS ниже)."
 
-msgid "Server"
-msgstr "Сервер"
-
 msgid "SSH port"
 msgstr "Порт SSH"
 
@@ -1363,9 +1537,6 @@ msgstr "Действие «%s» из панели: %s"
 msgid "done"
 msgstr "выполнено"
 
-msgid "failed"
-msgstr "не удалось"
-
 msgid "Configuration: %s"
 msgstr "Конфигурация: %s"
 
@@ -1392,6 +1563,78 @@ msgstr "DNS через туннель: не установлен пакет dnsp
 
 msgid "encrypted DNS: the dnsproxy package is not installed - the provider's DNS is used unencrypted"
 msgstr "шифрованный DNS: не установлен пакет dnsproxy — используется DNS провайдера без шифрования"
+
+msgid "Password"
+msgstr "Пароль"
+
+msgid "Encryption"
+msgstr "Шифрование"
+
+msgid "none"
+msgstr "нет"
+
+msgid "Vision is used with TCP and TLS or Reality, as the server says."
+msgstr "Vision используется с TCP и TLS или Reality — как указано на сервере."
+
+msgid "empty: no obfuscation"
+msgstr "пусто — без обфускации"
+
+msgid "Obfuscation password (salamander)"
+msgstr "Пароль обфускации (salamander)"
+
+msgid "default"
+msgstr "по умолчанию"
+
+msgid "Congestion control"
+msgstr "Управление перегрузкой"
+
+msgid "Security"
+msgstr "Защита"
+
+msgid "As the server is set up: Reality pretends to be another site, TLS is an ordinary certificate."
+msgstr "Как настроено на сервере: Reality выдаёт себя за другой сайт, TLS — обычный сертификат."
+
+msgid "the server address"
+msgstr "адрес сервера"
+
+msgid "The site name shown in the handshake. For Reality - the site it pretends to be."
+msgstr "Имя сайта в рукопожатии. Для Reality — сайт, за который выдаёт себя сервер."
+
+msgid "Browser fingerprint"
+msgstr "Отпечаток браузера"
+
+msgid "Which browser the handshake imitates (uTLS). Reality needs one; chrome if unsure."
+msgstr "Какой браузер изображает рукопожатие (uTLS). Для Reality обязателен; если не знаете — chrome."
+
+msgid "Do not check the certificate"
+msgstr "Не проверять сертификат"
+
+msgid "Only for your own server with a self-made certificate."
+msgstr "Только для своего сервера с самодельным сертификатом."
+
+msgid "Reality public key"
+msgstr "Открытый ключ Reality"
+
+msgid "Path"
+msgstr "Путь"
+
+msgid "gRPC service name"
+msgstr "Имя сервиса gRPC"
+
+msgid "Transport"
+msgstr "Транспорт"
+
+msgid "The server address is empty"
+msgstr "Не указан адрес сервера"
+
+msgid "The port must be 1-65535"
+msgstr "Порт должен быть от 1 до 65535"
+
+msgid "UUID looks wrong"
+msgstr "UUID выглядит неверно"
+
+msgid "Reality needs the public key"
+msgstr "Для Reality нужен открытый ключ"
 
 msgid "Overview"
 msgstr "Обзор"

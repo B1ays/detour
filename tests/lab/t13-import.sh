@@ -6,6 +6,8 @@
 CL=192.168.1.145
 cl() { ssh -y -i /root/.ssh/id_dropbear root@$CL "$@" 2>/dev/null; }
 FAIL=0; ok() { echo "  ok   $*"; }; bad() { echo "  FAIL $*"; FAIL=1; }
+# the lab server ex3 (made by t12): this test must not depend on running after it
+ip netns list | grep -q "^ex3 " || lab tests/lab/l2-exit.sh 3 >/dev/null 2>&1
 waitfor() { i=0; while [ $i -lt ${3:-15} ]; do [ "$(eval "$2")" = "$1" ] && return 0; sleep 1; i=$((i+1)); done; return 1; }
 txb() { cat /sys/class/net/$1/statistics/tx_bytes 2>/dev/null || echo 0; }
 D=/etc/enodia-lab; S=/tmp/stock-state

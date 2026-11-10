@@ -5,11 +5,39 @@
 'require uci';
 'require detour.msg as msg';
 
-const callEngineAdd = rpc.declare({ object: 'detour', method: 'engine_add', params: [ 'name', 'link', 'via' ] });
+const callParse = rpc.declare({ object: 'detour', method: 'exit_parse', params: [ 'text' ] });
+const callExitAdd = rpc.declare({ object: 'detour', method: 'exit_add', params: [ 'text', 'picks', 'name', 'via', 'label' ] });
 const callWarpReg = rpc.declare({ object: 'detour', method: 'warp_register', params: [ 'name', 'awg' ] });
 const callWarpDel = rpc.declare({ object: 'detour', method: 'warp_unregister', params: [ 'name' ] });
 const callImportCheck = rpc.declare({ object: 'detour', method: 'import_check' });
 const callImportApply = rpc.declare({ object: 'detour', method: 'import_apply' });
+
+// what the router says about a link or a config is English (it also goes to the log); the known ones for people
+function errText(e) {
+	let m;
+	e = String(e || '');
+	if ((m = e.match(/^(.*?): (.*)$/)) && !/^vpn:\/\//.test(e) && !/^(ss|hy2|tuic|vmess):/.test(e)) { const t = errText(m[2]); if (t != m[2]) return m[1] + ': ' + t; }
+	if ((m = e.match(/^unsupported scheme (.+)$/))) return _('the scheme «%s» is not supported').format(m[1]);
+	if ((m = e.match(/^type (.+) is not supported$/))) return _('the type «%s» is not supported').format(m[1]);
+	if ((m = e.match(/^transport "?(.+?)"? is not supported$/))) return _('the transport «%s» is not supported').format(m[1]);
+	if ((m = e.match(/^(.+) is already used, skipped$/))) return _('the name %s is already used, skipped').format(m[1]);
+	if ((m = e.match(/^(.+): (sing-box|xray-core) is not installed$/))) return _('%s: the %s package is not installed').format(m[1], m[2]);
+	if (/the ucode-mod-zlib package is needed/.test(e)) return _('this key needs the ucode-mod-zlib package (System → Software)');
+	if (/^vpn:\/\/: no AmneziaWG/.test(e)) return _('the vpn:// key has no AmneziaWG, WireGuard or Xray (other Amnezia protocols are not supported)');
+	if (/^vpn:\/\//.test(e)) return _('the vpn:// key could not be read');
+	if (/not a WireGuard config/.test(e)) return _('not a WireGuard config (keys or the server address missing)');
+	if (/a key is not a WireGuard key/.test(e)) return _('a key does not look like a WireGuard key');
+	if (/no IPv4 Address/.test(e)) return _('the config has no IPv4 address');
+	if (/^nothing recognised/.test(e)) return _('nothing recognised: a link, a key, a WireGuard config, JSON or Clash YAML is expected');
+	const fixed = {
+		'not a share link': _('not a link'), 'not valid JSON': _('not valid JSON'), 'no proxy in this JSON': _('no proxy in this JSON'),
+		'the proxies list is empty': _('the proxies list is empty'), 'empty': _('empty'), 'nothing usable was chosen': _('nothing usable was chosen'),
+		'cannot parse the link': _('the link could not be read'), 'a proxy without server/port': _('a proxy without a server or port')
+	};
+	if (fixed[e]) return fixed[e];
+	if (/cannot (parse|decode)|bad host:port|no method:password|bad base64/.test(e)) return _('the link could not be read');
+	return e;
+}
 
 function busy(btn, on) { btn.disabled = on; btn.classList.toggle('spinning', on); }
 
@@ -141,25 +169,73 @@ function resultBox() { return E('div', { 'class': 'detour-result' }); }
 return view.extend({
 	load: function() { return uci.load('detour'); },
 
+	// an exit from whatever a person has: one or more links, an Amnezia key, a WireGuard config, a JSON or a Clash
+	// YAML - pasted or from a file. First what was found, then the chosen ones become exits.
 	renderLink: function() {
+		const KIND = { 'wg': 'WireGuard', 'awg': 'AmneziaWG', 'singbox': 'sing-box', 'xray': 'Xray' };
+		const text = E('textarea', { 'class': 'cbi-input-textarea detour-code', 'rows': 5, 'spellcheck': 'false',
+			'placeholder': 'vless://… ss://… trojan://… hysteria2://… tuic://… wireguard://… vpn://…\n[Interface] …\n{ "outbounds": … }\nproxies: …' });
+		const file = E('input', { 'type': 'file', 'accept': '.conf,.json,.yaml,.yml,.txt,text/*', 'style': 'display:none', 'change': function() {
+			const f = file.files[0];
+			if (!f) return;
+			if (f.size > 256 * 1024) { box.replaceChildren(E('div', { 'class': 'alert-message warning' }, _('The file is too big for a config (over 256 KB).'))); return; }
+			const r = new FileReader();
+			r.onload = function() { text.value = r.result; if (!name.value) name.value = (f.name.replace(/\.[^.]*$/, '').toLowerCase().replace(/[^a-z0-9_]/g, '').replace(/^[^a-z]+/, '') || '').slice(0, 11); found.replaceChildren(); };
+			r.readAsText(f);
+		} });
+		const bFile = E('button', { 'class': 'btn', 'click': function() { file.click(); } }, _('Choose a file…'));
 		const name = E('input', { 'class': 'cbi-input-text', 'placeholder': 'vless1', 'maxlength': 11 });
-		const link = E('textarea', { 'class': 'cbi-input-textarea', 'rows': 3, 'placeholder': 'vless://… / ss://… / trojan://… / hysteria2://…' });
 		const via = E('select', { 'class': 'cbi-input-select' }, [ E('option', { 'value': '' }, _('directly')) ].concat(
 			uci.sections('detour', 'exit').map(function(s) { return E('option', { 'value': s['.name'] }, _('through %s').format(s.label || s['.name'])); })));
+		const found = E('div', { 'class': 'detour-servers' });
 		const box = resultBox();
-		const btn = E('button', { 'class': 'btn cbi-button-action', 'click': function() {
-			busy(btn, true);
-			return callEngineAdd(name.value.trim(), link.value.trim(), via.value).then(function(r) {
-				result(box, r, function(x) { return _('Exit %s added (%s to %s). Put it into a policy on the Policies page.').format(x.name, x.type, x.server); });
-			}).finally(function() { busy(btn, false); });
-		} }, _('Add exit'));
-		return card(_('Exit from a link'),
-			_('A link from your VPN provider or your own server. The exit runs on sing-box (install the sing-box package).'), [
-			row(_('Name'), name),
-			row(_('Link'), link),
+		let checks = [];
+
+		const bAdd = E('button', { 'class': 'btn cbi-button-action', 'style': 'display:none', 'click': function() {
+			const picks = [];
+			checks.forEach(function(c, i) { if (c && c.checked) picks.push(i); });
+			if (!picks.length) { box.replaceChildren(E('div', { 'class': 'alert-message warning' }, _('Tick at least one server.'))); return; }
+			if (!/^[a-z][a-z0-9_]{0,10}$/.test(name.value.trim())) { box.replaceChildren(E('div', { 'class': 'alert-message warning' }, _('Name: Latin letters, digits and _, up to 11, starting with a letter.'))); return; }
+			busy(bAdd, true);
+			return callExitAdd(text.value, picks, name.value.trim(), via.value, '').then(function(r) {
+				if (r && r.error) r.error = r.error.split('; ').map(errText).join('; ');
+				result(box, r, function(x) {
+					const names = (x.added || []).map(function(a) { return a.name; }).join(', ');
+					return E('div', {}, [ E('div', {}, N_((x.added || []).length, 'Exit %s added. Put it into a policy on the Policies page.', 'Exits %s added. Put them into a policy on the Policies page.').format(names)),
+						(x.notes && x.notes.length) ? E('div', { 'class': 'detour-muted' }, x.notes.map(errText).join('; ')) : '' ]);
+				});
+				if (r && !r.error) { text.value = ''; found.replaceChildren(); bAdd.style.display = 'none'; }
+			}).finally(function() { busy(bAdd, false); });
+		} }, _('Add the chosen'));
+
+		const bParse = E('button', { 'class': 'btn cbi-button-action', 'click': function() {
+			if (!text.value.trim()) return;
+			busy(bParse, true);
+			box.replaceChildren();
+			return callParse(text.value).then(function(r) {
+				if (!r || r.error) { found.replaceChildren(); bAdd.style.display = 'none'; return result(box, r && r.error ? { error: errText(r.error) } : r); }
+				checks = [];
+				const usable = r.candidates.filter(function(c) { return !c.error; }).length;
+				found.replaceChildren.apply(found, r.candidates.map(function(c, i) {
+					if (c.error) { checks.push(null); return E('div', { 'class': 'detour-muted' }, '✕ ' + errText(c.error)); }
+					const cb = E('input', { 'type': 'checkbox', 'checked': '' });
+					checks.push(cb);
+					return E('label', { 'class': 'detour-server' }, [ cb, ' ', E('span', {}, [ E('strong', {}, c.label || (c.server + ':' + c.port)),
+						E('span', { 'class': 'detour-muted' }, ' ' + [ c.proto || KIND[c.kind], c.server + ':' + c.port, KIND[c.kind] ].filter(function(x) { return x; }).join(' · ') + (c.warp ? ' · Cloudflare WARP' : '')) ]) ]);
+				}));
+				if (!usable) { bAdd.style.display = 'none'; box.replaceChildren(E('div', { 'class': 'alert-message warning' }, _('Nothing here can become an exit.'))); return; }
+				bAdd.style.display = '';
+				if (usable > 1) box.replaceChildren(E('div', { 'class': 'detour-muted' }, _('Several servers: each ticked one becomes its own exit, named %s1, %s2…').format(name.value || 'name', name.value || 'name')));
+			}).finally(function() { busy(bParse, false); });
+		} }, _('Check what is inside'));
+
+		return card(_('Exit from a link, a key or a file'),
+			_('Paste one or more links (vless, vmess, trojan, ss, hysteria2, tuic, wireguard), an Amnezia vpn:// key, a WireGuard / AmneziaWG config, a sing-box or Xray JSON or a Clash YAML - or choose such a file. Proxies run on sing-box (Xray for Xray configs), WireGuard and AmneziaWG on the router itself.'), [
+			row(_('Link, key or config'), E('div', {}, [ text, E('div', { 'class': 'detour-actions' }, [ bFile, file ]) ])),
+			row(_('Name'), name, _('Latin letters, digits and _, up to 11. Several servers: name1, name2…')),
 			row(_('Connect to the server'), via,
-				_('Through another exit (for example WARP) when the server itself is blocked by the provider. If that exit fails, this one stops too - nothing goes directly.')),
-			actions([ btn ]), box
+				_('Through another exit (for example WARP) when the server itself is blocked by the provider. If that exit fails, this one stops too - nothing goes directly. WireGuard always connects directly.')),
+			actions([ bParse, bAdd ]), found, box
 		]);
 	},
 

@@ -15,6 +15,7 @@ import * as auth from 'detour.auth';
 import * as notify from 'detour.notify';
 import * as engines from 'detour.engines';
 import * as exitui from 'detour.exitui';
+import * as exitadd from 'detour.exitadd';
 import * as watch from 'detour.watch';
 import { cursor } from 'uci';
 
@@ -151,7 +152,16 @@ function alerts() {
 		const h = health[e.name];
 		if (!h?.down_at || h.told || time() - h.down_at < cfg.main.alert_hold) continue;
 		if (!e.enabled) { h.down_at = null; continue; }
-		h.told = tell('exit_down', 'exit_down:' + e.name, sprintf('Выход %s перестал отвечать', watch.q(e.label ?? e.name)));
+		// the message says why, when the router can tell (diag_exit, a few seconds); nothing to send - no check
+		const nc = notify.config();
+		if (h.diag || watch.quiet() || !nc.enabled || index(nc.events, 'exit_down') < 0) continue;
+		h.diag = true;
+		diag_exit(e.name, function(d) {
+			h.diag = false;
+			if (!h.down_at || h.told) return;   // it came back meanwhile
+			const why = VERDICT_TEXT[d.verdict];
+			h.told = tell('exit_down', 'exit_down:' + e.name, sprintf('Выход %s перестал отвечать', watch.q(e.label ?? e.name)) + (why ? ': ' + why : ''));
+		});
 	}
 }
 
@@ -383,6 +393,106 @@ function sub_check(req) {
 		});
 }
 
+// text with keys or passwords for the CLI: a file of mode 600 the CLI removes, never the command line
+let in_seq = 0;
+function secret_arg(text) {
+	const f = sprintf('%s/in-%d-%d', core.RUN, time(), ++in_seq);
+	fs.writefile(f, ''); fs.chmod(f, 0600);
+	fs.writefile(f, text ?? '');
+	return '@' + f;
+}
+
+// curl as the system user dtnotify: Detour never classifies its traffic, so "directly" really is direct even when
+// the address is on a list that goes through a tunnel
+function direct_curl() {
+	return match(fs.readfile('/etc/passwd') ?? '', /(^|\n)dtnotify:/)
+		? 'start-stop-daemon -S -p ' + core.RUN + '/none.pid -c dtnotify -x /usr/bin/curl --' : 'curl';
+}
+
+// the provider's line: the device of the main table's default route
+function wan_dev() {
+	const m = match(core.run('ip -4 route show default table main').out, /dev ([^ \n]+)/);
+	return m ? m[1] : null;
+}
+
+// "Speed": a download of up to 25 MB through the exit (or directly, to compare), at most 14 s
+let speed_busy = false;
+function exit_speed(req) {
+	if (speed_busy) return { error: 'a speed test is running' };
+	let dev;
+	if (req.args.direct) dev = wan_dev();
+	else dev = filter(cfg.exits, (x) => x.name == req.args.name)[0]?.device;
+	if (!dev) return { error: req.args.direct ? 'no provider line' : 'no exit ' + (req.args.name ?? '') };
+	speed_busy = true;
+	req.defer();
+	const f = core.RUN + '/speed';
+	const url = cursor().get('detour', 'main', 'speed_url') ?? 'https://speed.cloudflare.com/__down?bytes=25000000';
+	uloop.process('/bin/sh', [ '-c', sprintf("%s -s -m 14 --interface %s -o /dev/null -w '%%{http_code} %%{speed_download} %%{size_download} %%{time_total}' %s > %s 2>/dev/null",
+		req.args.direct ? direct_curl() : 'curl', core.shq(dev), core.shq(url), f) ], {}, function() {
+		speed_busy = false;
+		const w = split(trim(fs.readfile(f) ?? ''), ' ');
+		fs.unlink(f);
+		const bytes = +(w[2] ?? 0);
+		// a download cut at 14 s still tells the speed; too little data says nothing
+		if (bytes < 500000) return req.reply({ ok: false, error: 'too little came through (' + int(bytes / 1024) + ' KB)' });
+		req.reply({ ok: true, mbps: int(+w[1] * 8 / 100000) / 10, mb: int(bytes / 104857.6) / 10, s: int(+w[3] * 10) / 10 });
+	});
+}
+
+// Why an exit does not work, as far as the router can tell: does its server's address answer directly (or
+// through the exit it rides) and through another working exit. Silent directly, answering elsewhere = the
+// provider blocks the address.
+// Through the provider's line or a kernel tunnel (WireGuard / AmneziaWG) a TCP connection is enough
+// (time_connect > 0, the protocol does not matter). A proxy exit's tun (sing-box, Xray) accepts every TCP
+// connection on the router itself, before the far end answers: through one only a real TLS answer counts
+// (time_appconnect > 0) - fine for TLS / Reality servers, while a plain-TCP server (Shadowsocks) stays unknown.
+// So another exit for the comparison is a kernel tunnel when there is one. UDP servers (WireGuard, Hysteria,
+// TUIC) give no such answer at all.
+function diag_exit(name, cb) {
+	const info = exitui.info();
+	const x = filter(info, (i) => i.name == name)[0];
+	if (!x?.server || !x?.port) return cb({ verdict: 'unknown' });
+	if (index([ 'wireguard', 'amneziawg' ], x.kind) >= 0 || match(x.proto ?? '', /^(Hysteria|TUIC|WireGuard)/))
+		return cb({ verdict: 'udp', server: x.server, port: x.port });
+	const proxy = {};
+	for (let i in info) proxy[i.name] = !!i.engine;
+	const via = x.via ? cfg.by_name[x.via] : null;
+	const first = via ? via.device : wan_dev();
+	// another working exit: not this one, not the one it rides, not one that rides this one; a kernel tunnel first
+	let other = null;
+	for (let e in cfg.exits) {
+		if (e.name == name || e.name == x.via || !healthy(e)) continue;
+		if (cursor().get('detour', e.name + '_eng', 'via') == name) continue;
+		if (!other || (proxy[other.name] && !proxy[e.name])) other = e;
+	}
+	const host = index(x.server, ':') >= 0 ? '[' + x.server + ']' : x.server;
+	const t = (dev, bin, tls) => sprintf("%s -s -k -o /dev/null --connect-timeout 5 -m 6 --interface %s -w '%s' %s 2>/dev/null; echo \" $?\"",
+		bin ?? 'curl', core.shq(dev), tls ? '%{time_appconnect}' : '%{time_connect}', core.shq(sprintf('%s://%s:%d/', tls ? 'https' : 'http', host, x.port)));
+	const f = sprintf('%s/diag-%s', core.RUN, name);
+	uloop.process('/bin/sh', [ '-c', '{ ' + t(first, via ? null : direct_curl(), via && proxy[via.name]) +
+		(other ? '; ' + t(other.device, null, proxy[other.name]) : '') + '; } > ' + f ], {}, function() {
+		const lines = split(trim(fs.readfile(f) ?? ''), '\n');
+		fs.unlink(f);
+		const up = (l) => { const m = match(l ?? '', /^([0-9.]+) ([0-9]+)$/); return m ? { ok: +m[1] > 0, code: int(m[2]) } : { ok: false, code: -1 }; };
+		const a = up(lines[0]), b = other ? up(lines[1]) : null;
+		let verdict;
+		if (a.code == 6) verdict = 'dns';
+		else if (a.ok) verdict = 'reachable';
+		else if (b?.ok) verdict = 'blocked';
+		else verdict = b ? 'down' : 'silent';
+		cb({ verdict, server: x.server, port: x.port, via: x.via, other: other?.name, other_label: other?.label,
+			engine: !!x.engine });
+	});
+}
+
+const VERDICT_TEXT = {
+	blocked: 'адрес сервера, похоже, заблокирован провайдером: напрямую не отвечает, а через другой выход отвечает',
+	down: 'сервер не отвечает ни напрямую, ни через другой выход',
+	silent: 'сервер не отвечает',
+	reachable: 'сервер отвечает, не работает сам протокол (ключи, настройки или фильтр провайдера по содержимому)',
+	dns: 'имя сервера не находится в DNS',
+};
+
 const S = { ubus_rpc_session: '' };
 conn.publish('detour', {
 	status: { call: () => status(), args: { ...S } },
@@ -392,7 +502,7 @@ conn.publish('detour', {
 	unpin:  { call: (req) => do_pin(req.args.policy, null), args: { policy: '', ...S } },
 	notify_test: { call: () => ({ queued: notify.test() }), args: { ...S } },
 	// LuCI actions: run the CLI asynchronously (deferred reply), so probes keep running meanwhile
-	engine_add:      { call: (req) => cli_job(req, [ 'engine-add', req.args.name, req.args.link, ...(length(req.args.via ?? '') ? [ req.args.via ] : []) ]), args: { name: '', link: '', via: '', ...S } },
+	engine_add:      { call: (req) => cli_job(req, [ 'engine-add', req.args.name, length(req.args.link ?? '') ? secret_arg(req.args.link) : '', ...(length(req.args.via ?? '') ? [ req.args.via ] : []) ]), args: { name: '', link: '', via: '', ...S } },
 	warp_register:   { call: (req) => cli_job(req, [ ...warp_args(req.args.name), ...(req.args.awg ? [ 'awg=1' ] : []) ]), args: { name: '', awg: false, ...S } },
 	warp_unregister: { call: (req) => cli_job(req, [ 'warp-unregister', req.args.name ]), args: { name: '', ...S } },
 	import_check:    { call: (req) => cli_job(req, [ 'import', IMPORT_FILE ]), args: { ...S } },
@@ -405,8 +515,18 @@ conn.publish('detour', {
 	exit_remove:     { call: (req) => cli_job(req, [ 'exit-remove', req.args.name ], true), args: { name: '', ...S } },
 	exit_pick:       { call: (req) => cli_job(req, [ 'exit-pick', req.args.name, length(req.args.key ?? '') ? req.args.key : '-' ]), args: { name: '', key: '', ...S } },
 	exit_config_get: { call: (req) => exitui.outbound_get(req.args.name), args: { name: '', ...S } },
-	exit_config_set: { call: (req) => cli_job(req, [ 'exit-config-set', req.args.name, req.args.config ], true), args: { name: '', config: '', ...S } },
-	exit_set_link:   { call: (req) => cli_job(req, [ 'exit-set-link', req.args.name, req.args.link ], true), args: { name: '', link: '', ...S } },
+	exit_config_set: { call: (req) => length(req.args.config ?? '') ? cli_job(req, [ 'exit-config-set', req.args.name, secret_arg(req.args.config) ], true) : { error: 'missing argument' }, args: { name: '', config: '', ...S } },
+	exit_set_link:   { call: (req) => length(req.args.link ?? '') ? cli_job(req, [ 'exit-set-link', req.args.name, secret_arg(req.args.link) ], true) : { error: 'missing argument' }, args: { name: '', link: '', ...S } },
+	// stage 2: an exit from any link / key / file, export, speed, why it does not work
+	exit_parse:      { call: (req) => exitadd.candidates(req.args.text), args: { text: '', ...S } },
+	exit_add:        { call: (req) => length(req.args.text ?? '') ? cli_job(req, [ 'exit-add', secret_arg(req.args.text),
+		(type(req.args.picks) == 'array' && length(req.args.picks)) ? join(',', map(req.args.picks, (x) => '' + int(x))) : '-',
+		req.args.name, length(req.args.via ?? '') ? req.args.via : '-', ...(length(req.args.label ?? '') ? [ req.args.label ] : []) ], true)
+		: { error: 'missing argument' }, args: { text: '', picks: [], name: '', via: '', label: '', ...S } },
+	exit_export:     { call: (req) => exitui.export_exit(req.args.name), args: { name: '', ...S } },
+	exit_speed:      { call: (req) => exit_speed(req), args: { name: '', direct: false, ...S } },
+	exit_diag:       { call: (req) => { req.defer(); diag_exit(req.args.name ?? '', (d) => req.reply(d)); }, args: { name: '', ...S } },
+	exit_set_via:    { call: (req) => cli_job(req, [ 'exit-set-via', req.args.name, length(req.args.via ?? '') ? req.args.via : '-' ], true), args: { name: '', via: '', ...S } },
 	sshtun_status:   { call: () => { try { return json(core.run('/bin/sh /usr/libexec/detour/sshtun status').out); } catch (e) { return { error: 'no status' }; } }, args: { ...S } },
 	sshtun_keygen:   { call: (req) => cli_job(req, [ 'sshtun', 'keygen' ]), args: { ...S } },
 	sshtun_test:     { call: (req) => cli_job(req, [ 'sshtun', 'test' ]), args: { ...S } },

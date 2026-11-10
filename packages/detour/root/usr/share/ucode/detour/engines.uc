@@ -43,8 +43,9 @@ export function write_outbound(name, outbound) {
 	return f;
 }
 
-// sing-box engine + netifd interface (proto none) + firewall zone + Detour exit, for an existing outbound file
-export function create_exit(name, f, via, label, dev) {
+// engine (sing-box, or Xray for an Xray outbound) + netifd interface (proto none) + firewall zone + Detour exit,
+// for an existing outbound file
+export function create_exit(name, f, via, label, dev, etype) {
 	const c = cursor();
 	dev ??= name + 'tun';
 	const used = {};
@@ -52,7 +53,7 @@ export function create_exit(name, f, via, label, dev) {
 	let id = 1;
 	while (id <= 250 && used[id]) id++;
 	c.set('detour', name + '_eng', 'engine');
-	c.set('detour', name + '_eng', 'type', 'singbox');
+	c.set('detour', name + '_eng', 'type', etype ?? 'singbox');
 	c.set('detour', name + '_eng', 'device', dev);
 	c.set('detour', name + '_eng', 'outbound', f);
 	if (via) c.set('detour', name + '_eng', 'via', via);
@@ -67,7 +68,8 @@ export function create_exit(name, f, via, label, dev) {
 	c.set('network', name, 'device', dev);
 	ensure_zone(c, name);
 	c.commit('detour'); c.commit('network'); c.commit('firewall');
-	run('/etc/init.d/network reload; fw4 -q reload');
+	// the engine itself starts with the service's reload (procd instances of engines.prepare())
+	run('/etc/init.d/network reload; fw4 -q reload; /etc/init.d/detour reload');
 	return { exit_id: id, device: dev };
 }
 

@@ -46,7 +46,13 @@
 					"exit_pick",
 					"exit_config_get",
 					"exit_config_set",
-					"exit_set_link"
+					"exit_set_link",
+					"exit_parse",
+					"exit_add",
+					"exit_export",
+					"exit_speed",
+					"exit_diag",
+					"exit_set_via"
 				]
 			},
 			"uci": [

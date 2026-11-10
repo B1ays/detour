@@ -1,4 +1,4 @@
-// Share links -> sing-box outbound (vless, vmess, trojan, ss, hysteria2/hy2).
+// Share links -> sing-box outbound (vless, vmess, trojan, ss, hysteria2/hy2, tuic), and back (to_link, export).
 // Mirrors the stock Detour parser (subs-update.sh parse_link/parse_vmess/parse_ss/parse_hy2):
 // SIP002 and legacy ss, '@' allowed inside the hy2 auth (split on the last one), sni defaults
 // to the host for TLS, IPv6 hosts in brackets.
@@ -151,6 +151,18 @@ function hy2(body) {
 	return { outbound: clean(o), remark: l.remark };
 }
 
+// tuic://uuid:password@host:port?sni=..&alpn=h3&congestion_control=bbr&udp_relay_mode=native&allow_insecure=1#name
+function tuic(body) {
+	const l = split_link(body, true);
+	if (!l || index(l.user ?? '', ':') < 0) return { error: 'tuic: cannot parse the link' };
+	const q = l.q, c = index(l.user, ':');
+	const o = { type: 'tuic', server: l.host, server_port: l.port, uuid: substr(l.user, 0, c), password: substr(l.user, c + 1),
+		congestion_control: q.congestion_control ?? q.congestion ?? null, udp_relay_mode: q.udp_relay_mode ?? null,
+		tls: { enabled: true, server_name: q.sni ?? l.host, alpn: q.alpn ? split(q.alpn, ',') : [ 'h3' ],
+			insecure: (q.allow_insecure == '1' || q.insecure == '1') ? true : null } };
+	return { outbound: clean(o), remark: l.remark };
+}
+
 // returns { outbound, remark } or { error }
 export function parse(link) {
 	link = trim(replace(link ?? '', '\r', ''));
@@ -162,6 +174,79 @@ export function parse(link) {
 	case 'vmess': return vmess(m[2]);
 	case 'ss': return ss(m[2]);
 	case 'hysteria2': case 'hy2': return hy2(m[2]);
+	case 'tuic': return tuic(m[2]);
 	default: return { error: 'unsupported scheme ' + m[1] };
 	}
+}
+
+// --- back: an outbound -> a share link (export) ----------------------------------------------------------------
+
+function enc(s) {
+	return replace('' + (s ?? ''), /[^A-Za-z0-9._~-]/g, (c) => {
+		let o = '';
+		for (let i = 0; i < length(c); i++) o += sprintf('%%%02X', ord(c, i));
+		return o;
+	});
+}
+
+function qs(o) {
+	const a = [];
+	for (let k, v in o) if (v != null && length('' + v)) push(a, k + '=' + enc(v));
+	return length(a) ? '?' + join('&', a) : '';
+}
+
+function hp(o) { return (index(o.server ?? '', ':') >= 0 ? '[' + o.server + ']' : o.server) + ':' + o.server_port; }
+
+// the query of a vless / trojan link: security and transport, as parse() reads them
+function tq(o) {
+	const t = o.tls ?? {}, tr = o.transport ?? {};
+	const q = {};
+	q.security = t.reality?.enabled ? 'reality' : (t.enabled ? 'tls' : null);
+	if (t.enabled) {
+		q.sni = t.server_name; q.fp = t.utls?.fingerprint;
+		q.alpn = (type(t.alpn) == 'array') ? join(',', t.alpn) : t.alpn;
+		if (t.insecure) q.allowInsecure = '1';
+		if (t.reality?.enabled) { q.pbk = t.reality.public_key; q.sid = t.reality.short_id; }
+	}
+	q.type = tr.type ?? 'tcp';
+	if (tr.type == 'ws') { q.path = tr.path; q.host = tr.headers?.Host; }
+	else if (tr.type == 'grpc') q.serviceName = tr.service_name;
+	else if (tr.type == 'http') { q.path = tr.path; q.host = (type(tr.host) == 'array') ? join(',', tr.host) : tr.host; }
+	else if (tr.type == 'httpupgrade') { q.path = tr.path; q.host = tr.host; }
+	return q;
+}
+
+// returns the link or null (a type with no common link form)
+export function to_link(o, remark) {
+	const r = remark ? '#' + enc(remark) : '';
+	switch (o?.type) {
+	case 'vless': {
+		const q = tq(o);
+		return 'vless://' + enc(o.uuid) + '@' + hp(o) + qs({ encryption: 'none', flow: o.flow, ...q }) + r;
+	}
+	case 'trojan': return 'trojan://' + enc(o.password) + '@' + hp(o) + qs(tq(o)) + r;
+	case 'vmess': {
+		const t = o.tls ?? {}, tr = o.transport ?? {};
+		const j = { v: '2', ps: remark ?? '', add: o.server, port: '' + o.server_port, id: o.uuid, aid: '' + (o.alter_id ?? 0),
+			scy: o.security ?? 'auto', net: tr.type ?? 'tcp', type: 'none',
+			host: tr.headers?.Host ?? ((type(tr.host) == 'array') ? join(',', tr.host) : tr.host) ?? '',
+			path: (tr.type == 'grpc') ? tr.service_name : (tr.path ?? ''),
+			tls: t.reality?.enabled ? 'reality' : (t.enabled ? 'tls' : ''), sni: t.server_name ?? '', fp: t.utls?.fingerprint ?? '' };
+		return 'vmess://' + b64enc(sprintf('%J', j));
+	}
+	case 'shadowsocks': return 'ss://' + replace(replace(replace(b64enc(o.method + ':' + o.password), '+', '-'), '/', '_'), /=+$/, '') + '@' + hp(o) + r;
+	case 'hysteria2': {
+		const t = o.tls ?? {};
+		return 'hysteria2://' + enc(o.password) + '@' + hp(o) + qs({ sni: t.server_name, insecure: t.insecure ? '1' : null,
+			alpn: (type(t.alpn) == 'array') ? join(',', t.alpn) : t.alpn,
+			obfs: o.obfs?.type, 'obfs-password': o.obfs?.password }) + r;
+	}
+	case 'tuic': {
+		const t = o.tls ?? {};
+		return 'tuic://' + enc(o.uuid) + ':' + enc(o.password) + '@' + hp(o) + qs({ sni: t.server_name,
+			alpn: (type(t.alpn) == 'array') ? join(',', t.alpn) : t.alpn, allow_insecure: t.insecure ? '1' : null,
+			congestion_control: o.congestion_control, udp_relay_mode: o.udp_relay_mode }) + r;
+	}
+	}
+	return null;
 }

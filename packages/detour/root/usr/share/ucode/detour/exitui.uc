@@ -8,6 +8,7 @@ import { cursor } from 'uci';
 import { run, log, PERSIST, RUN } from 'detour.core';
 import * as links from 'detour.links';
 import * as engines from 'detour.engines';
+import * as wgconf from 'detour.wgconf';
 
 const UP = { vless: 'VLESS', vmess: 'VMess', trojan: 'Trojan', shadowsocks: 'Shadowsocks', hysteria2: 'Hysteria2',
 	hysteria: 'Hysteria', tuic: 'TUIC', wireguard: 'WireGuard', anytls: 'AnyTLS', shadowtls: 'ShadowTLS',
@@ -237,4 +238,65 @@ export function set_link(name, link) {
 	run('/etc/init.d/detour reload');
 	log(sprintf('exit %s: server replaced from a link', name));
 	return { name, proto: summary(r.outbound), server: r.outbound.server };
+}
+
+// Export: the exit as a share link (a proxy) or a wg-quick .conf (WireGuard / AmneziaWG), and a QR code of it
+// when qrencode is installed. It holds the exit's keys: an admin's LuCI session only.
+export function export_exit(name) {
+	const c = cursor();
+	const x = c.get_all('detour', name);
+	if (x?.['.type'] != 'exit') return { error: 'no exit ' + (name ?? '') };
+	if (sub_of(c, name)) return { error: 'a subscription is shared by its address, not server by server' };
+	const label = x.label ?? name;
+	// a file name from the label; a label in another alphabet leaves little of itself - then the exit's name
+	let safe = replace(replace(label, /[^A-Za-z0-9._-]+/g, '_'), /^_+|_+$/g, '');
+	if (length(replace(safe, /[^A-Za-z0-9]/g, '')) < 3) safe = name;
+	const out = { name, label };
+	const eng = engine_of(c, name);
+	if (eng) {
+		const o = outbounds_of(c.get('detour', eng, 'outbound'))[0];
+		if (!o) return { error: 'the configuration file is missing' };
+		out.link = o.protocol ? null : links.to_link(o, label);
+		out.text = out.link ?? sprintf('%.J\n', o);
+		out.filename = safe + (out.link ? '.txt' : '.json');
+	}
+	else {
+		const conf = wgconf.to_conf(c, x.iface ?? name);
+		if (!conf) return { error: 'this exit has nothing to export' };
+		out.text = conf;
+		out.filename = safe + '.conf';
+	}
+	if (fs.access('/usr/bin/qrencode')) {
+		// through a file: the secret never shows on a command line
+		const f = sprintf('%s/qr-%s', RUN, name);
+		fs.writefile(f, ''); fs.chmod(f, 0600);
+		fs.writefile(f, trim(out.text));
+		const r = run(sprintf("qrencode -t SVG -l L -m 2 -r '%s' -o -", f));
+		fs.unlink(f);
+		if (r.code == 0 && index(r.out, '<svg') >= 0) out.qr_svg = substr(r.out, index(r.out, '<svg'));
+	}
+	else out.qr_missing = true;
+	return out;
+}
+
+// a proxy exit dials its server through another exit (the provider blocks the server's address), or directly again
+export function set_via(name, via) {
+	const c = cursor();
+	const eng = engine_of(c, name);
+	if (!eng) return { error: 'only a proxy exit can connect through another exit (a WireGuard one always goes directly)' };
+	if (via) {
+		if (via == name || c.get('detour', via) != 'exit') return { error: 'via: "' + via + '" is not another exit' };
+		// no circle: the chosen exit must not ride this one, directly or further down
+		for (let v = via, n = 0; v && n < 10; n++) {
+			const ve = engine_of(c, v);
+			v = ve ? c.get('detour', ve, 'via') : null;
+			if (v == name) return { error: 'a circle: "' + via + '" already connects through this exit' };
+		}
+		c.set('detour', eng, 'via', via);
+	}
+	else c.delete('detour', eng, 'via');
+	c.commit('detour');
+	run('/etc/init.d/detour reload');
+	log(sprintf('exit %s: connects %s', name, via ? 'through ' + via : 'directly'));
+	return { name, via };
 }

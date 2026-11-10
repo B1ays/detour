@@ -8,6 +8,7 @@
 import * as fs from 'fs';
 import { cursor } from 'uci';
 import { run, shq, M_UNDERLAY, PERSIST } from 'detour.core';
+import * as wgconf from 'detour.wgconf';
 
 const RE_V4 = /^[0-9]{1,3}(\.[0-9]{1,3}){3}(\/[0-9]{1,2})?$/;
 const RE_V6 = /^[0-9a-fA-F:]+:[0-9a-fA-F:]*(\/[0-9]{1,3})?$/;
@@ -26,23 +27,8 @@ function word(dir, rel) { const l = lines(dir, rel); return length(l) ? l[0] : n
 function tsv(dir, rel) { return map(lines(dir, rel), (l) => split(l, '\t')); }
 
 // WireGuard/AmneziaWG INI
-function ini(text) {
-	const o = { Interface: {}, Peer: {} };
-	let sec = null;
-	for (let l in split(text ?? '', '\n')) {
-		l = trim(replace(l, '\r', ''));
-		if (!length(l) || substr(l, 0, 1) == '#' || substr(l, 0, 1) == ';') continue;
-		const m = match(l, /^\[(.+)\]$/);
-		if (m) { sec = m[1]; continue; }
-		const i = index(l, '=');
-		if (i < 0 || !o[sec]) continue;
-		o[sec][trim(substr(l, 0, i))] = trim(substr(l, i + 1));
-	}
-	return o;
-}
 
-// the key every Cloudflare WARP endpoint presents (warp.uc WARP_PUB): a WG/AWG exit with this peer is WARP
-const WARP_PUB = 'bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=';
+const WARP_PUB = wgconf.WARP_PUB;
 
 // stock doh-lib.sh catalogue (name -> DoH URL, DoT name, bootstrap): its resolver choice (.doh-resolver)
 // becomes the encrypted resolvers of "Router DNS"; "encrypt always" (.doh-on = on) the encrypted mode
@@ -62,30 +48,12 @@ const DOH_CATALOG = {
 	nextdns: [ 'https://dns.nextdns.io/', 'dns.nextdns.io', '45.90.28.0' ],
 };
 
-const AWG_KEYS = [ 'Jc', 'Jmin', 'Jmax', 'S1', 'S2', 'S3', 'S4', 'H1', 'H2', 'H3', 'H4', 'I1', 'I2', 'I3', 'I4', 'I5' ];
+const AWG_KEYS = wgconf.AWG_KEYS;
 
 function wg_exit(name, text, from) {
-	const c = ini(text);
-	const I = c.Interface, P = c.Peer;
-	if (!I.PrivateKey || !P.PublicKey || !P.Endpoint) return { error: from + ': not a WireGuard config (keys/endpoint missing)' };
-	const ep = match(P.Endpoint, /^\[?([^\]]+)\]?:([0-9]+)$/);
-	if (!ep) return { error: from + ': bad Endpoint' };
-	let awg = false;
-	for (let k in AWG_KEYS) {
-		const v = I[k];
-		if (v == null) continue;
-		// plain WireGuard = all masking off (Jc 0, S 0, H 1..4)
-		if (match(k, /^J/) && int(v) != 0) awg = true;
-		if (match(k, /^S/) && int(v) != 0) awg = true;
-		if (match(k, /^H([1-4])$/) && v != substr(k, 1)) awg = true;
-		if (match(k, /^I/) && length(v)) awg = true;
-	}
-	const addrs = filter(map(split(I.Address ?? '', ','), (a) => trim(a)), (a) => match(a, RE_V4));
-	return { name, kind: awg ? 'awg' : 'wg', from,
-		net: { private_key: I.PrivateKey, addresses: addrs, mtu: I.MTU ?? '1280',
-			awg: awg ? I : null },
-		peer: { public_key: P.PublicKey, preshared_key: P.PresharedKey, endpoint_host: ep[1], endpoint_port: ep[2],
-			persistent_keepalive: P.PersistentKeepalive ?? '25' } };
+	const r = wgconf.from_conf(text, from);
+	if (r.error) return r;
+	return { name, kind: r.kind, from, net: r.net, peer: r.peer };
 }
 
 function xray_exit(name, text, from) {
@@ -434,22 +402,7 @@ export function apply(p, prefix) {
 		used[id] = n; idmap[e.name] = n;
 		const iface = (e.kind == 'wg' || e.kind == 'awg') ? n : null;
 		if (iface) {
-			c.set('network', n, 'interface');
-			c.set('network', n, 'proto', e.kind == 'awg' ? 'amneziawg' : 'wireguard');
-			c.set('network', n, 'private_key', e.net.private_key);
-			c.set('network', n, 'addresses', e.net.addresses);
-			c.set('network', n, 'mtu', e.net.mtu);
-			c.set('network', n, 'fwmark', sprintf('0x%x', M_UNDERLAY));
-			if (e.net.awg)   // names as in amneziawg-tools 3.1 (Quarx2k feed): awg_jc .. awg_i5
-				for (let k in AWG_KEYS) if (e.net.awg[k] != null) c.set('network', n, 'awg_' + lc(k), e.net.awg[k]);
-			// a repeated import must not stack peers
-			const old = [];
-			for (let t in [ 'wireguard_' + n, 'amneziawg_' + n ]) c.foreach('network', t, (s) => push(old, s['.name']));
-			for (let s in old) c.delete('network', s);
-			const ps = c.add('network', (e.kind == 'awg' ? 'amneziawg_' : 'wireguard_') + n);
-			for (let k, v in e.peer) if (v != null) c.set('network', ps, k, v);
-			c.set('network', ps, 'allowed_ips', [ '0.0.0.0/0' ]);
-			c.set('network', ps, 'route_allowed_ips', '0');
+			wgconf.write(c, n, e);
 			zone_for(c, n);
 		}
 		else {

@@ -14,9 +14,21 @@ import * as warppick from 'detour.warppick';
 import * as subs from 'detour.subs';
 import * as importer from 'detour.importer';
 import * as exitui from 'detour.exitui';
+import * as exitadd from 'detour.exitadd';
 import * as fs from 'fs';
 
 const cmd = ARGV[0];
+
+// "@<file>": the text (a configuration, a link, keys) comes in a file the daemon wrote (mode 600), not on the
+// command line where any process could read it; the file is removed once read
+function arg_text(a) {
+	if (substr(a ?? '', 0, 1) != '@') return a;
+	const f = substr(a, 1);
+	if (!match(f, /^\/tmp\/detour\/in-[A-Za-z0-9_-]+$/)) { warn('detour: bad input file\n'); exit(1); }
+	const t = fs.readfile(f);
+	fs.unlink(f);
+	return t ?? '';
+}
 
 function call(method, args) {
 	const c = ubus.connect();
@@ -68,7 +80,7 @@ case 'link': {
 }
 case 'engine-add': {
 	// detour engine-add <name> '<share link>' [via-exit]
-	const r = engines.add_from_link(ARGV[1], ARGV[2], ARGV[3]);
+	const r = engines.add_from_link(ARGV[1], arg_text(ARGV[2]), ARGV[3]);
 	printf('%.J\n', r);
 	exit(r.error ? 1 : 0);
 }
@@ -177,13 +189,39 @@ case 'exit-pick': {
 }
 case 'exit-config-set': {
 	// detour exit-config-set <exit> '<outbound JSON>'
-	const r = exitui.outbound_set(ARGV[1], ARGV[2]);
+	const r = exitui.outbound_set(ARGV[1], arg_text(ARGV[2]));
 	printf('%.J\n', r); exit(r.error ? 1 : 0);
 }
 case 'exit-set-link': {
 	// detour exit-set-link <exit> '<share link>'
-	const r = exitui.set_link(ARGV[1], ARGV[2]);
+	const r = exitui.set_link(ARGV[1], arg_text(ARGV[2]));
 	printf('%.J\n', r); exit(r.error ? 1 : 0);
+}
+case 'exit-parse': {
+	// detour exit-parse <file|@file>: what a link / key / config / JSON / Clash YAML holds (no secrets)
+	const t = (substr(ARGV[1] ?? '', 0, 1) == '@') ? arg_text(ARGV[1]) : fs.readfile(ARGV[1] ?? '');
+	const r = exitadd.candidates(t);
+	printf('%.J
+', r); exit(r.error ? 1 : 0);
+}
+case 'exit-add': {
+	// detour exit-add <file|@file> <picks: 0,2 | -> <name> [via|-] [label]
+	const t = (substr(ARGV[1] ?? '', 0, 1) == '@') ? arg_text(ARGV[1]) : fs.readfile(ARGV[1] ?? '');
+	const picks = (ARGV[2] && ARGV[2] != '-') ? map(split(ARGV[2], ','), (x) => int(x)) : [];
+	const r = exitadd.add(t, picks, ARGV[3], (ARGV[4] && ARGV[4] != '-') ? ARGV[4] : null, ARGV[5]);
+	printf('%.J
+', r); exit(r.error ? 1 : 0);
+}
+case 'exit-set-via': {
+	// detour exit-set-via <exit> <via-exit | ->: a proxy exit dials its server through another exit, or directly
+	const r = exitui.set_via(ARGV[1], (ARGV[2] && ARGV[2] != '-') ? ARGV[2] : null);
+	printf('%.J\n', r); exit(r.error ? 1 : 0);
+}
+case 'exit-export': {
+	// detour exit-export <exit>: a share link or a .conf (with its keys), and a QR code (qrencode)
+	const r = exitui.export_exit(ARGV[1]);
+	printf('%.J
+', r); exit(r.error ? 1 : 0);
 }
 case 'status': call('status'); break;
 case 'reload': call('reload'); break;
