@@ -23,7 +23,7 @@ export function exit_mark(id) { return id << 16; }
 // names of sets/chains/maps this config needs
 function wanted(cfg) {
 	const sets = { direct4: 1, direct6: 1, lan_ifs: 1, bypass4: 1, exit_devs: 1, direct_dev: 1, dom_direct4: 1, lst4_direct: 1 };
-	const chains = { classify: 1, prerouting: 1, output: 1, killswitch: 1, v6block: 1, dnsredir: 1, dotblock: 1 };
+	const chains = { classify: 1, prerouting: 1, output: 1, killswitch: 1, v6block: 1, dnsredir: 1, dotblock: 1, blockrej: 1 };
 	for (let p in cfg.policies) {
 		for (let k in [ 'dev', 'dst4', 'dst6', 'dom4', 'dom6', 'lst4' ]) sets[sprintf('%s_p%d', k, p.id)] = 1;
 	}
@@ -87,6 +87,7 @@ export function render(cfg, active, opts) {
 		add(sprintf('\tchain ks%d { }', e.id));
 	}
 	add('\tchain classify { }');
+	add('\tchain blockrej { }');
 	add('\tchain prerouting { type filter hook prerouting priority mangle - 5; policy accept; }');
 	add('\tchain output { type route hook output priority mangle - 5; policy accept; }');
 	add('\tchain killswitch { type filter hook postrouting priority srcnat - 10; policy accept; }');
@@ -96,7 +97,7 @@ export function render(cfg, active, opts) {
 	add('}');
 
 	// 2. flush rules and static data (dom* sets are left alone)
-	const chains = [ 'classify', 'prerouting', 'output', 'killswitch', 'v6block', 'dnsredir', 'dotblock' ];
+	const chains = [ 'classify', 'prerouting', 'output', 'killswitch', 'v6block', 'dnsredir', 'dotblock', 'blockrej' ];
 	for (let e in cfg.exits) { push(chains, sprintf('exit%d', e.id)); push(chains, sprintf('ks%d', e.id)); }
 	for (let ch in chains) add(sprintf('flush chain %s %s', T, ch));
 	add(sprintf('flush map %s pol2exit', T));
@@ -134,10 +135,16 @@ export function render(cfg, active, opts) {
 	for (let p in cfg.policies) {
 		if (!p.enabled) continue;
 		const eid = active?.[p.id];
+		// "Block": refused at once, so apps do not wait for a timeout
+		if (p.block) add(sprintf('add element %s pol2exit { %s : jump blockrej }', T, hex(pol_mark(p.id))));
 		// no exit at all (its last one was removed): what the policy covers is blocked, never sent directly
-		if (!length(p.exits)) add(sprintf('add element %s pol2exit { %s : drop }', T, hex(pol_mark(p.id))));
+		else if (!length(p.exits)) add(sprintf('add element %s pol2exit { %s : drop }', T, hex(pol_mark(p.id))));
 		else if (eid) add(sprintf('add element %s pol2exit { %s : jump exit%d }', T, hex(pol_mark(p.id)), eid));
 	}
+
+	// the "Block" target: TCP gets a reset, the rest "administratively prohibited"
+	add(sprintf('add rule %s blockrej counter meta l4proto tcp reject with tcp reset', T));
+	add(sprintf('add rule %s blockrej reject with icmpx type admin-prohibited', T));
 
 	// 7. classify: first match wins, policies in config order
 	add(sprintf('add rule %s classify ip daddr @bypass4 return', T));
@@ -230,6 +237,26 @@ export function set_policy_exit(pid, eid) {
 		r = run('nft -f ' + f);
 	}
 	return r;
+}
+
+// a policy whose exits are all down and which may then go directly (on_down 'direct'): its packets keep their
+// policy mark (so they are known as its traffic) but take no exit - the main table, the provider's line
+export function set_policy_direct(pid) {
+	const f = RUN + '/switch.nft';
+	fs.writefile(f, sprintf('delete element %s pol2exit { %s }\nadd element %s pol2exit { %s : accept }\n',
+		T, hex(pol_mark(pid)), T, hex(pol_mark(pid))));
+	let r = run('nft -f ' + f);
+	if (r.code != 0) {
+		fs.writefile(f, sprintf('add element %s pol2exit { %s : accept }\n', T, hex(pol_mark(pid))));
+		r = run('nft -f ' + f);
+	}
+	return r;
+}
+
+// how many packets the "Block" target refused
+export function counter_blocked() {
+	const m = match(run(sprintf('nft list chain %s blockrej', T)).out, /packets ([0-9]+)/);
+	return m ? int(m[1]) : 0;
 }
 
 export function counter_drops(eid) {

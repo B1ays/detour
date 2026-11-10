@@ -45,6 +45,28 @@ const PRESETS = [
 
 return baseclass.extend({
 	PRESETS: PRESETS,
+	catName: catName,
+	RF: RF,
+	RFGS: RFGS,
+
+	// the blocking policy (action block): its name, made (first in order, label "Block") when there is none yet.
+	// uci must be loaded; the caller saves and applies.
+	blockPolicy: function(uci, make) {
+		const have = uci.sections('detour', 'policy').filter(function(p) { return p.action == 'block'; })[0];
+		if (have || !make) return have ? have['.name'] : null;
+		let n = 'block';
+		for (let i = 2; uci.get('detour', n); i++) n = 'block' + i;
+		const used = {};
+		uci.sections('detour', 'policy').forEach(function(s) { used[+s.id] = true; });
+		let id = 1; while (used[id] && id < 250) id++;
+		const first = uci.sections('detour', 'policy')[0];
+		uci.add('detour', 'policy', n);
+		uci.set('detour', n, 'id', String(id));
+		uci.set('detour', n, 'action', 'block');
+		uci.set('detour', n, 'label', _('Block'));
+		if (first) uci.move('detour', n, first['.name']);
+		return n;
+	},
 
 	// a list's name for people: its own label, else what its first source is
 	listTitle: function(s) {
@@ -82,6 +104,8 @@ return baseclass.extend({
 		if ((m = line.match(/^policy (\S+): pinned to (\S+)$/))) return _('Policy %s: exit %s chosen by hand').format(L(m[1]), L(m[2]));
 		if ((m = line.match(/^policy (\S+): unpinned$/))) return _('Policy %s: the exit is chosen automatically again').format(L(m[1]));
 		if ((m = line.match(/^policy (\S+): switch failed: (.*)$/))) return _('Policy %s: switching failed (%s)').format(L(m[1]), m[2]);
+		if ((m = line.match(/^policy (\S+): no working exit - goes directly$/))) return _('Policy %s: no exit works - its traffic goes directly (as chosen)').format(L(m[1]));
+		if ((m = line.match(/^policy (\S+): an exit works again - through it$/))) return _('Policy %s: an exit works again - the traffic goes through it').format(L(m[1]));
 		if ((m = line.match(/^router DNS: (\S+)$/))) return { 'tunnel': _('Router DNS goes through the tunnel again'), 'fallback': _('Router DNS: the policy\'s exits are down - encrypted DNS directly') }[m[1]] || line;
 		if ((m = line.match(/^(start|reload|import): (\d+) exits, (\d+) policies$/)))
 			return ({ 'start': _('Detour started'), 'reload': _('Settings applied'), 'import': _('Settings imported') }[m[1]]) + ': ' +

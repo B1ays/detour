@@ -89,6 +89,8 @@ export function render_conf(cfg) {
 		if (!p.enabled || !length(p.domains)) continue;
 		for (let ch in chunks(p.domains, 40)) {
 			const doms = join('/', ch);
+			// "Block": no answer at all ("no such name", A and AAAA) - apps give up at once
+			if (p.block) { push(L, sprintf('address=/%s/', doms)); continue; }
 			push(L, sprintf('nftset=/%s/4#inet#detour#dom4_p%d,6#inet#detour#dom6_p%d', doms, p.id, p.id));
 			// AAAA suppressed (A-7), A answers unchanged. Not "::": that is the host itself - the router's
 			// own curl (lists, subscriptions, notifications) tried [::]:443, reached uhttpd and failed on its

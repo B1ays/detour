@@ -59,12 +59,21 @@ return view.extend({
 			E('th', { 'class': 'th' }, _('Manual choice'))
 		]) ];
 		(st.policies || []).forEach(function(p) {
+			if (p.block) {
+				rows.push(E('tr', { 'class': 'tr' }, [
+					td(_('Policy'), [ self.lab(p.name), p.enabled ? '' : ' (' + _('disabled') + ')' ]),
+					td(_('Active exit'), E('strong', {}, _('blocks'))),
+					td(_('Exits in order'), st.blocked ? _('refused: %d').format(st.blocked) : '—'),
+					td(_('Manual choice'), '')
+				]));
+				return;
+			}
 			const sel = E('select', { 'class': 'cbi-input-select' }, [ E('option', { 'value': '' }, _('Automatic')) ].concat(
 				p.exits.map(function(x) { return E('option', { 'value': x, 'selected': p.pinned == x ? '' : null }, self.lab(x)); })));
 			sel.addEventListener('change', ui.createHandlerFn(self, 'pinHandler', p.name, sel));
 			rows.push(E('tr', { 'class': 'tr' }, [
 				td(_('Policy'), [ self.lab(p.name), p.enabled ? '' : ' (' + _('disabled') + ')' ]),
-				td(_('Active exit'), E('strong', {}, p.active ? self.lab(p.active) : _('none - blocked'))),
+				td(_('Active exit'), E('strong', {}, p.direct ? _('none - goes directly') : (p.active ? self.lab(p.active) : _('none - blocked')))),
 				td(_('Exits in order'), p.exits.map(function(x) { return self.lab(x); }).join(' → ')),
 				td(_('Manual choice'), sel)
 			]));

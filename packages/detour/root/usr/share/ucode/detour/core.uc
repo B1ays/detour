@@ -172,15 +172,20 @@ export function load(conf) {
 		const id = int(s.id);
 		if (!(id >= 1 && id <= 250)) { push(errors, sprintf('policy %s: id must be 1..250', n)); return; }
 		if (pids[id]) { push(errors, sprintf('policy %s: id %d already used by %s', n, id, pids[id])); return; }
+		// action 'block': what the policy covers gets no internet at all (rejected at once; its domains get "no such
+		// name" from dnsmasq) - the target "Block" for sites, addresses, lists and devices. It has no exits.
+		const block = s.action == 'block';
 		const ex = [];
-		for (let e in as_list(s.exit)) {
+		if (!block) for (let e in as_list(s.exit)) {
 			if (by_name[e]) push(ex, e);
 			else push(errors, sprintf('policy %s: unknown exit "%s"', n, e));
 		}
 		// a policy without an exit stays: its traffic is blocked (nft: pol2exit -> drop). Dropping the policy
 		// would send what it covers directly - the opposite of what removing its last exit should do.
 		// (the text is matched by LuCI's msg.js: "policy … has no exit - its traffic is blocked")
-		if (!length(ex)) push(errors, sprintf('policy %s: no valid exit', n));
+		if (!block && !length(ex)) push(errors, sprintf('policy %s: no valid exit', n));
+		// when every exit is down: 'block' (default, fail-closed) or 'direct' (the owner chose to let it through)
+		const on_down = (s.on_down == 'direct' && !block) ? 'direct' : 'block';
 		const a = split_addrs(as_list(s.dst), errors, 'policy ' + n);
 		const doms = [];
 		for (let d in as_list(s.domain)) {
@@ -205,7 +210,7 @@ export function load(conf) {
 		}
 		pids[id] = n;
 		push(policies, {
-			name: n, id, exits: ex,
+			name: n, id, exits: ex, block, on_down,
 			enabled: bool(s.enabled, true),
 			dst4: a.v4, dst6: a.v6, domains: doms, devices: devs, ports,
 			label: s.label ?? n,
@@ -227,7 +232,7 @@ export function load(conf) {
 
 	if (main.dns == 'tunnel') {
 		let ok = false;
-		for (let p in policies) if (p.name == main.dns_policy) ok = true;
+		for (let p in policies) if (p.name == main.dns_policy && !p.block) ok = true;
 		if (!ok) { push(errors, sprintf('main: dns_policy "%s" is not a valid policy, DNS stays as is', main.dns_policy)); main.dns = 'off'; }
 	}
 

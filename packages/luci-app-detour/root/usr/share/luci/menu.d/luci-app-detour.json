@@ -61,5 +61,13 @@
 			"type": "view",
 			"path": "detour/add"
 		}
+	},
+	"admin/services/detour/check": {
+		"title": "Check a site",
+		"order": 7,
+		"action": {
+			"type": "view",
+			"path": "detour/check"
+		}
 	}
 }

@@ -5,6 +5,8 @@ FAIL=0; ok() { echo "  ok   $*"; }; bad() { echo "  FAIL $*"; FAIL=1; }
 waitfor() { i=0; while [ $i -lt ${3:-15} ]; do [ "$(eval "$2")" = "$1" ] && return 0; sleep 1; i=$((i+1)); done; return 1; }
 S=http://10.0.2.2:8766
 nlog() { wget -qO- $S/log | grep -c "$1"; }
+# at least one more (a message left in the queue by an earlier run may arrive too)
+waitge() { i=0; while [ $i -lt ${3:-15} ]; do [ "$(eval "$2")" -ge "$1" ] && return 0; sleep 1; i=$((i+1)); done; return 1; }
 uci -q batch <<'U'
 set detour.notify=notify
 set detour.notify.enabled=1
@@ -17,7 +19,7 @@ U
 ubus call detour reload >/dev/null
 n0=$(nlog 'Проверочное сообщение')
 ubus call detour notify_test >/dev/null
-waitfor $((n0+1)) "nlog 'Проверочное сообщение'" 15 && ok "test message delivered" || bad "test message not delivered"
+waitge $((n0+1)) "nlog 'Проверочное сообщение'" 15 && ok "test message delivered" || bad "test message not delivered"
 logread | grep 'notify: sent via' | tail -1 | grep -qv 'via direct' && ok "sent through a working exit ($(logread | grep 'notify: sent via' | tail -1 | sed 's/.*via //'))" || bad "path: $(logread | grep 'notify: sent via' | tail -1)"
 wget -qO- $S/log | tail -1 | grep -q '"chat_id": "4242"' && ok "chat id and JSON body" || bad "body: $(wget -qO- $S/log | tail -1)"
 ls -l /tmp/detour/notify/curl.cfg | grep -q "^-rw------- .* dtnotify " && ok "token file mode 600, owned by dtnotify" || bad "mode: $(ls -l /tmp/detour/notify/curl.cfg)"
@@ -26,8 +28,8 @@ waitfor false "ubus call detour status | jsonfilter -e '@.notify_quiet'" 200 || 
 echo "== exit down -> 'перестал отвечать' + switch"
 d0=$(nlog 'перестал отвечать'); s0=$(nlog 'переключилась')
 ifdown wgx1
-waitfor $((d0+1)) "nlog 'перестал отвечать'" 40 && ok "exit down message" || bad "no exit down message"
-waitfor $((s0+1)) "nlog 'переключилась'" 45 && ok "switch message" || bad "no switch message"
+waitge $((d0+1)) "nlog 'перестал отвечать'" 40 && ok "exit down message" || bad "no exit down message"
+waitge $((s0+1)) "nlog 'переключилась'" 45 && ok "switch message" || bad "no switch message"
 ifup wgx1; sleep 8
 echo "== API failing (blocked) -> queued, delivered later with its time"
 wget -qO- "$S/fail?n=25" >/dev/null
@@ -52,7 +54,7 @@ uci add_list detour.vpn.dst=198.51.100.0/24; uci set detour.notify.tg_api=http:/
 reload_config; sleep 6
 ifdown wgx1; ifdown wgx2; sleep 8
 n0=$(nlog 'Проверочное сообщение'); ubus call detour notify_test >/dev/null
-waitfor $((n0+1)) "nlog 'Проверочное сообщение'" 40 && ok "delivered with every exit down (address on a VPN list)" || bad "not delivered: queue=$(ubus call detour status | jsonfilter -e '@.notify_queued')"
+waitge $((n0+1)) "nlog 'Проверочное сообщение'" 40 && ok "delivered with every exit down (address on a VPN list)" || bad "not delivered: queue=$(ubus call detour status | jsonfilter -e '@.notify_queued')"
 logread | grep 'notify: sent via' | tail -1 | grep -q 'via direct' && ok "path: direct" || bad "path: $(logread | grep 'notify: sent via' | tail -1)"
 ifup wgx1; ifup wgx2
 nft delete table ip labdnat

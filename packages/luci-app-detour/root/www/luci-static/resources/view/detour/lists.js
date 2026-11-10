@@ -51,6 +51,7 @@ function failText(m) {
 function policyLabel(n) {
 	if (n == 'direct') return _('never through a tunnel');
 	if (uci.get('detour', n, '.type') != 'policy') return _('nowhere: its policy «%s» no longer exists - choose another in «Edit»').format(n);
+	if (uci.get('detour', n, 'action') == 'block') return _('blocked (the policy «%s»)').format(uci.get('detour', n, 'label') || n);
 	return _('through the policy «%s»').format(uci.get('detour', n, 'label') || n);
 }
 
@@ -103,12 +104,17 @@ return view.extend({
 	},
 
 	policySelect: function(cur) {
-		return E('select', { 'class': 'cbi-input-select' }, uci.sections('detour', 'policy').map(function(p) {
-			return E('option', { 'value': p['.name'], 'selected': cur == p['.name'] ? '' : null }, _('through the policy «%s»').format(p.label || p['.name']));
-		}).concat([ E('option', { 'value': 'direct', 'selected': cur == 'direct' ? '' : null }, _('never through a tunnel')) ]));
+		// "block": the blocking policy, made on save when there is none yet
+		const opts = uci.sections('detour', 'policy').map(function(p) {
+			return E('option', { 'value': p['.name'], 'selected': cur == p['.name'] ? '' : null },
+				p.action == 'block' ? _('block (the policy «%s»)').format(p.label || p['.name']) : _('through the policy «%s»').format(p.label || p['.name']));
+		}).concat([ E('option', { 'value': 'direct', 'selected': cur == 'direct' ? '' : null }, _('never through a tunnel')) ]);
+		if (!msg.blockPolicy(uci)) opts.push(E('option', { 'value': '__block' }, _('block')));
+		return E('select', { 'class': 'cbi-input-select' }, opts);
 	},
 
-	edit: function(l) {
+	// pre: { name, url, kind, label } - a new list from the catalogue
+	edit: function(l, pre) {
 		const isNew = !l;
 		l = l || {};
 		const name = E('input', { 'class': 'cbi-input-text', 'placeholder': 'yt', 'maxlength': 20 });
@@ -127,9 +133,10 @@ return view.extend({
 			url.value = p[2]; kind.value = p[3]; if (!label.value) label.value = p[1];
 			if (isNew && !name.value) name.value = 'l_' + p[0];
 		});
+		if (pre) { url.value = pre.url; kind.value = pre.kind; label.value = pre.label; name.value = pre.name; }
 		const body = [];
-		if (isNew) body.push(row(_('Ready-made list'), preset, _('Popular categories, kept up to date by their authors (runetfreedom, v2fly). Or give your own sources below.')),
-			row(_('Internal name'), name, _('Latin letters, digits and _; used in the configuration.')));
+		if (isNew && !pre) body.push(row(_('Ready-made list'), preset, _('Popular categories, kept up to date by their authors (runetfreedom, v2fly). Or give your own sources below.')));
+		if (isNew) body.push(row(_('Internal name'), name, _('Latin letters, digits and _; used in the configuration.')));
 		body.push(
 			row(_('Name'), label, _('How the list is shown everywhere. Empty: made from its source.')),
 			row(_('Goes'), policy, _('Through which policy (its exits) the addresses of the list go - or never through a tunnel, whatever the policies say.')),
@@ -153,13 +160,67 @@ return view.extend({
 			if (isNew) uci.add('detour', 'list', n);
 			const set = function(k, v) { if (v && (!Array.isArray(v) || v.length)) uci.set('detour', n, k, v); else uci.unset('detour', n, k); };
 			set('label', label.value.trim());
-			set('policy', policy.value);
+			set('policy', policy.value == '__block' ? msg.blockPolicy(uci, true) : policy.value);
 			set('url', urls);
 			set('file', file.value.trim());
 			set('kind', kind.value == 'auto' ? '' : kind.value);
 			set('min_lines', minl.value.trim());
 			return applyUci().then(function() { return callUpdate(n); }).then(function() { return true; });
 		}, isNew ? _('Add') : _('Save'));
+	},
+
+	// the catalogue: every category of v2fly and runetfreedom with how many entries it has (counted when the
+	// package was built, tools/geo-catalog.py) and about how much memory it takes on the router
+	catalog: function() {
+		const self = this;
+		const search = E('input', { 'class': 'cbi-input-text', 'placeholder': _('youtube, telegram, openai, steam…') });
+		const kindSel = E('select', { 'class': 'cbi-input-select' }, [ [ '', _('domains and addresses') ], [ 'domain', _('domains') ], [ 'cidr', _('addresses') ] ].map(function(k) { return E('option', { 'value': k[0] }, k[1]); }));
+		const srcSel = E('select', { 'class': 'cbi-input-select' }, [ [ '', _('all sources') ], [ 'v2fly', 'v2fly' ], [ 'rf', 'runetfreedom' ] ].map(function(k) { return E('option', { 'value': k[0] }, k[1]); }));
+		const out = E('div', { 'class': 'detour-servers' }, E('em', {}, _('Loading…')));
+		const have = {};
+		uci.sections('detour', 'list').forEach(function(l) { arr(l.url).forEach(function(u) { have[u] = msg.listTitle(l); }); });
+		const size = function(e) {
+			const b = e.n * (e.kind == 'cidr' ? 100 : 70);
+			return b > 1048576 ? _('~%s MB').format((b / 1048576).toFixed(1)) : _('~%d KB').format(Math.max(1, Math.round(b / 1024)));
+		};
+		let all = [];
+		const draw = function() {
+			const q = search.value.trim().toLowerCase();
+			const hits = all.filter(function(e) {
+				return (!kindSel.value || e.kind == kindSel.value) && (!srcSel.value || e.src == srcSel.value) &&
+					(!q || e.key.indexOf(q) >= 0 || e.title.toLowerCase().indexOf(q) >= 0);
+			}).sort(function(a, b) { return (!q ? 0 : (a.key == q ? -1 : b.key == q ? 1 : 0)) || b.n - a.n; });
+			const rows = hits.slice(0, 60).map(function(e) {
+				const big = e.n > 300000;
+				return E('div', { 'class': 'detour-server-row' }, [
+					E('span', {}, [ E('strong', {}, e.title), E('span', { 'class': 'detour-muted' },
+						' ' + [ e.src == 'v2fly' ? 'v2fly «' + e.key + '»' : 'runetfreedom «' + e.key + '»', N_(e.n, '%d entry', '%d entries').format(e.n), size(e) ].join(' · ')) ]),
+					big ? E('span', { 'class': 'detour-delay bad' }, _('very big: the router may run short of memory')) : '',
+					have[e.url] ? E('span', { 'class': 'detour-muted' }, _('already added')) : E('button', { 'class': 'btn', 'click': function() {
+						ui.hideModal();
+						self.edit(null, { url: e.url, kind: e.kind, label: e.title, name: ('l_' + e.key.replace(/[^a-z0-9_]/g, '_')).slice(0, 20) });
+					} }, _('Add'))
+				]);
+			});
+			if (hits.length > 60) rows.push(E('div', { 'class': 'detour-muted' }, _('and %d more: narrow the search').format(hits.length - 60)));
+			out.replaceChildren.apply(out, rows.length ? rows : [ E('em', {}, _('Nothing found.')) ]);
+		};
+		[ search, kindSel, srcSel ].forEach(function(el) { el.addEventListener(el.tagName == 'INPUT' ? 'input' : 'change', draw); });
+		ui.showModal(_('Catalogue of categories'), [
+			E('div', { 'class': 'cbi-value-description' }, _('Categories kept up to date by their authors: v2fly (services and sites of the world) and runetfreedom (what is blocked in Russia). The number of entries is from the time this version was built.')),
+			E('div', { 'class': 'detour-actions' }, [ search, kindSel, srcSel ]),
+			out,
+			E('div', { 'class': 'right' }, [ E('button', { 'class': 'btn', 'click': ui.hideModal }, _('Close')) ])
+		]);
+		L.Request.get(L.resource('detour/geo-catalog.json')).then(function(r) {
+			const c = r.json();
+			const mk = function(src, key, n, url, kind) { return { src, key, n, url, kind, title: msg.listTitle({ url: [ url ], '.name': key }) }; };
+			all = (c.v2fly || []).map(function(x) { return mk('v2fly', x[0], x[1], 'v2fly:' + x[0], 'domain'); })
+				.concat((c.rfgs || []).map(function(x) { return mk('rf', x[0], x[1], msg.RFGS + x[0] + '.txt', 'domain'); }))
+				.concat((c.rfip || []).map(function(x) { return mk('rf', x[0], x[1], msg.RF + x[0] + '.txt', 'cidr'); }));
+			draw();
+			search.focus();
+		}).catch(function() { out.replaceChildren(E('em', {}, _('The catalogue is missing from this build.'))); });
 	},
 
 	render: function(data) {
@@ -175,7 +236,8 @@ return view.extend({
 				E('div', { 'class': 'cbi-section-node detour-node' }, [
 					all.length ? E('div', { 'class': 'detour-cards' }, all.map(function(l) { return self.renderList(l, st); }))
 						: E('div', { 'class': 'detour-result' }, E('em', {}, _('No lists yet.'))),
-					E('div', { 'class': 'detour-actions' }, [ E('button', { 'class': 'btn cbi-button-add', 'click': function() { self.edit(null); } }, _('Add list')) ])
+					E('div', { 'class': 'detour-actions' }, [ E('button', { 'class': 'btn cbi-button-add', 'click': function() { self.edit(null); } }, _('Add list')),
+						E('button', { 'class': 'btn', 'click': function() { self.catalog(); } }, _('Catalogue of categories…')) ])
 				])
 			])
 		]);

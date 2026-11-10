@@ -82,14 +82,24 @@ return view.extend({
 		const enabled = p.enabled != '0';
 
 		const body = [];
+		const block = p.action == 'block';
+		const direct = p.on_down == 'direct';
 		// where
-		if (!exits.length) body.push(note(_('No exit: the traffic of this policy is blocked. Choose an exit in «Edit».'), 'warning'));
+		if (block) {
+			body.push(E('div', {}, [ E('strong', {}, _('Lets nothing through.')), ' ',
+				_('Addresses, devices and ports below are refused at once, the sites get «no such name» - apps stop trying instead of waiting.') ]));
+			if (st.blocked) body.push(E('div', { 'class': 'detour-muted' }, _('Refused since the start: %d connections.').format(st.blocked)));
+		}
+		else if (!exits.length) body.push(note(_('No exit: the traffic of this policy is blocked. Choose an exit in «Edit».'), 'warning'));
 		else {
 			body.push(E('div', {}, [ E('strong', {}, (_('Goes through:') + ' ')), exits.map(function(e) { return self.exitLabel(e); }).join(' → '),
 				live.active ? E('span', { 'class': 'detour-muted' }, ' ' + _('(now: %s%s)').format(self.exitLabel(live.active), live.pinned ? ', ' + _('chosen by hand') : '')) : '' ]));
-			body.push(E('div', { 'class': 'detour-muted' }, exits.length > 1
-				? _('Through the first working exit in this order; when it fails - through the next one, and back when it works again. If all of them fail, this traffic is blocked, not sent directly.')
-				: _('If this exit fails, this traffic is blocked, not sent directly. Add a second exit to have a spare.')));
+			body.push(E('div', { 'class': 'detour-muted' }, direct
+				? (exits.length > 1 ? _('Through the first working exit in this order; when it fails - through the next one, and back when it works again. If all of them fail, this traffic goes directly through your provider (as chosen in «Edit»).')
+					: _('If this exit fails, this traffic goes directly through your provider (as chosen in «Edit»).'))
+				: (exits.length > 1 ? _('Through the first working exit in this order; when it fails - through the next one, and back when it works again. If all of them fail, this traffic is blocked, not sent directly.')
+					: _('If this exit fails, this traffic is blocked, not sent directly. Add a second exit to have a spare.'))));
+			if (live.direct) body.push(note(_('Now no exit works: this traffic goes directly, the provider sees it.'), 'warning'));
 		}
 		// what
 		const what = [];
@@ -106,7 +116,7 @@ return view.extend({
 			' ', E('a', { 'href': L.url('admin/services/detour/lists') }, _('(on the Lists page)')) ]));
 		if (!what.length) what.push(E('em', {}, _('Nothing goes through it yet: add devices, sites, addresses, ports or lists.')));
 
-		const bEdit = E('button', { 'class': 'btn cbi-button-edit', 'click': function() { self.edit(p, hints); } }, _('Edit'));
+		const bEdit = E('button', { 'class': 'btn cbi-button-edit', 'click': function() { self.edit(p, hints, block); } }, _('Edit'));
 		const bUp = E('button', { 'class': 'btn', 'title': _('Checked earlier'), 'disabled': idx == 0 ? '' : null, 'click': function() {
 			uci.move('detour', name, all[idx - 1]['.name']); return applyUci(); } }, '↑ ' + _('Up'));
 		const bDown = E('button', { 'class': 'btn', 'title': _('Checked later'), 'disabled': idx == all.length - 1 ? '' : null, 'click': function() {
@@ -118,7 +128,7 @@ return view.extend({
 		return E('div', { 'class': 'detour-card' }, [
 			E('div', { 'class': 'detour-card-head' }, [ E('span', { 'class': 'detour-muted' }, String(idx + 1) + '.'),
 				E('span', { 'class': 'detour-card-title' }, label), ' ',
-				E('span', { 'class': 'detour-badge ' + (enabled ? 'ok' : 'off') }, enabled ? _('on') : _('off')),
+				E('span', { 'class': 'detour-badge ' + (enabled ? (block ? 'bad' : 'ok') : 'off') }, enabled ? (block ? _('blocks') : _('on')) : _('off')),
 				E('span', { 'class': 'detour-muted', 'title': _('Internal name: used in the configuration and the log') }, name) ]),
 			E('div', { 'class': 'detour-card-body' }, body.concat(what)),
 			E('div', { 'class': 'detour-actions detour-card-actions' }, [ bEdit, bUp, bDown, bToggle, bRemove ])
@@ -128,8 +138,10 @@ return view.extend({
 	remove: function(p, lists) {
 		const label = p.label || p['.name'];
 		ui.showModal(_('Remove the policy «%s»?').format(label), [
-			E('p', {}, lists.length ? _('Its lists (%s) are removed too. What went through it goes directly from now on.').format(lists.map(function(l) { return msg.listTitle(l); }).join(', '))
-				: _('What went through it goes directly from now on.')),
+			E('p', {}, p.action == 'block'
+				? (lists.length ? _('Its lists (%s) are removed too. What it blocked opens again.').format(lists.map(function(l) { return msg.listTitle(l); }).join(', ')) : _('What it blocked opens again.'))
+				: (lists.length ? _('Its lists (%s) are removed too. What went through it goes directly from now on.').format(lists.map(function(l) { return msg.listTitle(l); }).join(', '))
+				: _('What went through it goes directly from now on.'))),
 			E('div', { 'class': 'right' }, [ E('button', { 'class': 'btn', 'click': ui.hideModal }, _('Cancel')), ' ',
 				E('button', { 'class': 'btn cbi-button-negative', 'click': function() {
 					lists.forEach(function(l) { uci.remove('detour', l['.name']); });
@@ -187,9 +199,11 @@ return view.extend({
 		return wrap;
 	},
 
-	edit: function(p, hints) {
+	// block: the "Block" kind (no exits, nothing gets through)
+	edit: function(p, hints, block) {
 		const isNew = !p;
 		p = p || {};
+		block = block || p.action == 'block';
 		const name = E('input', { 'class': 'cbi-input-text', 'placeholder': 'vpn2', 'maxlength': 11 });
 		const label = E('input', { 'class': 'cbi-input-text', 'value': p.label || '', 'placeholder': _('for example: Blocked sites') });
 		const exits = this.exitPicker(arr(p.exit));
@@ -197,20 +211,30 @@ return view.extend({
 		const dst = E('textarea', { 'class': 'cbi-input-textarea', 'rows': 3, 'placeholder': '203.0.113.0/24' }, arr(p.dst).join('\n'));
 		const dom = E('textarea', { 'class': 'cbi-input-textarea', 'rows': 4, 'placeholder': 'example.com' }, arr(p.domain).join('\n'));
 		const port = E('input', { 'class': 'cbi-input-text', 'value': arr(p.port).join(' '), 'placeholder': 'udp/443 tcp/6000-6100' });
+		// when every exit is down: blocked (the default, nothing leaks) or directly - asked for, with the price said
+		const onDown = E('select', { 'class': 'cbi-input-select', 'change': function() {
+			if (onDown.value == 'direct' && !confirm(_('When every exit of this policy fails, its traffic will go directly through your provider: the provider sees which sites these are, and blocked ones will not open anyway. Let it through?')))
+				onDown.value = 'block';
+		} }, [ E('option', { 'value': 'block', 'selected': p.on_down != 'direct' ? '' : null }, _('block it (nothing leaks)')),
+			E('option', { 'value': 'direct', 'selected': p.on_down == 'direct' ? '' : null }, _('let it go directly through the provider')) ]);
 		const body = [];
 		if (isNew) body.push(row(_('Internal name'), name, _('Latin letters, digits and _, up to 11; used in the configuration.')));
+		body.push(row(_('Name'), label, _('How the policy is shown everywhere.')));
+		if (block) body.push(note(_('A blocking policy: what matches it gets no internet at all. Sites get «no such name», addresses and ports are refused at once.')));
+		else body.push(
+			row(_('Exits'), exits, _('In order: the traffic goes through the first working exit; when it fails, through the next one, and back when it works again.')),
+			row(_('If no exit works'), onDown, _('Blocked is safer: nothing goes past the tunnel. Directly keeps things working without the VPN, but the provider sees this traffic.')));
 		body.push(
-			row(_('Name'), label, _('How the policy is shown everywhere.')),
-			row(_('Exits'), exits, _('In order: the traffic goes through the first working exit; when it fails, through the next one, and back when it works again. If all fail, the traffic is blocked, not sent directly.')),
-			E('h4', {}, _('What goes through')),
-			E('div', { 'class': 'cbi-value-description' }, _('Anything that matches one of these goes through the policy. Bigger sets (all blocked sites, a service) are added as lists on the Lists page.')),
-			row(_('Devices'), devices, _('All traffic of the checked devices goes through the policy.')),
+			E('h4', {}, block ? _('What is blocked') : _('What goes through')),
+			E('div', { 'class': 'cbi-value-description' }, block ? _('Anything that matches one of these is blocked. Bigger sets (advertising, a service) are added as lists on the Lists page.')
+				: _('Anything that matches one of these goes through the policy. Bigger sets (all blocked sites, a service) are added as lists on the Lists page.')),
+			row(_('Devices'), devices, block ? _('The checked devices get no internet at all.') : _('All traffic of the checked devices goes through the policy.')),
 			row(_('Sites'), dom, _('One per line. A site includes its subdomains (example.com covers www.example.com). Devices must use the router\'s DNS (they do by default).')),
 			row(_('Addresses'), dst, _('IP addresses or ranges (CIDR), one per line.')),
 			row(_('Ports'), port, _('Destination ports: 443 (TCP and UDP), udp/443, tcp/6000-6100, separated by spaces. All traffic of the network to these ports goes through the policy.'))
 		);
 		const self = this;
-		modal(isNew ? _('New policy') : _('Policy «%s»').format(p.label || p['.name']), body, function() {
+		modal(isNew ? (block ? _('New blocking policy') : _('New policy')) : _('Policy «%s»').format(p.label || p['.name']), body, function() {
 			let n = p['.name'];
 			if (isNew) {
 				n = name.value.trim();
@@ -230,10 +254,16 @@ return view.extend({
 				uci.sections('detour', 'policy').forEach(function(s) { used[+s.id] = true; });
 				let id = 1; while (used[id] && id < 250) id++;
 				uci.set('detour', n, 'id', String(id));
+				// a blocking policy goes first: what it blocks must not be taken by another policy before it
+				if (block) {
+					uci.set('detour', n, 'action', 'block');
+					const first = uci.sections('detour', 'policy')[0];
+					if (first && first['.name'] != n) uci.move('detour', n, first['.name']);
+				}
 			}
 			const set = function(k, v) { if (v && (!Array.isArray(v) || v.length)) uci.set('detour', n, k, v); else uci.unset('detour', n, k); };
-			set('label', label.value.trim());
-			set('exit', exits.get());
+			set('label', label.value.trim() || (block ? _('Block') : ''));
+			if (!block) { set('exit', exits.get()); set('on_down', onDown.value == 'direct' ? 'direct' : null); }
 			set('device', dv); set('dst', d); set('domain', o); set('port', pt);
 			return applyUci().then(function() { return true; });
 		});
@@ -252,7 +282,8 @@ return view.extend({
 				E('div', { 'class': 'cbi-section-node detour-node' }, [
 					all.length ? E('div', { 'class': 'detour-cards' }, all.map(function(p, i) { return self.renderPolicy(p, i, all, st, hints); }))
 						: E('div', { 'class': 'detour-result' }, E('em', {}, _('No policies yet: everything goes directly.'))),
-					E('div', { 'class': 'detour-actions' }, [ E('button', { 'class': 'btn cbi-button-add', 'click': function() { self.edit(null, hints); } }, _('Add policy')) ])
+					E('div', { 'class': 'detour-actions' }, [ E('button', { 'class': 'btn cbi-button-add', 'click': function() { self.edit(null, hints); } }, _('Add policy')),
+						E('button', { 'class': 'btn', 'click': function() { self.edit(null, hints, true); } }, _('Add blocking')) ])
 				])
 			])
 		]);

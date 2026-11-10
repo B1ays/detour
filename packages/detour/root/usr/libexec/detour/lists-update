@@ -164,6 +164,11 @@ for d in $(uci -X show dhcp 2>/dev/null | sed -n 's/^dhcp\.\([^.=]*\)=dnsmasq$/\
 	c=$(uci -q get dhcp."$d".confdir); c=${c%%,*}
 	dirs="$dirs ${c:-/tmp/dnsmasq.$d.d}"
 done
+# "Block" policies (action block): their domain lists answer "no such name" instead of filling a set
+BLOCKP=" "
+for b in $(uci -X show detour 2>/dev/null | sed -n 's/^detour\.\([^.=]*\)=policy$/\1/p'); do
+	[ "$(uci -q get detour."$b".action)" = block ] && BLOCKP="${BLOCKP}p$(uci -q get detour."$b".id) "
+done
 for dir in $dirs; do
 	mkdir -p "$dir"
 	keep=" "
@@ -172,11 +177,13 @@ for dir in $dirs; do
 		keep="$keep$s "
 		out="$dir/detour-list-$s.conf"
 		if [ "$tgt" = direct ]; then set4=dom_direct4; set6=""; else set4=dom4_$tgt; set6=dom6_$tgt; fi
-		awk -v s4="$set4" -v s6="$set6" -v direct="$([ "$tgt" = direct ] && echo 1 || echo 0)" '
+		blk=0; [ "${BLOCKP#* $tgt }" != "$BLOCKP" ] && blk=1
+		awk -v s4="$set4" -v s6="$set6" -v blk="$blk" -v direct="$([ "$tgt" = direct ] && echo 1 || echo 0)" '
 			{ d[++n] = $0 }
 			END {
 				for (i = 1; i <= n; i += 40) {
 					l = d[i]; for (j = i + 1; j < i + 40 && j <= n; j++) l = l "/" d[j]
+					if (blk) { printf "address=/%s/\n", l; continue }
 					printf "nftset=/%s/4#inet#detour#%s%s\n", l, s4, (s6 != "" ? ",6#inet#detour#" s6 : "")
 					if (!direct) printf "address=/%s/100::\n", l   # AAAA -> the discard prefix (see dns.uc)
 				}

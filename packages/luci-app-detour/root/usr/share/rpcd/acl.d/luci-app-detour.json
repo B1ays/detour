@@ -7,7 +7,8 @@
 					"status",
 					"sshtun_status",
 					"exits_info",
-					"sub_state"
+					"sub_state",
+					"site_explain"
 				],
 				"luci": [
 					"getFeatures"
@@ -52,7 +53,8 @@
 					"exit_export",
 					"exit_speed",
 					"exit_diag",
-					"exit_set_via"
+					"exit_set_via",
+					"site_check"
 				]
 			},
 			"uci": [

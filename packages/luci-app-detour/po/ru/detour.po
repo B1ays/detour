@@ -224,7 +224,7 @@ msgid "directly"
 msgstr "напрямую"
 
 msgid "block"
-msgstr "блокировать"
+msgstr "заблокировать"
 
 msgid "geo category %s"
 msgstr "гео-категория %s"
@@ -409,6 +409,192 @@ msgstr "Резервная копия настроек (.tar.gz), сохранё
 msgid "Add and import"
 msgstr "Добавить и импорт"
 
+msgid "a local address (%s): never through a tunnel"
+msgstr "локальный адрес (%s): никогда через туннель"
+
+msgid "the address %s is in «Always direct»"
+msgstr "адрес %s в «Всегда напрямую»"
+
+msgid "the device is in «Always direct»"
+msgstr "устройство в «Всегда напрямую»"
+
+msgid "the site %s is in «Always direct»"
+msgstr "сайт %s в «Всегда напрямую»"
+
+msgid "a list that never goes through a tunnel: %s"
+msgstr "список, который никогда не идёт через туннель: %s"
+
+msgid "the device is in the policy %s"
+msgstr "устройство в политике %s"
+
+msgid "the address %s is in the policy %s"
+msgstr "адрес %s в политике %s"
+
+msgid "the site %s is in the policy %s"
+msgstr "сайт %s в политике %s"
+
+msgid "the list %s of the policy %s"
+msgstr "список %s политики %s"
+
+msgid "a site of the policy %s"
+msgstr "сайт политики %s"
+
+msgid "the port %s is in the policy %s"
+msgstr "порт %s в политике %s"
+
+msgid "Blocked by the policy %s."
+msgstr "Заблокирован политикой %s."
+
+msgid "Through the policy %s - but none of its exits works now, so directly (as chosen for it)."
+msgstr "Через политику %s — но сейчас ни один её выход не работает, поэтому напрямую (так для неё выбрано)."
+
+msgid "Through the policy %s, now via the exit «%s»."
+msgstr "Через политику %s, сейчас через выход «%s»."
+
+msgid "Through the policy %s; no exit works now - blocked."
+msgstr "Через политику %s; сейчас ни один выход не работает — заблокирован."
+
+msgid "Directly through your provider."
+msgstr "Напрямую через провайдера."
+
+msgid "Directly through your provider: no rule matches it."
+msgstr "Напрямую через провайдера: ни одно правило не подходит."
+
+msgid "opens (%d ms)"
+msgstr "открывается (%d мс)"
+
+msgid "the site refused (HTTP %d)"
+msgstr "сайт отказал (HTTP %d)"
+
+msgid "a provider's stub page instead of the site"
+msgstr "вместо сайта заглушка провайдера"
+
+msgid "the site answered with an error (HTTP %d)"
+msgstr "сайт ответил ошибкой (HTTP %d)"
+
+msgid "the name is not found"
+msgstr "имя не находится"
+
+msgid "the connection is refused"
+msgstr "соединение отклонено"
+
+msgid "no answer"
+msgstr "нет ответа"
+
+msgid "connected, but the TLS handshake never starts (cut by the site name)"
+msgstr "соединение есть, но рукопожатие TLS не начинается (режут по имени сайта)"
+
+msgid "started loading and froze"
+msgstr "начал загружаться и замер"
+
+msgid "the connection is reset"
+msgstr "соединение сброшено"
+
+msgid "a TLS or certificate error"
+msgstr "ошибка TLS или сертификата"
+
+msgid "failed"
+msgstr "не удалось"
+
+msgid "It opens directly: no VPN is needed for it."
+msgstr "Открывается напрямую: VPN для него не нужен."
+
+msgid "Directly it does not open, through the VPN it does: worth sending through the VPN."
+msgstr "Напрямую не открывается, через VPN — открывается: его стоит пускать через VPN."
+
+msgid "The site itself refuses visitors from Russia; through the VPN it opens."
+msgstr "Сайт сам не пускает посетителей из России; через VPN открывается."
+
+msgid "It opens neither directly nor through the VPN: the trouble seems to be the site itself."
+msgstr "Не открывается ни напрямую, ни через VPN: похоже, проблема в самом сайте."
+
+msgid "No working exit to compare with."
+msgstr "Нет работающего выхода для сравнения."
+
+msgid "The site answers «forbidden» both ways: it refuses automatic requests, the check cannot tell."
+msgstr "Сайт оба раза ответил «доступ запрещён»: он отказывает автоматическим запросам, проверка не может сказать."
+
+msgid "Send this address through"
+msgstr "Пускать этот адрес через"
+
+msgid "Send this site through"
+msgstr "Пускать этот сайт через"
+
+msgid "Never through a tunnel"
+msgstr "Никогда через туннель"
+
+msgid "Block"
+msgstr "Заблокировать"
+
+msgid "The address %s is added to the chosen rule."
+msgstr "Адрес %s добавляется в выбранное правило."
+
+msgid "The site %s (with its subdomains) is added to the chosen rule."
+msgstr "Сайт %s (с поддоменами) добавляется в выбранное правило."
+
+msgid "any device"
+msgstr "любое устройство"
+
+msgid "the one the rules choose"
+msgstr "тот, что выбирают правила"
+
+msgid "Looking up the rules…"
+msgstr "Смотрю правила…"
+
+msgid "This is not a site name, an address or a link."
+msgstr "Это не имя сайта, не адрес и не ссылка."
+
+msgid "Where it goes:"
+msgstr "Куда пойдёт:"
+
+msgid "The name gives: %s"
+msgstr "Имя даёт адреса: %s"
+
+msgid "The name gets «no such name» - the blocking does that."
+msgstr "На имя приходит «нет такого имени» — так работает блокировка."
+
+msgid "The name is not found."
+msgstr "Имя не находится."
+
+msgid "Why:"
+msgstr "Почему:"
+
+msgid "Also matched, but checked later - so they lose:"
+msgstr "Тоже подходят, но проверяются позже — поэтому не срабатывают:"
+
+msgid "Change it"
+msgstr "Изменить"
+
+msgid "Opening it directly and through an exit (up to 15 s)…"
+msgstr "Открываю напрямую и через выход (до 15 с)…"
+
+msgid "Directly:"
+msgstr "Напрямую:"
+
+msgid "Through «%s»:"
+msgstr "Через «%s»:"
+
+msgid "Check"
+msgstr "Проверить"
+
+msgid "Check a site"
+msgstr "Проверка сайта"
+
+msgid "Where a site or an address goes by your rules, and why; does it open directly and through the VPN. The router opens it itself, the same way a device would."
+msgstr "Куда идёт сайт или адрес по вашим правилам и почему; открывается ли он напрямую и через VPN. Роутер открывает его сам, так же, как это сделало бы устройство."
+
+msgid "Site or address"
+msgstr "Сайт или адрес"
+
+msgid "From the device"
+msgstr "С устройства"
+
+msgid "Rules for devices count only for the chosen one."
+msgstr "Правила для устройств учитываются только для выбранного."
+
+msgid "Compare through"
+msgstr "Сравнить через"
+
 msgid "Junk packets (Jc)"
 msgstr "Мусорные пакеты (Jc)"
 
@@ -502,9 +688,6 @@ msgstr "Через этот выход нет ответа (%s)."
 msgid "Finding out why…"
 msgstr "Выясняю причину…"
 
-msgid "Check"
-msgstr "Проверить"
-
 msgid "Measuring through the exit (up to 15 s)…"
 msgstr "Замер через выход (до 15 с)…"
 
@@ -513,9 +696,6 @@ msgstr "Замер напрямую, для сравнения…"
 
 msgid "%s Mbit/s"
 msgstr "%s Мбит/с"
-
-msgid "failed"
-msgstr "не удалось"
 
 msgid "Download speed: through the exit %s, directly %s."
 msgstr "Скорость загрузки: через выход %s, напрямую %s."
@@ -706,9 +886,6 @@ msgstr "%d мс"
 msgid "only in the automatic mode"
 msgstr "только в режиме «Автоматически»"
 
-msgid "no answer"
-msgstr "нет ответа"
-
 msgid "Automatically"
 msgstr "Автоматически"
 
@@ -835,6 +1012,9 @@ msgstr "используется прежний список"
 msgid "nowhere: its policy «%s» no longer exists - choose another in «Edit»"
 msgstr "никуда: его политики «%s» больше нет — выберите другую в «Изменить»"
 
+msgid "blocked (the policy «%s»)"
+msgstr "блокируется (политика «%s»)"
+
 msgid "Goes:"
 msgstr "Куда:"
 
@@ -870,6 +1050,9 @@ msgstr "не обновился"
 
 msgid "on"
 msgstr "включено"
+
+msgid "block (the policy «%s»)"
+msgstr "заблокировать (политика «%s»)"
 
 msgid "— own sources (below) —"
 msgstr "— свои источники (ниже) —"
@@ -937,6 +1120,42 @@ msgstr "Укажите источник или файл"
 msgid "Minimum entries: a number"
 msgstr "Минимум записей — это число"
 
+msgid "youtube, telegram, openai, steam…"
+msgstr "youtube, telegram, openai, steam…"
+
+msgid "domains and addresses"
+msgstr "домены и адреса"
+
+msgid "all sources"
+msgstr "все источники"
+
+msgid "~%s MB"
+msgstr "~%s МБ"
+
+msgid "~%d KB"
+msgstr "~%d КБ"
+
+msgid "very big: the router may run short of memory"
+msgstr "очень большой: роутеру может не хватить памяти"
+
+msgid "already added"
+msgstr "уже добавлен"
+
+msgid "and %d more: narrow the search"
+msgstr "и ещё %d: уточните поиск"
+
+msgid "Nothing found."
+msgstr "Ничего не найдено."
+
+msgid "Catalogue of categories"
+msgstr "Каталог категорий"
+
+msgid "Categories kept up to date by their authors: v2fly (services and sites of the world) and runetfreedom (what is blocked in Russia). The number of entries is from the time this version was built."
+msgstr "Категории, которые обновляют их авторы: v2fly (сервисы и сайты со всего мира) и runetfreedom (что заблокировано в России). Число записей — на момент сборки этой версии."
+
+msgid "The catalogue is missing from this build."
+msgstr "В этой сборке нет каталога."
+
 msgid "Big sets of sites or addresses from the internet: everything blocked in Russia, a service (YouTube, Telegram…). Each list goes through a policy or never through a tunnel. They are updated every night; if a source does not answer, the previous list stays in use."
 msgstr "Большие наборы сайтов или адресов из интернета: всё заблокированное в РФ, отдельный сервис (YouTube, Telegram…). Каждый список идёт через политику или никогда через туннель. Списки обновляются каждую ночь; если источник не ответил, остаётся прежний список."
 
@@ -945,6 +1164,9 @@ msgstr "Списков пока нет."
 
 msgid "Add list"
 msgstr "Добавить список"
+
+msgid "Catalogue of categories…"
+msgstr "Каталог категорий…"
 
 msgid "Error"
 msgstr "Ошибка"
@@ -961,11 +1183,20 @@ msgstr "Выходы по порядку"
 msgid "Manual choice"
 msgstr "Ручной выбор"
 
+msgid "disabled"
+msgstr "выключено"
+
+msgid "blocks"
+msgstr "блокирует"
+
+msgid "refused: %d"
+msgstr "отклонено: %d"
+
 msgid "Automatic"
 msgstr "Автоматически"
 
-msgid "disabled"
-msgstr "выключено"
+msgid "none - goes directly"
+msgstr "нет — идёт напрямую"
 
 msgid "none - blocked"
 msgstr "нет — трафик заблокирован"
@@ -1039,6 +1270,15 @@ msgstr "Detour"
 msgid "Events"
 msgstr "События"
 
+msgid "Lets nothing through."
+msgstr "Ничего не пропускает."
+
+msgid "Addresses, devices and ports below are refused at once, the sites get «no such name» - apps stop trying instead of waiting."
+msgstr "Адреса, устройства и порты ниже отклоняются сразу, а сайты получают «нет такого имени» — приложения сразу прекращают попытки, а не ждут."
+
+msgid "Refused since the start: %d connections."
+msgstr "Отклонено с запуска: %d соединений."
+
 msgid "No exit: the traffic of this policy is blocked. Choose an exit in «Edit»."
 msgstr "Нет выхода: трафик этой политики блокируется. Выберите выход в «Изменить»."
 
@@ -1051,11 +1291,20 @@ msgstr "(сейчас: %s%s)"
 msgid "chosen by hand"
 msgstr "выбран вручную"
 
+msgid "Through the first working exit in this order; when it fails - through the next one, and back when it works again. If all of them fail, this traffic goes directly through your provider (as chosen in «Edit»)."
+msgstr "Через первый работающий выход в этом порядке; если он отказал — через следующий, а когда заработает — обратно. Если откажут все, этот трафик пойдёт напрямую через провайдера (так выбрано в «Изменить»)."
+
+msgid "If this exit fails, this traffic goes directly through your provider (as chosen in «Edit»)."
+msgstr "Если этот выход откажет, трафик пойдёт напрямую через провайдера (так выбрано в «Изменить»)."
+
 msgid "Through the first working exit in this order; when it fails - through the next one, and back when it works again. If all of them fail, this traffic is blocked, not sent directly."
 msgstr "Через первый работающий выход в этом порядке; если он перестал работать — через следующий, а когда первый снова заработает — обратно. Если не работает ни один, этот трафик блокируется, а не идёт напрямую."
 
 msgid "If this exit fails, this traffic is blocked, not sent directly. Add a second exit to have a spare."
 msgstr "Если этот выход перестанет работать, этот трафик блокируется, а не идёт напрямую. Добавьте второй выход про запас."
+
+msgid "Now no exit works: this traffic goes directly, the provider sees it."
+msgstr "Сейчас ни один выход не работает: этот трафик идёт напрямую, провайдер его видит."
 
 msgid "Devices (all their traffic):"
 msgstr "Устройства (весь их трафик):"
@@ -1099,6 +1348,12 @@ msgstr "Ниже"
 msgid "Remove the policy «%s»?"
 msgstr "Удалить политику «%s»?"
 
+msgid "Its lists (%s) are removed too. What it blocked opens again."
+msgstr "Её списки (%s) тоже удаляются. То, что она блокировала, снова откроется."
+
+msgid "What it blocked opens again."
+msgstr "То, что она блокировала, снова откроется."
+
 msgid "Its lists (%s) are removed too. What went through it goes directly from now on."
 msgstr "Её списки (%s) тоже будут удалены. То, что шло через неё, теперь пойдёт напрямую."
 
@@ -1120,20 +1375,47 @@ msgstr "Другие устройства по MAC-адресу, через пр
 msgid "for example: Blocked sites"
 msgstr "например: Заблокированные сайты"
 
+msgid "When every exit of this policy fails, its traffic will go directly through your provider: the provider sees which sites these are, and blocked ones will not open anyway. Let it through?"
+msgstr "Когда откажут все выходы этой политики, её трафик пойдёт напрямую через провайдера: провайдер увидит, что это за сайты, а заблокированные всё равно не откроются. Пропускать?"
+
+msgid "block it (nothing leaks)"
+msgstr "блокировать (ничего не утечёт)"
+
+msgid "let it go directly through the provider"
+msgstr "пускать напрямую через провайдера"
+
 msgid "How the policy is shown everywhere."
 msgstr "Как политика называется везде."
 
-msgid "In order: the traffic goes through the first working exit; when it fails, through the next one, and back when it works again. If all fail, the traffic is blocked, not sent directly."
-msgstr "По порядку: трафик идёт через первый работающий выход; если он перестал работать — через следующий, а потом обратно. Если не работает ни один, трафик блокируется, а не идёт напрямую."
+msgid "A blocking policy: what matches it gets no internet at all. Sites get «no such name», addresses and ports are refused at once."
+msgstr "Политика блокировки: то, что под неё попадает, вообще не получает интернет. Сайты получают «нет такого имени», адреса и порты отклоняются сразу."
+
+msgid "In order: the traffic goes through the first working exit; when it fails, through the next one, and back when it works again."
+msgstr "По порядку: трафик идёт через первый работающий выход; если он отказал — через следующий, а когда заработает — обратно."
+
+msgid "If no exit works"
+msgstr "Если ни один выход не работает"
+
+msgid "Blocked is safer: nothing goes past the tunnel. Directly keeps things working without the VPN, but the provider sees this traffic."
+msgstr "Блокировать надёжнее: мимо туннеля ничего не уйдёт. «Напрямую» сохраняет работу без VPN, но провайдер видит этот трафик."
+
+msgid "What is blocked"
+msgstr "Что блокировать"
 
 msgid "What goes through"
 msgstr "Что пропускать"
+
+msgid "Anything that matches one of these is blocked. Bigger sets (advertising, a service) are added as lists on the Lists page."
+msgstr "Всё, что подходит под одно из этого, блокируется. Большие наборы (реклама, сервис) добавляются списками на странице «Списки»."
 
 msgid "Anything that matches one of these goes through the policy. Bigger sets (all blocked sites, a service) are added as lists on the Lists page."
 msgstr "Всё, что подходит хотя бы под одно из условий, идёт через политику. Большие наборы (все заблокированные сайты, сервис целиком) добавляются списками на странице «Списки»."
 
 msgid "Devices"
 msgstr "Устройства"
+
+msgid "The checked devices get no internet at all."
+msgstr "Отмеченные устройства не получают интернет вообще."
 
 msgid "All traffic of the checked devices goes through the policy."
 msgstr "Весь трафик отмеченных устройств идёт через политику."
@@ -1156,6 +1438,9 @@ msgstr "Порты"
 msgid "Destination ports: 443 (TCP and UDP), udp/443, tcp/6000-6100, separated by spaces. All traffic of the network to these ports goes through the policy."
 msgstr "Порты назначения через пробел: 443 (TCP и UDP), udp/443, tcp/6000-6100. Весь трафик сети на эти порты идёт через политику."
 
+msgid "New blocking policy"
+msgstr "Новая политика блокировки"
+
 msgid "New policy"
 msgstr "Новая политика"
 
@@ -1173,6 +1458,9 @@ msgstr "Политик пока нет: всё идёт напрямую."
 
 msgid "Add policy"
 msgstr "Добавить политику"
+
+msgid "Add blocking"
+msgstr "Добавить блокировку"
 
 msgid "State:"
 msgstr "Состояние:"
@@ -1461,6 +1749,12 @@ msgstr "Политика %s: выход снова выбирается авто
 
 msgid "Policy %s: switching failed (%s)"
 msgstr "Политика %s: переключение не удалось (%s)"
+
+msgid "Policy %s: no exit works - its traffic goes directly (as chosen)"
+msgstr "Политика %s: ни один выход не работает — её трафик идёт напрямую (так выбрано)"
+
+msgid "Policy %s: an exit works again - the traffic goes through it"
+msgstr "Политика %s: выход снова работает — трафик идёт через него"
 
 msgid "Router DNS goes through the tunnel again"
 msgstr "DNS роутера снова идёт через туннель"

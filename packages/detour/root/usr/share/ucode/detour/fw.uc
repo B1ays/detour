@@ -103,10 +103,12 @@ export function apply(cfg, active) {
 	return { ok: r.code == 0, errors, dns_restart: restart };
 }
 
+// lists to load - or leftovers of removed ones: lists-update also cleans up (the dnsmasq file of the last
+// removed list kept answering for its domains - a removed "Block" list kept blocking)
 export function has_lists() {
 	let n = 0;
 	cursor().foreach('detour', 'list', () => { n++; });
-	return n > 0;
+	return n > 0 || length(fs.glob('/tmp/dnsmasq*.d/detour-list-*.conf') ?? []) > 0 || length(fs.glob(core.RUN + '/lists/*.data') ?? []) > 0;
 }
 
 // early boot (START before dnsmasq): table + sets exist before dnsmasq starts filling them

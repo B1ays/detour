@@ -17,6 +17,7 @@ import * as engines from 'detour.engines';
 import * as exitui from 'detour.exitui';
 import * as exitadd from 'detour.exitadd';
 import * as watch from 'detour.watch';
+import * as sitecheck from 'detour.sitecheck';
 import { cursor } from 'uci';
 
 const t0 = time();
@@ -27,6 +28,7 @@ let dns_mode = null;      // 'tunnel' | 'fallback'
 let events = [];
 let switches = 0, last_switch = null, auth_state = 'ok';
 let down_noted = {};
+let opened = {};          // policies with on_down 'direct' that go directly now (all their exits down)
 let lists_busy = false, subs_busy = false;
 let apply_errors = [];    // the last apply's errors and warnings (config + nft + setup), shown in LuCI
 let pol_keys = null;      // what put flows under a policy at the last load (dst / device), see load_all
@@ -88,23 +90,40 @@ function evaluate() {
 	if (off || !ready()) return;
 	let changed = false;
 	for (let p in cfg.policies) {
-		if (!p.enabled) continue;
+		if (!p.enabled || p.block) continue;   // "Block" has no exits to choose
 		const want = choose(p);
 		const cur = active['' + p.id];
 		if (want == null) {
 			// told only when it lasts (main.alert_hold): a blip of a second or two is not an outage
 			const d = (down_noted[p.name] ??= { t: time(), told: false });
-			if (!d.told && time() - d.t >= cfg.main.alert_hold)
-				d.told = tell('all_down', 'all_down:' + p.name, sprintf(length(p.exits) ? 'Политика %s: не работает ни один выход, её трафик заблокирован'
-					: 'Политика %s осталась без выходов, её трафик заблокирован', pl(p)));
+			const lasting = time() - d.t >= cfg.main.alert_hold;
+			// on_down 'direct': the owner chose to let this policy's traffic go directly while every exit is down
+			// (after the same hold, so a blip does not open it); flows pinned to the dead exit are reset
+			const open = p.on_down == 'direct' && length(p.exits);
+			if (open && lasting && !opened[p.name]) {
+				const r = nft.set_policy_direct(p.id);
+				if (r.code == 0) {
+					if (cur) core.run(sprintf('conntrack -D -m 0x%x/0xffff00', (cur << 16) | (p.id << 8)));
+					opened[p.name] = true;
+					ev(sprintf('policy %s: no working exit - goes directly', p.name));
+				}
+				else ev(sprintf('policy %s: switch failed: %s', p.name, trim(r.out)));
+			}
+			if (!d.told && lasting)
+				d.told = tell('all_down', 'all_down:' + p.name, sprintf(open ? 'Политика %s: не работает ни один выход, её трафик пошёл напрямую (так настроено)'
+					: (length(p.exits) ? 'Политика %s: не работает ни один выход, её трафик заблокирован'
+					: 'Политика %s осталась без выходов, её трафик заблокирован'), pl(p)));
 			continue;
 		}
 		if (down_noted[p.name]) {
 			if (down_noted[p.name].told)
-				tell('all_down', null, sprintf('Политика %s снова работает (была заблокирована %s)', pl(p), watch.dur(time() - down_noted[p.name].t)));
+				tell('all_down', null, sprintf(opened[p.name] ? 'Политика %s снова идёт через выходы (шла напрямую %s)' : 'Политика %s снова работает (была заблокирована %s)',
+					pl(p), watch.dur(time() - down_noted[p.name].t)));
 			delete down_noted[p.name];
 		}
-		if (want == cur) continue;
+		// back from "directly": the exit is set again even when it is the same one
+		if (want == cur && !opened[p.name]) continue;
+		if (opened[p.name]) { delete opened[p.name]; ev(sprintf('policy %s: an exit works again - through it', p.name)); }
 		const r = nft.set_policy_exit(p.id, want);
 		if (r.code != 0) { ev(sprintf('policy %s: switch failed: %s', p.name, trim(r.out))); continue; }
 		// flows of this policy pinned to the old exit are dropped, the next packet re-classifies
@@ -146,25 +165,6 @@ function probe(e) {
 	if (!proc) delete probing[e.name];
 }
 
-// exits that stopped answering and stayed so for main.alert_hold seconds: now it is worth a message
-function alerts() {
-	for (let e in cfg.exits) {
-		const h = health[e.name];
-		if (!h?.down_at || h.told || time() - h.down_at < cfg.main.alert_hold) continue;
-		if (!e.enabled) { h.down_at = null; continue; }
-		// the message says why, when the router can tell (diag_exit, a few seconds); nothing to send - no check
-		const nc = notify.config();
-		if (h.diag || watch.quiet() || !nc.enabled || index(nc.events, 'exit_down') < 0) continue;
-		h.diag = true;
-		diag_exit(e.name, function(d) {
-			h.diag = false;
-			if (!h.down_at || h.told) return;   // it came back meanwhile
-			const why = VERDICT_TEXT[d.verdict];
-			h.told = tell('exit_down', 'exit_down:' + e.name, sprintf('Выход %s перестал отвечать', watch.q(e.label ?? e.name)) + (why ? ': ' + why : ''));
-		});
-	}
-}
-
 function guard() {
 	try { return auth.guard(); }
 	catch (e) { ev('2FA guard error: ' + e); return 'error'; }
@@ -188,6 +188,8 @@ function load_all(reason) {
 		if (!length(filter(cfg.policies, (x) => x.name == p))) delete pins[p];
 	const res = fw.apply(cfg, active ? fw.active_map(cfg) : null);
 	active = fw.active_map(cfg);
+	// the rules were rendered with every policy on an exit: one that went directly is opened again by evaluate()
+	opened = {};
 	// destinations / devices newly under a policy: their direct flows (offloaded ones would never be
 	// re-classified) are dropped so the next packets meet the new rules
 	const keys = {}, nd = [], nm = [], np = [];
@@ -248,8 +250,9 @@ function status() {
 	const pol = [];
 	for (let p in cfg.policies)
 		push(pol, { name: p.name, id: p.id, enabled: p.enabled, exits: p.exits,
-			active: active['' + p.id] ? exit_name(active['' + p.id]) : null, pinned: pins[p.name] });
-	return { version: core.VERSION, uptime: time() - t0, exits: ex, policies: pol, dns: dns_mode ?? cfg.main.dns,
+			active: active['' + p.id] ? exit_name(active['' + p.id]) : null, pinned: pins[p.name],
+			block: p.block, on_down: p.on_down, direct: !!opened[p.name] });
+	return { version: core.VERSION, uptime: time() - t0, exits: ex, policies: pol, blocked: nft.counter_blocked(), dns: dns_mode ?? cfg.main.dns,
 		switches, last_switch, engines: engines.list(), lists: lists_status(), subscriptions: lists_status('subs'), auth: auth.status(), notify_queued: notify.queued(), wan: watch.wan_down() ? 'down' : 'up', notify_quiet: watch.quiet(), errors: apply_errors, events };
 }
 
@@ -466,13 +469,14 @@ function diag_exit(name, cb) {
 		if (!other || (proxy[other.name] && !proxy[e.name])) other = e;
 	}
 	const host = index(x.server, ':') >= 0 ? '[' + x.server + ']' : x.server;
-	const t = (dev, bin, tls) => sprintf("%s -s -k -o /dev/null --connect-timeout 5 -m 6 --interface %s -w '%s' %s 2>/dev/null; echo \" $?\"",
-		bin ?? 'curl', core.shq(dev), tls ? '%{time_appconnect}' : '%{time_connect}', core.shq(sprintf('%s://%s:%d/', tls ? 'https' : 'http', host, x.port)));
+	// both checks at once, at most 5 s: the "exit down" message waits for this answer
 	const f = sprintf('%s/diag-%s', core.RUN, name);
-	uloop.process('/bin/sh', [ '-c', '{ ' + t(first, via ? null : direct_curl(), via && proxy[via.name]) +
-		(other ? '; ' + t(other.device, null, proxy[other.name]) : '') + '; } > ' + f ], {}, function() {
-		const lines = split(trim(fs.readfile(f) ?? ''), '\n');
-		fs.unlink(f);
+	const t = (dev, bin, tls, out) => sprintf("( %s -s -k -o /dev/null --connect-timeout 4 -m 5 --interface %s -w '%s' %s 2>/dev/null; echo \" $?\" ) > %s",
+		bin ?? 'curl', core.shq(dev), tls ? '%{time_appconnect}' : '%{time_connect}', core.shq(sprintf('%s://%s:%d/', tls ? 'https' : 'http', host, x.port)), out);
+	uloop.process('/bin/sh', [ '-c', t(first, via ? null : direct_curl(), via && proxy[via.name], f + '.a') + ' & ' +
+		(other ? t(other.device, null, proxy[other.name], f + '.b') + ' & ' : '') + 'wait' ], {}, function() {
+		const lines = [ trim(fs.readfile(f + '.a') ?? ''), trim(fs.readfile(f + '.b') ?? '') ];
+		fs.unlink(f + '.a'); fs.unlink(f + '.b');
 		const up = (l) => { const m = match(l ?? '', /^([0-9.]+) ([0-9]+)$/); return m ? { ok: +m[1] > 0, code: int(m[2]) } : { ok: false, code: -1 }; };
 		const a = up(lines[0]), b = other ? up(lines[1]) : null;
 		let verdict;
@@ -485,6 +489,39 @@ function diag_exit(name, cb) {
 	});
 }
 
+// "Check a site": where it goes (rules) and does it open directly and through an exit
+function site_explain(req) {
+	const st = { active: {}, direct: opened };
+	for (let p in cfg.policies) {
+		const id = active['' + p.id];
+		if (id) { const e = core.exit_by_id(cfg, id); st.active[p.name] = { name: e?.name, label: e?.label ?? e?.name }; }
+	}
+	return sitecheck.explain(cfg, st, req.args.target, req.args.mac);
+}
+
+let site_busy = false;
+function site_check(req) {
+	const t = sitecheck.target(req.args.target);
+	if (t.error) return t;
+	if (site_busy) return { error: 'a check is running' };
+	const wan = wan_dev();
+	if (!wan) return { error: 'no provider line' };
+	// through the chosen exit, else the first one that works
+	let e = length(req.args.exit ?? '') ? cfg.by_name[req.args.exit] : null;
+	if (!e) for (let x in cfg.exits) if (!e && healthy(x)) e = x;
+	site_busy = true;
+	req.defer();
+	const fd = core.RUN + '/site-d', fv = core.RUN + '/site-v';
+	// both paths at once (each "( curl ...; echo $? )" in the background), then wait for both
+	const cmd = '( ' + sitecheck.probe_cmd(t.url, wan, direct_curl(), fd) + ' ) & ' +
+		(e ? '( ' + sitecheck.probe_cmd(t.url, e.device, null, fv) + ' ) & ' : '') + 'wait';
+	uloop.process('/bin/sh', [ '-c', cmd ], {}, function() {
+		site_busy = false;
+		const d = sitecheck.probe_read(fd), v = e ? sitecheck.probe_read(fv) : null;
+		req.reply({ url: t.url, host: t.host, direct: d, vpn: v, exit: e?.name, exit_label: e?.label, verdict: sitecheck.verdict(d, v) });
+	});
+}
+
 const VERDICT_TEXT = {
 	blocked: 'адрес сервера, похоже, заблокирован провайдером: напрямую не отвечает, а через другой выход отвечает',
 	down: 'сервер не отвечает ни напрямую, ни через другой выход',
@@ -492,6 +529,27 @@ const VERDICT_TEXT = {
 	reachable: 'сервер отвечает, не работает сам протокол (ключи, настройки или фильтр провайдера по содержимому)',
 	dns: 'имя сервера не находится в DNS',
 };
+
+// exits that stopped answering and stayed so for main.alert_hold seconds: now it is worth a message
+// (here, below diag_exit and VERDICT_TEXT: ucode resolves a name not declared yet as a global - calling it
+// from above crashed the daemon the first time an exit stayed down)
+function alerts() {
+	for (let e in cfg.exits) {
+		const h = health[e.name];
+		if (!h?.down_at || h.told || time() - h.down_at < cfg.main.alert_hold) continue;
+		if (!e.enabled) { h.down_at = null; continue; }
+		// the message says why, when the router can tell (diag_exit, a few seconds); nothing to send - no check
+		const nc = notify.config();
+		if (h.diag || watch.quiet() || !nc.enabled || index(nc.events, 'exit_down') < 0) continue;
+		h.diag = true;
+		diag_exit(e.name, function(d) {
+			h.diag = false;
+			if (!h.down_at || h.told) return;   // it came back meanwhile
+			const why = VERDICT_TEXT[d.verdict];
+			h.told = tell('exit_down', 'exit_down:' + e.name, sprintf('Выход %s перестал отвечать', watch.q(e.label ?? e.name)) + (why ? ': ' + why : ''));
+		});
+	}
+}
 
 const S = { ubus_rpc_session: '' };
 conn.publish('detour', {
@@ -526,6 +584,8 @@ conn.publish('detour', {
 	exit_export:     { call: (req) => exitui.export_exit(req.args.name), args: { name: '', ...S } },
 	exit_speed:      { call: (req) => exit_speed(req), args: { name: '', direct: false, ...S } },
 	exit_diag:       { call: (req) => { req.defer(); diag_exit(req.args.name ?? '', (d) => req.reply(d)); }, args: { name: '', ...S } },
+	site_explain:    { call: (req) => site_explain(req), args: { target: '', mac: '', ...S } },
+	site_check:      { call: (req) => site_check(req), args: { target: '', exit: '', ...S } },
 	exit_set_via:    { call: (req) => cli_job(req, [ 'exit-set-via', req.args.name, length(req.args.via ?? '') ? req.args.via : '-' ], true), args: { name: '', via: '', ...S } },
 	sshtun_status:   { call: () => { try { return json(core.run('/bin/sh /usr/libexec/detour/sshtun status').out); } catch (e) { return { error: 'no status' }; } }, args: { ...S } },
 	sshtun_keygen:   { call: (req) => cli_job(req, [ 'sshtun', 'keygen' ]), args: { ...S } },
