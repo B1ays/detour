@@ -7,8 +7,242 @@ msgstr ""
 msgid "No answer from the router"
 msgstr "Роутер не ответил"
 
+msgid "proxy (Xray)"
+msgstr "прокси (Xray)"
+
+msgid "in stock it fell back to a direct connection; here a policy with no working exit blocks its traffic instead"
+msgstr "в стоке при отказе шёл напрямую; здесь политика без работающего выхода блокирует свой трафик"
+
+msgid "wrong list of ports"
+msgstr "неверный список портов"
+
+msgid "blocking and DPI-bypass lists are not part of Detour for OpenWrt"
+msgstr "списки блокировки и обхода DPI не входят в Detour для OpenWrt"
+
+msgid "a group for particular devices: such rules are not carried over yet"
+msgstr "группа для отдельных устройств: такие правила пока не переносятся"
+
+msgid "its exit could not be carried over"
+msgstr "её выход не удалось перенести"
+
+msgid "its exit is not carried over"
+msgstr "его выход не переносится"
+
+msgid "its file is not in the backup"
+msgstr "его файла нет в бэкапе"
+
+msgid "no http(s) address"
+msgstr "нет адреса http(s)"
+
+msgid "not an address"
+msgstr "не адрес"
+
+msgid "neither an address nor a domain"
+msgstr "не адрес и не домен"
+
+msgid "port rules for particular devices are not carried over"
+msgstr "правила портов для отдельных устройств не переносятся"
+
+msgid "switched off in stock"
+msgstr "выключено в стоке"
+
+msgid "that exit is not carried over - this one connects directly"
+msgstr "тот выход не переносится — этот подключается напрямую"
+
+msgid "the main policy could not be carried over"
+msgstr "основную политику не удалось перенести"
+
+msgid "unknown protocol"
+msgstr "неизвестный протокол"
+
+msgid "unknown source"
+msgstr "неизвестный источник"
+
+msgid "the action «%s» is not part of Detour for OpenWrt"
+msgstr "действие «%s» не входит в Detour для OpenWrt"
+
+msgid "the direction «%s» is not supported"
+msgstr "направление «%s» не поддерживается"
+
+msgid "port rules «block» are not part of Detour for OpenWrt"
+msgstr "правила портов «блокировать» не входят в Detour для OpenWrt"
+
+msgid "port rules «direct» are not part of Detour for OpenWrt"
+msgstr "правила портов «напрямую» не входят в Detour для OpenWrt"
+
+msgid "not in the catalogue (your own or an ODoH resolver) - set it in «Router DNS» on the Settings page"
+msgstr "нет в каталоге (свой сервер или ODoH) — укажите его в «DNS роутера» на странице «Настройки»"
+
+msgid "%s: this address has no DHCP reservation, the device is unknown"
+msgstr "%s: у этого адреса нет закреплённого DHCP, устройство неизвестно"
+
+msgid "a device past VPN"
+msgstr "устройство мимо VPN"
+
+msgid "a whole device through VPN"
+msgstr "всё устройство через VPN"
+
+msgid "panel password"
+msgstr "пароль панели"
+
+msgid "LuCI uses the router's root password"
+msgstr "LuCI использует пароль root роутера"
+
+msgid "2FA secret"
+msgstr "секрет 2FA"
+
+msgid "set up two-factor login again (luci-plugin-2fa, a new QR code)"
+msgstr "настройте двухфакторный вход заново (luci-plugin-2fa, новый QR-код)"
+
+msgid "home access server"
+msgstr "сервер доступа домой"
+
+msgid "set it up again (new keys)"
+msgstr "настройте заново (новые ключи)"
+
+msgid "access schedules"
+msgstr "расписания доступа"
+
+msgid "use firewall rules with a time window"
+msgstr "используйте правила фаервола с временем действия"
+
+msgid "install the zapret package and choose a strategy"
+msgstr "установите пакет zapret и выберите стратегию"
+
+msgid "split DNS for Russian domains"
+msgstr "раздельный DNS для российских доменов"
+
+msgid "not needed here: the router resolves names through dnsmasq"
+msgstr "здесь не нужен: роутер разрешает имена через dnsmasq"
+
+msgid "encrypted DNS"
+msgstr "шифрованный DNS"
+
+msgid "choose it in «Router DNS» on the Settings page"
+msgstr "выберите его в «DNS роутера» на странице «Настройки»"
+
+msgid "WARP registration"
+msgstr "регистрация WARP"
+
+msgid "register WARP again here (a new device)"
+msgstr "зарегистрируйте WARP здесь заново (новое устройство)"
+
+msgid "group «%s», entry %s"
+msgstr "группа «%s», запись %s"
+
+msgid "group «%s»"
+msgstr "группа «%s»"
+
+msgid "extra exit %d: falling back"
+msgstr "доп. выход %d: запасной путь"
+
+msgid "extra exit %d"
+msgstr "доп. выход %d"
+
+msgid "device %s"
+msgstr "устройство %s"
+
+msgid "list %s, source %s"
+msgstr "список %s, источник %s"
+
+msgid "through VPN: %s"
+msgstr "через VPN: %s"
+
+msgid "past VPN: %s"
+msgstr "мимо VPN: %s"
+
+msgid "the main policy"
+msgstr "основная политика"
+
+msgid "port rule %s for %s → %s"
+msgstr "правило порта %s для %s → %s"
+
+msgid "the whole network"
+msgstr "всей сети"
+
 msgid "directly"
 msgstr "напрямую"
+
+msgid "block"
+msgstr "блокировать"
+
+msgid "geo category %s"
+msgstr "гео-категория %s"
+
+msgid "stock lists «%s»"
+msgstr "списки «%s» из стока"
+
+msgid "%d address"
+msgid_plural "%d addresses"
+msgstr[0] "%d адрес"
+msgstr[1] "%d адреса"
+msgstr[2] "%d адресов"
+
+msgid "%d site"
+msgid_plural "%d sites"
+msgstr[0] "%d сайт"
+msgstr[1] "%d сайта"
+msgstr[2] "%d сайтов"
+
+msgid "%d device"
+msgid_plural "%d devices"
+msgstr[0] "%d устройство"
+msgstr[1] "%d устройства"
+msgstr[2] "%d устройств"
+
+msgid "ports %s"
+msgstr "порты %s"
+
+msgid "nothing yet"
+msgstr "пока ничего"
+
+msgid "Exits"
+msgstr "Выходы"
+
+msgid "connects through «%s»"
+msgstr "подключается через «%s»"
+
+msgid "Policies"
+msgstr "Политики"
+
+msgid "Lists"
+msgstr "Списки"
+
+msgid "own entries"
+msgstr "свои записи"
+
+msgid "never through a tunnel"
+msgstr "никогда через туннель"
+
+msgid "through the policy «%s»"
+msgstr "через политику «%s»"
+
+msgid "with own entries"
+msgstr "со своими записями"
+
+msgid "Subscriptions"
+msgstr "Подписки"
+
+msgid "the address stays secret"
+msgstr "адрес не показывается"
+
+msgid "Always direct: %s"
+msgstr "Всегда напрямую: %s"
+
+msgid "Telegram notifications"
+msgstr "Уведомления в Telegram"
+
+msgid "Encrypted DNS: %s"
+msgstr "Шифрованный DNS: %s"
+
+msgid "%d DHCP reservation"
+msgid_plural "%d DHCP reservations"
+msgstr[0] "%d закреплённый адрес DHCP"
+msgstr[1] "%d закреплённых адреса DHCP"
+msgstr[2] "%d закреплённых адресов DHCP"
+
+msgid "Not carried over"
+msgstr "Не переносится"
 
 msgid "through %s"
 msgstr "через %s"
@@ -76,33 +310,6 @@ msgstr "Импортировано."
 msgid "Import these settings"
 msgstr "Импортировать эти настройки"
 
-msgid "Exits"
-msgstr "Выходы"
-
-msgid "Policies"
-msgstr "Политики"
-
-msgid "Lists"
-msgstr "Списки"
-
-msgid "Subscriptions"
-msgstr "Подписки"
-
-msgid "Always direct: %s"
-msgstr "Всегда напрямую: %s"
-
-msgid "Notifications: %s"
-msgstr "Уведомления: %s"
-
-msgid "Encrypted DNS: %s"
-msgstr "Шифрованный DNS: %s"
-
-msgid "DHCP reservations: %d"
-msgstr "Резервирования DHCP: %d"
-
-msgid "Not carried over"
-msgstr "Не переносится"
-
 msgid "Choose the backup file…"
 msgstr "Выбрать файл резервной копии…"
 
@@ -168,9 +375,6 @@ msgstr "не поднят"
 
 msgid "proxy (sing-box)"
 msgstr "прокси (sing-box)"
-
-msgid "proxy (Xray)"
-msgstr "прокси (Xray)"
 
 msgid "subscription"
 msgstr "подписка"
@@ -280,6 +484,21 @@ msgstr "Маскировка (AmneziaWG)"
 msgid "Makes the tunnel look unlike WireGuard so the provider does not cut it. The values must match the server (your VPN provider gives them in the config)."
 msgstr "Делает туннель непохожим на WireGuard, чтобы провайдер его не резал. Значения должны совпадать с сервером (их даёт VPN-провайдер в конфиге)."
 
+msgid "Traffic: %s of %s GB"
+msgstr "Трафик: %s из %s ГБ"
+
+msgid "Traffic: %s GB, no limit"
+msgstr "Трафик: %s ГБ, без ограничения"
+
+msgid "ended %s"
+msgstr "закончилась %s"
+
+msgid "until %s"
+msgstr "до %s"
+
+msgid "no end date"
+msgstr "без срока"
+
 msgid "%d server"
 msgid_plural "%d servers"
 msgstr[0] "%d сервер"
@@ -298,11 +517,32 @@ msgstr "Последнее обновление не удалось — оста
 msgid "Connects to its servers through «%s»."
 msgstr "Подключается к серверам через «%s»."
 
+msgid "A request through this server only; the subscription does not switch"
+msgstr "Запрос только через этот сервер; подписка на него не переключается"
+
+msgid "checking…"
+msgstr "проверка…"
+
+msgid "%d ms"
+msgstr "%d мс"
+
+msgid "only in the automatic mode"
+msgstr "только в режиме «Автоматически»"
+
+msgid "no answer"
+msgstr "нет ответа"
+
 msgid "Automatically"
 msgstr "Автоматически"
 
 msgid "a working, fast server is chosen and re-checked every few minutes"
 msgstr "выбирается рабочий и быстрый сервер, проверка каждые несколько минут"
+
+msgid "Now: %s"
+msgstr "Сейчас: %s"
+
+msgid "now"
+msgstr "сейчас"
 
 msgid "The chosen server is no longer in the subscription - the choice is automatic until you choose again."
 msgstr "Выбранного сервера больше нет в подписке — выбор автоматический, пока вы не выберете снова."
@@ -415,14 +655,8 @@ msgstr "неизвестная политика %s"
 msgid "the previous list stays in use"
 msgstr "используется прежний список"
 
-msgid "never through a tunnel"
-msgstr "никогда через туннель"
-
 msgid "nowhere: its policy «%s» no longer exists - choose another in «Edit»"
 msgstr "никуда: его политики «%s» больше нет — выберите другую в «Изменить»"
-
-msgid "through the policy «%s»"
-msgstr "через политику «%s»"
 
 msgid "Goes:"
 msgstr "Куда:"
@@ -871,9 +1105,6 @@ msgstr "Шифрованные DNS-серверы"
 msgid "quic://, tls:// or https:// addresses, asked in parallel. Through the tunnel: used when its exits are down; encrypted: always. Needs the dnsproxy package."
 msgstr "Адреса quic://, tls:// или https://, опрашиваются параллельно. В режиме «Через туннель» — когда его выходы не работают; в режиме «Шифрованный» — всегда. Нужен пакет dnsproxy."
 
-msgid "Telegram notifications"
-msgstr "Уведомления в Telegram"
-
 msgid "Create a bot with @BotFather, paste its token, write /start to the bot and put your chat id here. Messages go through a working tunnel first, then directly; undelivered ones wait and are sent later."
 msgstr "Создайте бота у @BotFather, вставьте его токен, напишите боту /start и укажите здесь id чата. Сообщения идут сначала через рабочий туннель, потом напрямую; недоставленные ждут и отправляются позже."
 
@@ -889,20 +1120,35 @@ msgstr "Id чата"
 msgid "Notify about"
 msgstr "Сообщать о"
 
-msgid "exit down: an exit stopped responding; exit back: it works again; switch: a policy moved to another exit; no exit left: a policy has no working exit, its traffic is blocked."
-msgstr "выход упал — выход перестал отвечать; выход вернулся — снова работает; переключение — политика перешла на другой выход; выходов нет — у политики не осталось рабочего выхода, её трафик заблокирован."
+msgid "While the provider's internet is gone (and 3 minutes after it is back) nothing is said about the exits: they fall and rise with the line, one message about the line says it all."
+msgstr "Пока у провайдера нет интернета (и 3 минуты после возвращения), о выходах не сообщается: они падают и поднимаются вместе с линией, хватит одного сообщения о ней."
 
-msgid "exit down"
-msgstr "выход упал"
+msgid "an exit stopped responding"
+msgstr "выход перестал отвечать"
 
-msgid "exit back"
-msgstr "выход вернулся"
+msgid "an exit works again"
+msgstr "выход снова работает"
 
-msgid "switch"
-msgstr "переключение"
+msgid "a policy moved to another exit, WARP moved to another point"
+msgstr "политика перешла на другой выход, WARP перешёл на другую точку"
 
-msgid "no exit left"
-msgstr "выходов нет"
+msgid "a policy has no working exit, its traffic is blocked (and when it works again)"
+msgstr "у политики не осталось работающих выходов, её трафик заблокирован (и когда она заработает снова)"
+
+msgid "the router rebooted: how many exits came up"
+msgstr "роутер перезагрузился: сколько выходов поднялось"
+
+msgid "the provider's internet went away and came back"
+msgstr "пропал и вернулся интернет у провайдера"
+
+msgid "a list failed to update"
+msgstr "список не обновился"
+
+msgid "a subscription failed to update"
+msgstr "подписка не обновилась"
+
+msgid "a subscription ends in 3 days or 90% of its traffic is used"
+msgstr "подписка закончится через 3 дня или израсходовано 90% трафика"
 
 msgid "Own Bot API address"
 msgstr "Свой адрес Bot API"

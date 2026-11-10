@@ -122,6 +122,20 @@ case 'import': {
 		dhcp_hosts: length(p.hosts),
 		not_carried_over: map(p.skipped, (s) => s.what + ': ' + s.why),
 	};
+	// the same for LuCI, with the names people will see (as apply names them) instead of internal ones
+	const xlab = {};
+	for (let e in p.exits) xlab[e.name] = e.label ?? e.cfg ?? ('stock ' + e.name);
+	const plab = { direct: null };
+	for (let x in p.policies) plab[x.name] = x.label ?? x.name;
+	out.preview = {
+		exits: map(p.exits, (e) => ({ label: xlab[e.name], kind: e.kind, via: e.via ? (xlab[e.via] ?? e.via) : null })),
+		policies: map(p.policies, (x) => ({ label: plab[x.name], exits: map(x.exits, (n) => xlab[n] ?? n),
+			dst: length(x.dst), domain: length(x.domain), device: length(x.device), port: x.port ?? [] })),
+		lists: map(p.lists, (l) => ({ url: l.urls, kind: l.kind, local: !!l.text, direct: l.policy == 'direct', policy: plab[l.policy] ?? l.policy })),
+		subscriptions: map(p.subs, (s) => ({ label: s.label })),
+		direct: { dst: length(p.direct.dst), device: length(p.direct.device), domain: length(p.direct.domain) },
+		skipped: p.skipped,
+	};
 	if (apply) out.applied = importer.apply(p, prefix);
 	else out.note = 'dry run - nothing changed; add --apply to write the settings';
 	printf('%.J\n', out);

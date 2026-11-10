@@ -119,6 +119,8 @@ export function remove_conf() {
 	let changed = false;
 	for (let d in confdirs()) {
 		if (fs.access(d + '/' + CONF)) { fs.unlink(d + '/' + CONF); changed = true; }
+		// the big lists' files (lists-update) name sets of the same table; lists-update --restore writes them again
+		for (let f in fs.glob(d + '/detour-list-*.conf') ?? []) { fs.unlink(f); changed = true; }
 	}
 	return changed;
 }

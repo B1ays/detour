@@ -6,7 +6,8 @@
 				"detour": [
 					"status",
 					"sshtun_status",
-					"exits_info"
+					"exits_info",
+					"sub_state"
 				],
 				"luci": [
 					"getFeatures"
@@ -40,6 +41,7 @@
 					"sshtun_test",
 					"sshtun_forget",
 					"exit_check",
+					"sub_check",
 					"exit_remove",
 					"exit_pick",
 					"exit_config_get",

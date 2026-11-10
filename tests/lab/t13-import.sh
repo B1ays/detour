@@ -98,6 +98,8 @@ echo "$OUT" | grep -q 'st_s2: xray from xray-configs/lab.json' && ok "extra exit
 echo "$OUT" | grep -q 'st_p_vpn via main: 1 addresses, 1 domains, 1 devices' && ok "main policy: dst + domain + device" || bad "vpn policy: $(echo "$OUT" | grep st_p_vpn)"
 echo "$OUT" | grep -q 'st_p_s2 via s2 -> main: 1 addresses' && ok "slot policy with fallback to main" || bad "s2 policy: $(echo "$OUT" | grep 'st_p_s2 via')"
 echo "$OUT" | grep -q '"direct": "1 addresses, 1 devices, 1 domains"' && ok "always-direct items" || bad "direct: $(echo "$OUT" | grep direct)"
+PV=$(echo "$OUT" | jsonfilter -e '@.preview.policies[1].label')
+[ "$(echo "$OUT" | jsonfilter -e '@.preview.policies[0].label')" = VPN ] && [ -n "$PV" ] && [ "$PV" != s2 ] && [ "$(echo "$OUT" | jsonfilter -e '@.preview.policies[1].exits[1]')" = "$(echo "$OUT" | jsonfilter -e '@.preview.exits[0].label')" ] 	&& ok "preview for LuCI: people's names (policy '$PV', exits by label)" || bad "preview: $(echo "$OUT" | jsonfilter -e '@.preview.policies')"
 echo "$OUT" | grep -q '192.168.1.250: device past VPN: no DHCP reservation' && ok "device without reservation reported" || bad "missing-MAC report"
 echo "$OUT" | grep -q 'group devgroup' && ok "device-bound group reported" || bad "src group report"
 echo "$OUT" | grep -q '.totp: 2FA secret' && ok "2FA secret deliberately not carried over" || bad "totp report"

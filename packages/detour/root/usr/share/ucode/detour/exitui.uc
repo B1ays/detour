@@ -5,7 +5,7 @@
 
 import * as fs from 'fs';
 import { cursor } from 'uci';
-import { run, log, PERSIST } from 'detour.core';
+import { run, log, PERSIST, RUN } from 'detour.core';
 import * as links from 'detour.links';
 import * as engines from 'detour.engines';
 
@@ -102,7 +102,10 @@ export function info() {
 					push(x.servers, { key: engines.server_key(o, nm), name: nm ?? sprintf('%s:%s', sv.server, sv.port), proto: summary(o), server: sv.server, port: sv.port });
 				}
 				const st = c.get_all('detour', sub);
-				x.sub_interval = int(st.interval ?? 24);
+				const ss = read_json(sprintf('%s/subs/%s.status', RUN, sub));
+				x.sub_info = ss?.info ?? null;   // traffic and expiry the provider reported
+				x.sub_interval = int(st.interval ?? x.sub_info?.update_hours ?? 24);
+				x.sub_auto = !!engines.api_port(eng) && !e.pick;
 			}
 			else if (length(outs)) {
 				x.proto = summary(outs[0]);

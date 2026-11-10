@@ -13,12 +13,15 @@ const QUEUE = RUN + '/outbox.json';
 const ND = RUN + '/notify';      // owned by the "dtnotify" user, mode 700
 const MAXQ = 30;
 
+// every kind of message; option event of the notify section picks some (LuCI: "Notify about")
+export const ALL_EVENTS = [ 'exit_down', 'exit_up', 'all_down', 'switch', 'boot', 'wan', 'list_fail', 'sub_fail', 'sub_expire' ];
+
 let busy = false;
 let last_sent = {};       // throttle key -> time
 
 export function config() {
 	const s = cursor().get_all('detour', 'notify') ?? {};
-	const ev = s.event ?? [ 'exit_down', 'exit_up', 'all_down', 'switch' ];
+	const ev = s.event ?? ALL_EVENTS;
 	return {
 		enabled: s.enabled == '1' && !!s.tg_token && !!s.tg_chat,
 		token: s.tg_token, chat: s.tg_chat,
@@ -66,7 +69,7 @@ export function flush(paths, done_cb) {
 	busy = true;
 	const m = q[0];
 	let text = c.name + ': ' + m.text;
-	if (time() - m.t > 90) text += sprintf(' (%s)', fmt_time(m.t));
+	if (time() - m.t > 90) text += sprintf(' (в %s)', fmt_time(m.t));
 	// curl runs as the system user "dtnotify": its traffic is exempt from the policies, so the
 	// direct attempt really goes direct even when the API's address is on a VPN list
 	const user = (fs.access('/etc/passwd') && match(fs.readfile('/etc/passwd'), /(^|\n)dtnotify:/)) ? 'dtnotify' : null;
@@ -99,6 +102,8 @@ export function flush(paths, done_cb) {
 				busy = false;
 				log(sprintf('notify: sent via %s', dev ?? 'direct'));
 				if (done_cb) done_cb(dev ?? 'direct');
+				// the rest of the queue goes the same way at once (a burst - reboot, line back - is not spread over minutes)
+				if (length(load_q())) flush(dev ? [ dev ] : [], done_cb);
 				return;
 			}
 			if (http == '401' || http == '400' || http == '404') {
@@ -120,7 +125,7 @@ export function queued() { return length(load_q()); }
 export function test() {
 	if (!config().enabled) return false;
 	const q = load_q();
-	push(q, { t: time(), text: 'test message' });
+	push(q, { t: time(), text: 'Проверочное сообщение: уведомления работают' });
 	save_q(q);
 	return true;
 }

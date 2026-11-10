@@ -208,7 +208,9 @@ export function unregister(name) {
 	c.delete('detour', name);
 	c.foreach('detour', 'policy', function(p) {
 		const ex = (type(p.exit) == 'array') ? p.exit : (p.exit ? [ p.exit ] : []);
-		if (index(ex, name) >= 0) c.set('detour', p['.name'], 'exit', filter(ex, (x) => x != name));
+		if (index(ex, name) < 0) return;
+		const rest = filter(ex, (x) => x != name);
+		if (length(rest)) c.set('detour', p['.name'], 'exit', rest); else c.delete('detour', p['.name'], 'exit');
 	});
 	const del = [];
 	c.foreach('network', 'wireguard_' + name, (s) => push(del, s['.name']));

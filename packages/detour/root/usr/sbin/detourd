@@ -15,11 +15,13 @@ import * as auth from 'detour.auth';
 import * as notify from 'detour.notify';
 import * as engines from 'detour.engines';
 import * as exitui from 'detour.exitui';
+import * as watch from 'detour.watch';
 import { cursor } from 'uci';
 
 const t0 = time();
 let cfg, active, pins;
-let health = {};          // exit id -> { ok, fails, seen, last_ok, rtt }
+let health = {};          // exit name -> { ok, fails, seen, last_ok, down_at, told }
+let probing = {};         // exit name -> a probe is running (they never overlap)
 let dns_mode = null;      // 'tunnel' | 'fallback'
 let events = [];
 let switches = 0, last_switch = null, auth_state = 'ok';
@@ -27,6 +29,7 @@ let down_noted = {};
 let lists_busy = false, subs_busy = false;
 let apply_errors = [];    // the last apply's errors and warnings (config + nft + setup), shown in LuCI
 let pol_keys = null;      // what put flows under a policy at the last load (dst / device), see load_all
+let off = false;          // main.enabled = 0 came with a reload: everything is taken down, the daemon idles until procd stops it
 
 function ev(msg) {
 	push(events, sprintf('%d %s', time(), msg));
@@ -36,9 +39,19 @@ function ev(msg) {
 
 function exit_name(id) { return core.exit_by_id(cfg, id)?.name ?? ('exit' + id); }
 
+// notifications: the names people gave, in quotes
+function xl(id) { const e = core.exit_by_id(cfg, id); return watch.q(e?.label ?? e?.name ?? ('exit' + id)); }
+function pl(p) { return watch.q(p.label ?? p.name); }
+// while the provider's internet is gone (and a little after) the exits' own ups and downs are noise
+// -> true when the message was queued
+function tell(ev, key, text) {
+	if (watch.quiet() && index([ 'exit_down', 'exit_up', 'all_down', 'switch' ], ev) >= 0) return false;
+	return !!notify.event(ev, key, text);
+}
+
 function healthy(e) {
 	if (!e.enabled) return false;
-	const h = health[e.id];
+	const h = health[e.name];
 	if (!net.dev_up(e.device)) return false;
 	if (!e.probe) return true;               // no probe configured: device state only
 	return h != null && h.ok && h.fails < cfg.main.fails;
@@ -53,7 +66,7 @@ function choose(p) {
 
 function ready() {
 	// start-up grace: decide only after every probed exit reported once (no flapping at boot)
-	for (let e in cfg.exits) if (e.enabled && e.probe && !health[e.id]?.seen) return false;
+	for (let e in cfg.exits) if (e.enabled && e.probe && !health[e.name]?.seen) return false;
 	return true;
 }
 
@@ -71,21 +84,23 @@ function update_dns() {
 }
 
 function evaluate() {
-	if (!ready()) return;
+	if (off || !ready()) return;
 	let changed = false;
 	for (let p in cfg.policies) {
 		if (!p.enabled) continue;
 		const want = choose(p);
 		const cur = active['' + p.id];
 		if (want == null) {
-			if (!down_noted[p.name]) {
-				down_noted[p.name] = time();
-				notify.event('all_down', 'all_down:' + p.name, sprintf('policy %s: no working exit, its traffic is blocked', p.name));
-			}
+			// told only when it lasts (main.alert_hold): a blip of a second or two is not an outage
+			const d = (down_noted[p.name] ??= { t: time(), told: false });
+			if (!d.told && time() - d.t >= cfg.main.alert_hold)
+				d.told = tell('all_down', 'all_down:' + p.name, sprintf(length(p.exits) ? 'Политика %s: не работает ни один выход, её трафик заблокирован'
+					: 'Политика %s осталась без выходов, её трафик заблокирован', pl(p)));
 			continue;
 		}
 		if (down_noted[p.name]) {
-			notify.event('all_down', null, sprintf('policy %s works again (was blocked for %d s)', p.name, time() - down_noted[p.name]));
+			if (down_noted[p.name].told)
+				tell('all_down', null, sprintf('Политика %s снова работает (была заблокирована %s)', pl(p), watch.dur(time() - down_noted[p.name].t)));
 			delete down_noted[p.name];
 		}
 		if (want == cur) continue;
@@ -97,18 +112,20 @@ function evaluate() {
 		changed = true;
 		switches++; last_switch = time();
 		ev(sprintf('policy %s: %s -> %s%s', p.name, cur ? exit_name(cur) : '-', exit_name(want), pins[p.name] ? ' (pinned ' + pins[p.name] + ')' : ''));
-		notify.event('switch', 'switch:' + p.name, sprintf('policy %s now goes through %s (was %s)', p.name, exit_name(want), cur ? exit_name(cur) : '-'));
+		if (cur) tell('switch', 'switch:' + p.name, sprintf('Политика %s переключилась: %s → %s', pl(p), xl(cur), xl(want)));
 	}
 	if (changed) fw.save_active(active);
 	update_dns();
 }
 
 function probe(e) {
-	const cmd = net.probe_cmd(e);
-	if (!cmd || !e.enabled) return;
-	const started = time();
-	uloop.process(cmd[0], slice(cmd, 1), {}, function(code) {
-		const h = health[e.id] ??= { ok: false, fails: 0, seen: false };
+	const cmd = net.probe_cmd(e, cfg.main.probe_timeout);
+	// one probe of an exit at a time: a slow answer must not be counted twice by the probes started after it
+	if (!cmd || !e.enabled || probing[e.name]) return;
+	probing[e.name] = true;
+	const proc = uloop.process(cmd[0], slice(cmd, 1), {}, function(code) {
+		delete probing[e.name];
+		const h = health[e.name] ??= { ok: false, fails: 0, seen: false };
 		const was = h.ok && h.fails < cfg.main.fails;
 		h.seen = true;
 		if (code == 0) { h.ok = true; h.fails = 0; h.last_ok = time(); }
@@ -116,10 +133,26 @@ function probe(e) {
 		const now = h.ok && h.fails < cfg.main.fails;
 		if (was != now) {
 			ev(sprintf('exit %s %s', e.name, now ? 'up' : 'down'));
-			notify.event(now ? 'exit_up' : 'exit_down', 'exit:' + e.name, sprintf('exit %s is %s', e.label ?? e.name, now ? 'working again' : 'not responding'));
+			// the message about "down" waits main.alert_hold seconds (alerts()); "up" is said only after it
+			if (!now) { h.down_at = time(); h.told = false; }
+			else {
+				if (h.told) tell('exit_up', null, sprintf('Выход %s снова работает (не отвечал %s)', watch.q(e.label ?? e.name), watch.dur(time() - h.down_at)));
+				h.down_at = null; h.told = false;
+			}
 		}
 		evaluate();
 	});
+	if (!proc) delete probing[e.name];
+}
+
+// exits that stopped answering and stayed so for main.alert_hold seconds: now it is worth a message
+function alerts() {
+	for (let e in cfg.exits) {
+		const h = health[e.name];
+		if (!h?.down_at || h.told || time() - h.down_at < cfg.main.alert_hold) continue;
+		if (!e.enabled) { h.down_at = null; continue; }
+		h.told = tell('exit_down', 'exit_down:' + e.name, sprintf('Выход %s перестал отвечать', watch.q(e.label ?? e.name)));
+	}
 }
 
 function guard() {
@@ -129,6 +162,17 @@ function guard() {
 
 function load_all(reason) {
 	cfg = core.load();
+	off = !cfg.main.enabled;
+	if (off) {
+		// switched off in the settings: the table, the rules and the DNS management go (fw.start does it)
+		const r = fw.start();
+		active ??= {}; pins ??= {};
+		apply_errors = [];
+		ev(reason + ': Detour is switched off, everything goes directly');
+		return r;
+	}
+	// what is known about exits that are gone must not pass to new ones
+	for (let n in keys(health)) if (!cfg.by_name[n]) delete health[n];
 	pins = fw.pins();
 	for (let p in keys(pins))
 		if (!length(filter(cfg.policies, (x) => x.name == p))) delete pins[p];
@@ -184,7 +228,7 @@ function lists_status(dir) {
 function status() {
 	const ex = [];
 	for (let e in cfg.exits) {
-		const h = health[e.id] ?? {};
+		const h = health[e.name] ?? {};
 		push(ex, { name: e.name, id: e.id, device: e.device, enabled: e.enabled, up: net.dev_up(e.device),
 			healthy: healthy(e), probe: e.probe, fails: h.fails ?? 0, last_ok: h.last_ok, drops: nft.counter_drops(e.id),
 			colo: trim(fs.readfile(sprintf('%s/warp-%s.colo', core.RUN, e.name)) ?? '') || null,
@@ -194,9 +238,9 @@ function status() {
 	const pol = [];
 	for (let p in cfg.policies)
 		push(pol, { name: p.name, id: p.id, enabled: p.enabled, exits: p.exits,
-			active: exit_name(active['' + p.id]), pinned: pins[p.name] });
+			active: active['' + p.id] ? exit_name(active['' + p.id]) : null, pinned: pins[p.name] });
 	return { version: core.VERSION, uptime: time() - t0, exits: ex, policies: pol, dns: dns_mode ?? cfg.main.dns,
-		switches, last_switch, engines: engines.list(), lists: lists_status(), subscriptions: lists_status('subs'), auth: auth.status(), notify_queued: notify.queued(), errors: apply_errors, events };
+		switches, last_switch, engines: engines.list(), lists: lists_status(), subscriptions: lists_status('subs'), auth: auth.status(), notify_queued: notify.queued(), wan: watch.wan_down() ? 'down' : 'up', notify_quiet: watch.quiet(), errors: apply_errors, events };
 }
 
 function do_pin(pol, ex) {
@@ -211,13 +255,14 @@ function do_pin(pol, ex) {
 	fw.save_pins(pins);
 	ev(sprintf('policy %s: %s', pol, pins[pol] ? 'pinned to ' + pins[pol] : 'unpinned'));
 	evaluate();
-	return { policy: pol, pinned: pins[pol], active: exit_name(active['' + p.id]) };
+	return { policy: pol, pinned: pins[pol], active: active['' + p.id] ? exit_name(active['' + p.id]) : null };
 }
 
 uloop.init();
 const conn = ubus.connect();
 if (!conn) { warn('detourd: no ubus\n'); exit(1); }
 fs.mkdir(core.RUN);
+watch.init();
 load_all('start');
 
 // --- LuCI actions ------------------------------------------------------------------------------
@@ -290,6 +335,54 @@ function exit_check(req) {
 	});
 }
 
+// a subscription's sing-box control API (engines.api_conf): which server the automatic group uses and the
+// delays it measured; "check" one server without switching. Deferred: curl to 127.0.0.1, short timeouts.
+let api_seq = 0;
+function sub_api(req, path, timeout, done) {
+	if (!match(req.args.name ?? '', /^[a-z][a-z0-9_]*$/)) return { error: 'no automatic server group for ' + (req.args.name ?? '') };
+	const eng = req.args.name + '_eng';
+	const port = engines.api_port(eng);
+	if (!port) return { error: 'no automatic server group for ' + (req.args.name ?? '') };
+	req.defer();
+	const f = sprintf('%s/api-%s-%d', core.RUN, req.args.name, ++api_seq);   // answers of parallel checks never share a file
+	const cmd = sprintf("curl -s -m %d -K %s -o %s.body -w '%%{http_code}' 'http://127.0.0.1:%d%s' > %s.code 2>/dev/null",
+		timeout, core.shq(engines.api_file(eng)), f, port, path, f);
+	uloop.process('/bin/sh', [ '-c', cmd ], {}, function() {
+		const http = trim(fs.readfile(f + '.code') ?? '');
+		let body = null;
+		try { body = json(fs.readfile(f + '.body') ?? 'null'); } catch (e) { }
+		fs.unlink(f + '.code'); fs.unlink(f + '.body');
+		req.reply(done(http, body));
+	});
+}
+
+function sub_state(req) {
+	return sub_api(req, '/proxies', 4, function(http, b) {
+		if (http != '200' || type(b?.proxies) != 'object') return { error: 'the engine does not answer' };
+		const out = { now: null, delays: {} };
+		const m = match(b.proxies.out?.now ?? '', /^s([0-9]+)$/);
+		if (m) out.now = int(m[1]) - 1;
+		for (let tag, p in b.proxies) {
+			const t = match(tag, /^s([0-9]+)$/);
+			if (!t) continue;
+			const h = p.history ?? [];
+			out.delays['' + (int(t[1]) - 1)] = length(h) ? h[length(h) - 1].delay : null;
+		}
+		return out;
+	});
+}
+
+function sub_check(req) {
+	const i = int(req.args.index ?? -1);
+	if (i < 0 || i > 999) return { error: 'bad server index' };
+	const url = cursor().get('detour', 'main', 'urltest_url') ?? 'https://www.gstatic.com/generate_204';
+	return sub_api(req, sprintf('/proxies/s%d/delay?timeout=6000&url=%s', i + 1, replace(url, /[^A-Za-z0-9._~:\/-]/g, (c) => sprintf('%%%02X', ord(c)))), 9,
+		function(http, b) {
+			if (http == '200' && b?.delay != null) return { ok: true, ms: b.delay };
+			return { ok: false, error: (http == '504' || http == '408' || http == '503') ? 'no answer through this server' : (b?.message ?? 'no answer') };
+		});
+}
+
 const S = { ubus_rpc_session: '' };
 conn.publish('detour', {
 	status: { call: () => status(), args: { ...S } },
@@ -307,6 +400,8 @@ conn.publish('detour', {
 	sub_update:      { call: (req) => cli_job(req, [ 'sub-update', ...(length(req.args.name ?? '') ? [ req.args.name ] : []) ]), args: { name: '', ...S } },
 	exits_info:      { call: () => exits_info(), args: { ...S } },
 	exit_check:      { call: (req) => exit_check(req), args: { name: '', ...S } },
+	sub_state:       { call: (req) => sub_state(req), args: { name: '', ...S } },
+	sub_check:       { call: (req) => sub_check(req), args: { name: '', index: 0, ...S } },
 	exit_remove:     { call: (req) => cli_job(req, [ 'exit-remove', req.args.name ], true), args: { name: '', ...S } },
 	exit_pick:       { call: (req) => cli_job(req, [ 'exit-pick', req.args.name, length(req.args.key ?? '') ? req.args.key : '-' ]), args: { name: '', key: '', ...S } },
 	exit_config_get: { call: (req) => exitui.outbound_get(req.args.name), args: { name: '', ...S } },
@@ -321,6 +416,7 @@ conn.publish('detour', {
 
 // netifd: put the exit route back on ifup (netifd does not restore routes in our tables)
 conn.listener('network.interface', function(t, data) {
+	if (off) return;
 	for (let e in cfg.exits) {
 		if (data?.interface != e.iface) continue;
 		if (data.action == 'ifup') { net.ensure_route(e); ev(sprintf('exit %s: %s up, route restored', e.name, e.iface)); }
@@ -341,7 +437,7 @@ function warp_check() {
 	for (let e in cfg.exits) {
 		if (!e.enabled || cursor().get('detour', e.name, 'warp') != '1' || !net.dev_up(e.device)) continue;
 		const last = warp_last[e.name] ?? 0;
-		const due = (time() - last >= every) || (!healthy(e) && health[e.id]?.seen && time() - last >= 120);
+		const due = (time() - last >= every) || (!healthy(e) && health[e.name]?.seen && time() - last >= 120);
 		if (!due) continue;
 		warp_busy = true;
 		warp_last[e.name] = time();
@@ -351,7 +447,7 @@ function warp_check() {
 			try { r = json(fs.readfile(sprintf('%s/warp-pick-%s.json', core.RUN, e.name))); } catch (x) { }
 			if (r?.moved) {
 				ev(sprintf('WARP %s moved to %s (colo %s, was %s)', e.name, r.endpoint, r.colo, r.from ?? '?'));
-				notify.event('switch', 'warp:' + e.name, sprintf('WARP %s: moved to colo %s (was %s)', e.name, r.colo, r.from ?? 'no answer'));
+				tell('switch', 'warp:' + e.name, sprintf('WARP %s перешёл на точку Cloudflare %s (была %s)', watch.q(e.label ?? e.name), r.colo, r.from ?? 'без ответа'));
 			}
 			else if (r?.note) ev(sprintf('WARP %s: %s', e.name, r.note));
 		});
@@ -362,14 +458,21 @@ function warp_check() {
 let tick;
 let n = 0;
 tick = uloop.timer(500, function() {
+	if (off) {
+		fs.writefile(core.RUN + '/heartbeat', sprintf('%d\n', time()));
+		tick.set(cfg.main.probe_period * 1000);
+		return;
+	}
 	for (let e in cfg.exits) {
-		if (!e.probe) health[e.id] ??= { seen: true, ok: true, fails: 0 };
+		if (!e.probe) health[e.name] ??= { seen: true, ok: true, fails: 0 };
 		probe(e);
 		// devices can appear late (tun of a proxy engine): keep the route in place
 		if (e.enabled && net.dev_up(e.device)) net.ensure_route(e);
 	}
 	engines.devices_up();
 	evaluate();
+	alerts();
+	try { watch.tick(cfg.exits, healthy, ready()); } catch (x) { core.log('watch: ' + x); }
 	if (notify.queued()) {
 		const devs = [];
 		for (let e in cfg.exits) if (healthy(e)) push(devs, e.device);

@@ -20,6 +20,8 @@ SNAP=/etc/detour/lists
 MAXSNAP=${MAXSNAP:-40000}
 T='inet detour'
 mkdir -p "$RUN" "$SNAP"
+# one run at a time (cron, the daemon's --missing, LuCI): they share the work files and the sets
+if command -v flock >/dev/null 2>&1; then exec 9> "$RUN/.lock"; flock 9; fi
 RESTORE=0; MISSING=0
 [ "$1" = --restore ] && { RESTORE=1; shift; }
 [ "$1" = --missing ] && { MISSING=1; shift; }   # download only lists that have no data yet

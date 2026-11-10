@@ -53,8 +53,36 @@ function bool(v, dflt) {
 	return v == '1' || v == 'on' || v == 'true' || v == 'yes';
 }
 
-const RE_V4 = /^[0-9]{1,3}(\.[0-9]{1,3}){3}(\/[0-9]{1,2})?$/;
-const RE_V6 = /^[0-9a-fA-F:]+(\/[0-9]{1,3})?$/;
+// Addresses go into the nft script as they are, and nft takes a script whole or not at all: one address it
+// cannot read would cost the entire ruleset (at boot: no table, no kill-switch). So they are checked fully here.
+const RE_V4 = /^(0|[1-9][0-9]{0,2})\.(0|[1-9][0-9]{0,2})\.(0|[1-9][0-9]{0,2})\.(0|[1-9][0-9]{0,2})(\/(0|[1-9][0-9]?))?$/;
+const RE_V6 = /^([0-9a-fA-F:]+)(\/(0|[1-9][0-9]{0,2}))?$/;
+const RE_TIMEOUT = /^([1-9][0-9]{0,5}[dhms])+$/;
+
+export function is_v4(a) {
+	const m = match(a, RE_V4);
+	if (!m) return false;
+	for (let i = 1; i <= 4; i++) if (int(m[i]) > 255) return false;
+	return !length(m[6] ?? '') || int(m[6]) <= 32;
+}
+
+export function is_v6(a) {
+	const m = match(a, RE_V6);
+	if (!m || index(m[1], ':') < 0) return false;
+	if (length(m[3] ?? '') && int(m[3]) > 128) return false;
+	const halves = split(m[1], '::');
+	if (length(halves) > 2) return false;
+	let n = 0;
+	for (let h in halves) {
+		if (h == '') continue;
+		for (let g in split(h, ':')) {
+			if (!match(g, /^[0-9a-fA-F]{1,4}$/)) return false;
+			n++;
+		}
+	}
+	return (length(halves) == 2) ? n <= 7 : n == 8;
+}
+
 const RE_MAC = /^[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5}$/;
 const RE_DOMAIN = /^[A-Za-z0-9_]([A-Za-z0-9_.-]*[A-Za-z0-9])?$/;
 const RE_IFNAME = /^[A-Za-z0-9_.-]{1,15}$/;
@@ -62,8 +90,8 @@ const RE_IFNAME = /^[A-Za-z0-9_.-]{1,15}$/;
 function split_addrs(list, errors, where) {
 	const v4 = [], v6 = [];
 	for (let a in list) {
-		if (match(a, RE_V4)) push(v4, a);
-		else if (index(a, ':') >= 0 && match(a, RE_V6)) push(v6, lc(a));
+		if (is_v4(a)) push(v4, a);
+		else if (is_v6(a)) push(v6, lc(a));
 		else push(errors, sprintf('%s: bad address "%s"', where, a));
 	}
 	return { v4, v6 };
@@ -71,7 +99,8 @@ function split_addrs(list, errors, where) {
 
 // Read and validate /etc/config/detour (or another config name for tests).
 // Returns { main, exits[], policies[], direct4[], direct6[], errors[] }.
-// Invalid items are dropped and reported; the rest still applies (fail-closed per item).
+// Invalid items are dropped and reported; the rest still applies. A policy left without a valid exit is
+// kept and blocks its traffic (exits: []).
 export function load(conf) {
 	const c = cursor();
 	const name = conf ?? 'detour';
@@ -83,6 +112,12 @@ export function load(conf) {
 		lan: as_list(m.lan_dev ?? 'br-lan'),
 		probe_period: int(m.probe_period ?? 2) || 2,
 		fails: int(m.fails ?? 2) || 2,
+		// an HTTPS probe through a chained proxy takes 2-4 s when all is well (measured on the BE7000): the limit
+		// must be well above that, or a slow handshake counts as a failure
+		probe_timeout: int(m.probe_timeout ?? 8) || 8,
+		// "exit down" / "policy blocked" are told only when it lasts this long, seconds (0 = at once)
+		alert_hold: int(m.alert_hold ?? 10),
+		ipv6_block: m.ipv6_block,              // null = auto (on when a policy takes all IPv4: 0.0.0.0/0)
 		dns: m.dns ?? 'off',                   // off | tunnel
 		dns_policy: m.dns_policy,              // policy whose exits carry the router's DNS
 		dns_servers: as_list(m.dns_server ?? [ '1.1.1.1', '1.0.0.1' ]),
@@ -93,8 +128,23 @@ export function load(conf) {
 		schema: int(m.schema ?? 0),
 		force_dns: m.force_dns,               // null = auto (on when a policy has domains)
 	};
+	// what is wrong here is reported and left out (or replaced by the default): it must not reach nft
 	for (let d in main.lan)
 		if (!match(d, RE_IFNAME)) push(errors, sprintf('main: bad lan_dev "%s"', d));
+	main.lan = filter(main.lan, (d) => match(d, RE_IFNAME));
+	if (!match(main.dom_timeout, RE_TIMEOUT)) {
+		push(errors, sprintf('main: bad dom_timeout "%s" (like 6h, 30m, 1d), 6h is used', main.dom_timeout));
+		main.dom_timeout = '6h';
+	}
+	for (let s in main.dns_servers)
+		if (!is_v4(s) || index(s, '/') >= 0) push(errors, sprintf('main: bad dns_server "%s"', s));
+	main.dns_servers = filter(main.dns_servers, (s) => is_v4(s) && index(s, '/') < 0);
+	if (!length(main.dns_servers)) main.dns_servers = [ '1.1.1.1', '1.0.0.1' ];
+	if (main.probe_period < 1) main.probe_period = 2;
+	if (main.fails < 1) main.fails = 2;
+	if (main.probe_timeout < 2) main.probe_timeout = 2;
+	if (main.probe_timeout > 30) main.probe_timeout = 30;
+	if (!(main.alert_hold >= 0)) main.alert_hold = 10;
 
 	const exits = [], by_name = {}, ids = {};
 	c.foreach(name, 'exit', function(s) {
@@ -127,7 +177,10 @@ export function load(conf) {
 			if (by_name[e]) push(ex, e);
 			else push(errors, sprintf('policy %s: unknown exit "%s"', n, e));
 		}
-		if (!length(ex)) { push(errors, sprintf('policy %s: no valid exit', n)); return; }
+		// a policy without an exit stays: its traffic is blocked (nft: pol2exit -> drop). Dropping the policy
+		// would send what it covers directly - the opposite of what removing its last exit should do.
+		// (the text is matched by LuCI's msg.js: "policy … has no exit - its traffic is blocked")
+		if (!length(ex)) push(errors, sprintf('policy %s: no valid exit', n));
 		const a = split_addrs(as_list(s.dst), errors, 'policy ' + n);
 		const doms = [];
 		for (let d in as_list(s.domain)) {
@@ -184,6 +237,15 @@ export function load(conf) {
 		if (length(ddom)) main.force_dns = true;
 	}
 	else main.force_dns = bool(main.force_dns, true);
+
+	// IPv6 is not tunnelled. A policy that takes all IPv4 (a full tunnel) would leave all IPv6 of the home
+	// network going directly: then forwarded IPv6 is rejected altogether (devices fall back to IPv4).
+	if (main.ipv6_block == null) {
+		main.ipv6_block = false;
+		for (let p in policies)
+			if (p.enabled) for (let a in p.dst4) if (match(a, /\/0$/)) main.ipv6_block = true;
+	}
+	else main.ipv6_block = bool(main.ipv6_block, false);
 
 	return { main, exits, policies, direct4: da.v4, direct6: da.v6, direct_dev: ddev, direct_dom: ddom, errors, by_name };
 }

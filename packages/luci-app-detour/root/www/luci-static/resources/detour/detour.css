@@ -140,6 +140,23 @@ pre.detour-key {
 	cursor: pointer;
 	line-height: 1.4;
 }
+/* a server of a subscription: the choice, what is known about it, its own check */
+.detour-server-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: .2rem .6rem;
+}
+.detour-server-row .btn {
+	padding: 0 .6em;
+	line-height: 1.6;
+	font-size: .85em;
+}
+.detour-now {
+	font-weight: bold;
+	color: var(--success-color, #2e7d32);
+}
+.detour-delay.bad { color: var(--error-color, #c62828); }
 textarea.detour-code {
 	font-family: monospace;
 	font-size: .85em;

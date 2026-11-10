@@ -134,7 +134,9 @@ export function render(cfg, active, opts) {
 	for (let p in cfg.policies) {
 		if (!p.enabled) continue;
 		const eid = active?.[p.id];
-		if (eid) add(sprintf('add element %s pol2exit { %s : jump exit%d }', T, hex(pol_mark(p.id)), eid));
+		// no exit at all (its last one was removed): what the policy covers is blocked, never sent directly
+		if (!length(p.exits)) add(sprintf('add element %s pol2exit { %s : drop }', T, hex(pol_mark(p.id))));
+		else if (eid) add(sprintf('add element %s pol2exit { %s : jump exit%d }', T, hex(pol_mark(p.id)), eid));
 	}
 
 	// 7. classify: first match wins, policies in config order
@@ -159,6 +161,9 @@ export function render(cfg, active, opts) {
 	// 8. LAN ingress: established flows keep their decision (ct mark pins policy+exit)
 	add(sprintf('add rule %s prerouting iifname != @lan_ifs return', T));
 	add(sprintf('add rule %s prerouting ct mark & %s != 0 meta mark set ct mark & %s return', T, hex(M_BOTH), hex(M_BOTH)));
+	// answers of LAN devices to connections that came from outside (port forwards) are not new flows: they
+	// go back the way the connection came, whatever policy the device is under
+	add(sprintf('add rule %s prerouting ct direction reply return', T));
 	add(sprintf('add rule %s prerouting meta nfproto ipv4 jump classify', T));
 	add(sprintf('add rule %s prerouting meta mark & %s != 0 meta mark & %s vmap @pol2exit', T, hex(M_POL), hex(M_POL)));
 	add(sprintf('add rule %s prerouting meta mark & %s != 0 ct mark set meta mark & %s', T, hex(M_BOTH), hex(M_BOTH)));
@@ -185,6 +190,8 @@ export function render(cfg, active, opts) {
 	add(sprintf('add rule %s killswitch counter drop comment "unknown exit id"', T));
 
 	// 11. IPv6 (first version: no tunnelling) - reject v6 from devices / to addresses under a policy
+	if (cfg.main.ipv6_block)
+		add(sprintf('add rule %s v6block iifname @lan_ifs meta nfproto ipv6 counter reject comment "full tunnel: no IPv6 past it"', T));
 	for (let p in cfg.policies) {
 		if (!p.enabled) continue;
 		add(sprintf('add rule %s v6block iifname @lan_ifs meta nfproto ipv6 ether saddr @dev_p%d counter reject', T, p.id));

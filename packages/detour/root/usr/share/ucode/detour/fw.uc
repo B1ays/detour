@@ -12,16 +12,23 @@ import { cursor } from 'uci';
 const ACTIVE = core.RUN + '/active.json';
 const PINS = core.PERSIST + '/pins.json';
 const DOMSAVE = core.PERSIST + '/dom.save';
+const GOOD = core.PERSIST + '/ruleset.good';   // the last ruleset nft accepted, for a boot with a broken config
+
+// -t: without the sets' elements (the big lists)
+function table_present() { return core.run('nft -t list table inet detour').code == 0; }
 
 export function pins() { return core.read_json(PINS) ?? {}; }
 export function save_pins(p) { fs.mkdir(core.PERSIST); core.write_json(PINS, p); }
 
 // policy id -> exit id. Kept across reloads; first boot: pinned exit, else the first exit.
-export function active_map(cfg) {
-	const saved = core.read_json(ACTIVE) ?? {};
+// fresh: as at boot, without what the running daemon has chosen (for the saved "last good" rules).
+// A policy without exits has no entry: its traffic is blocked (nft.render).
+export function active_map(cfg, fresh) {
+	const saved = fresh ? {} : (core.read_json(ACTIVE) ?? {});
 	const pn = pins();
 	const out = {};
 	for (let p in cfg.policies) {
+		if (!length(p.exits)) continue;
 		let eid = null;
 		const s = saved['' + p.id];
 		for (let n in p.exits) if (cfg.by_name[n].id == s) eid = s;
@@ -48,10 +55,30 @@ export function skip_uid(cfg) {
 export function apply(cfg, active) {
 	dns.prepare(cfg);
 	active ??= active_map(cfg);
-	const text = nft.render(cfg, active, { skip_uid: skip_uid(cfg), stale: nft.stale(cfg) });
+	const uids = skip_uid(cfg);
+	const text = nft.render(cfg, active, { skip_uid: uids, stale: nft.stale(cfg) });
 	const r = nft.apply(text);
 	const errors = [ ...cfg.errors ];
-	if (r.code != 0) push(errors, 'nft: ' + trim(r.out));
+	if (r.code != 0) {
+		push(errors, 'nft: ' + trim(r.out));
+		// nft takes the rules whole or not at all. With a table in place the previous rules keep working;
+		// with none (boot) there would be no kill-switch: the last rules that did load are better than that.
+		if (!table_present() && fs.access(GOOD)) {
+			const g = core.run('nft -f ' + GOOD);
+			push(errors, (g.code == 0) ? 'the last working rules are loaded instead - fix the configuration'
+				: 'the last working rules did not load either: ' + trim(g.out));
+		}
+	}
+	else {
+		// the same rules for an empty table (no removals of old objects, exits as chosen at boot); flash is
+		// written only when they change
+		const good = nft.render(cfg, active_map(cfg, true), { skip_uid: uids });
+		if (fs.readfile(GOOD) != good) {
+			fs.mkdir(core.PERSIST);
+			fs.writefile(GOOD + '.tmp', good);
+			fs.rename(GOOD + '.tmp', GOOD);
+		}
+	}
 	if (cfg.main.dns == 'tunnel' && !fs.access('/usr/bin/dnsproxy'))
 		push(errors, 'router DNS through the tunnel: dnsproxy is not installed - when the exits of the DNS policy fail, the router falls back to the provider DNS, unencrypted');
 	if (cfg.main.dns == 'encrypted' && !fs.access('/usr/bin/dnsproxy'))
@@ -85,7 +112,20 @@ export function has_lists() {
 // early boot (START before dnsmasq): table + sets exist before dnsmasq starts filling them
 export function start() {
 	const cfg = core.load();
-	if (!cfg.main.enabled) return { ok: true, errors: [ 'disabled' ] };
+	if (!cfg.main.enabled) {
+		// switched off = everything goes directly: nothing of ours stays in the path (the domain sets are
+		// saved for the next switch-on), dnsmasq is back on its own upstreams
+		if (table_present()) {
+			fs.mkdir(core.PERSIST);
+			nft.save_dom(cfg, DOMSAVE);
+			nft.remove_table();
+			net.remove_all();
+		}
+		let restart = dns.remove_conf();
+		if (dns.ensure_uci(false)) restart = true;
+		if (restart && core.run('pidof dnsmasq').code == 0) dns.restart();
+		return { ok: true, errors: [ 'disabled' ] };
+	}
 	const res = apply(cfg);
 	if (res.ok) nft.restore_dom(DOMSAVE);
 	// big lists: from RAM or the flash snapshot, no downloads (boot: before dnsmasq and WAN)
@@ -109,6 +149,7 @@ export function purge() {
 	let restart = dns.remove_conf();
 	if (dns.ensure_uci(false)) restart = true;
 	fs.unlink(DOMSAVE);
+	fs.unlink(GOOD);
 	fs.unlink(ACTIVE);
 	if (restart) dns.restart();
 	auth.restore();

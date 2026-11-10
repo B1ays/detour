@@ -101,8 +101,8 @@ function xray_exit(name, text, from) {
 
 // hysteria2 YAML (stock writes a small flat file): server, auth, tls.sni/insecure, obfs.salamander.password
 function hy2_exit(name, text, from) {
-	const g = (re) => { const m = match(text ?? '', re); return m ? trim(replace(m[1], /^["']|["']$/g, '')) : null; };
-	const server = g(/(?:^|\n)server:\s*(\S+)/), auth = g(/(?:^|\n)auth:\s*(.+)/);
+	const g = (re) => { const m = match(text ?? '', re); return m ? trim(replace(m[length(m) - 1], /^["']|["']$/g, '')) : null; };
+	const server = g(/(^|\n)server:[ \t]*([^ \t\n]+)/), auth = g(/(^|\n)auth:[ \t]*([^\n]+)/);
 	if (!server || !auth) return { error: from + ': no server/auth' };
 	const hp = match(server, /^\[?([^\]]+)\]?:([0-9]+)/);
 	if (!hp) return { error: from + ': bad server' };

@@ -18,6 +18,8 @@ const callCfgSet = rpc.declare({ object: 'detour', method: 'exit_config_set', pa
 const callSetLink = rpc.declare({ object: 'detour', method: 'exit_set_link', params: [ 'name', 'link' ] });
 const callSubUpdate = rpc.declare({ object: 'detour', method: 'sub_update', params: [ 'name' ] });
 const callStatus = rpc.declare({ object: 'detour', method: 'status' });
+const callSubState = rpc.declare({ object: 'detour', method: 'sub_state', params: [ 'name' ] });
+const callSubCheck = rpc.declare({ object: 'detour', method: 'sub_check', params: [ 'name', 'index' ] });
 const callReload = rpc.declare({ object: 'detour', method: 'reload' });
 
 // AmneziaWG masking parameters (amneziawg-tools 3.1 names, network UCI options awg_*), with what they do
@@ -231,6 +233,19 @@ return view.extend({
 	},
 
 	// --- subscriptions -------------------------------------------------------------------------------
+	// what the provider reports: "Traffic: 12.3 of 100 GB · until 15.12.2026"
+	usageText: function(i) {
+		if (!i || (i.total == null && i.expire == null && i.upload == null && i.download == null)) return null;
+		const parts = [], gb = function(b) { return '%.1f'.format(b / 1073741824); };
+		const used = (i.upload || 0) + (i.download || 0);
+		if (i.total > 0) parts.push(_('Traffic: %s of %s GB').format(gb(used), gb(i.total)));
+		else if (i.upload != null || i.download != null) parts.push(_('Traffic: %s GB, no limit').format(gb(used)));
+		if (i.expire > 0) parts.push((i.expire * 1000 < Date.now() ? _('ended %s') : _('until %s')).format(new Date(i.expire * 1000).toLocaleDateString()));
+		else if (i.expire != null) parts.push(_('no end date'));
+		const warn = (i.total > 0 && used >= i.total * 0.9) || (i.expire > 0 && i.expire * 1000 - Date.now() < 3 * 86400000);
+		return warn ? note(parts.join(' · '), 'warning') : E('div', {}, parts.join(' · '));
+	},
+
 	renderSub: function(x, by, subState) {
 		const self = this;
 		const st = subState[x.subscription] || {};
@@ -240,13 +255,19 @@ return view.extend({
 		head.push(E('div', {}, [ E('strong', {}, N_(n, '%d server', '%d servers').format(n)),
 			st.ts ? ' · ' + _('updated %s').format(fmtTime(st.ts)) : '',
 			' · ' + _('updates every %s').format(this.intervalText(x.sub_interval || 24)) ]));
+		const usage = this.usageText(x.sub_info);
+		if (usage) head.push(usage);
 		if (st.ok === false) head.push(note(_('The last update failed - the previous servers are kept.'), 'warning'));
 		if (x.via) head.push(E('div', {}, _('Connects to its servers through «%s».').format(x.via_label || x.via)));
+		const nowLine = E('div', {});
+		head.push(nowLine);
 
-		// the servers: automatic (the group picks a working, fast one) or one of them
+		// the servers: automatic (the group picks a working, fast one) or one of them; each can be checked
+		// on its own (a request through that server, the subscription does not switch)
 		const group = 'pick-' + x.name;
 		const list = E('div', { 'class': 'detour-servers' });
-		const radio = function(key, title, sub) {
+		const delays = [];
+		const radio = function(key, title, sub, i) {
 			const r = E('input', { 'type': 'radio', 'name': group, 'value': key, 'checked': ((x.pick || '') == key) ? '' : null, 'change': function() {
 				list.classList.add('spinning');
 				return callPick(x.name, key).then(function(res) {
@@ -254,11 +275,39 @@ return view.extend({
 					else x.pick = key || null;
 				}).finally(function() { list.classList.remove('spinning'); });
 			} });
-			return E('label', { 'class': 'detour-server' }, [ r, ' ', E('span', {}, [ E('strong', {}, title), sub ? E('span', { 'class': 'detour-muted' }, ' ' + sub) : '' ]) ]);
+			const label = E('label', { 'class': 'detour-server' }, [ r, ' ', E('span', {}, [ E('strong', {}, title), sub ? E('span', { 'class': 'detour-muted' }, ' ' + sub) : '' ]) ]);
+			if (i == null) return label;
+			const d = E('span', { 'class': 'detour-delay detour-muted' });
+			delays[i] = d;
+			const b = E('button', { 'class': 'btn', 'title': _('A request through this server only; the subscription does not switch'), 'click': function(ev) {
+				ev.preventDefault();
+				busy(b, true);
+				d.textContent = _('checking…');
+				return callSubCheck(x.name, i).then(function(res) {
+					d.classList.toggle('bad', !(res && res.ok));
+					d.textContent = (res && res.ok) ? _('%d ms').format(res.ms)
+						: (res && res.error == 'no automatic server group for ' + x.name) ? _('only in the automatic mode') : _('no answer');
+				}).finally(function() { busy(b, false); });
+			} }, _('Check'));
+			return E('div', { 'class': 'detour-server-row' }, [ label, d, b ]);
 		};
 		list.appendChild(radio('', _('Automatically'), _('a working, fast server is chosen and re-checked every few minutes')));
-		(x.servers || []).forEach(function(s) {
-			list.appendChild(radio(s.key, s.name, protoText(s.proto) + (s.server ? ' · ' + s.server + (s.port ? ':' + s.port : '') : '')));
+		(x.servers || []).forEach(function(s, i) {
+			list.appendChild(radio(s.key, s.name, protoText(s.proto) + (s.server ? ' · ' + s.server + (s.port ? ':' + s.port : '') : ''), i));
+		});
+		// which server the automatic choice uses now and the delays it measured (sing-box's own checks)
+		if (x.sub_auto && x.enabled) L.resolveDefault(callSubState(x.name), null).then(function(r) {
+			if (!r || r.error) return;
+			const s = (r.now != null) ? (x.servers || [])[r.now] : null;
+			if (s) nowLine.replaceChildren(E('span', { 'class': 'detour-now' }, _('Now: %s').format(s.name)),
+				r.delays[r.now] ? ' · ' + _('%d ms').format(r.delays[r.now]) : '');
+			Object.keys(r.delays || {}).forEach(function(k) {
+				const d = delays[+k];
+				if (!d) return;
+				const ms = r.delays[k];
+				d.classList.toggle('bad', !ms);
+				d.textContent = (+k === r.now ? _('now') + ' · ' : '') + (ms ? _('%d ms').format(ms) : _('no answer'));
+			});
 		});
 		if (x.pick && !(x.servers || []).some(function(s) { return s.key == x.pick; }))
 			head.push(note(_('The chosen server is no longer in the subscription - the choice is automatic until you choose again.'), 'warning'));

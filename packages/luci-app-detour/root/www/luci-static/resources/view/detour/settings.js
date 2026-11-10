@@ -101,12 +101,17 @@ return view.extend({
 		o = s.option(form.Value, 'tg_chat', _('Chat id'));
 		o.datatype = 'integer';
 		o = s.option(form.MultiValue, 'event', _('Notify about'),
-			_('exit down: an exit stopped responding; exit back: it works again; switch: a policy moved to another exit; no exit left: a policy has no working exit, its traffic is blocked.'));
-		o.value('exit_down', _('exit down'));
-		o.value('exit_up', _('exit back'));
-		o.value('switch', _('switch'));
-		o.value('all_down', _('no exit left'));
-		o.default = 'exit_down exit_up all_down switch';
+			_('While the provider\'s internet is gone (and 3 minutes after it is back) nothing is said about the exits: they fall and rise with the line, one message about the line says it all.'));
+		o.value('exit_down', _('an exit stopped responding'));
+		o.value('exit_up', _('an exit works again'));
+		o.value('switch', _('a policy moved to another exit, WARP moved to another point'));
+		o.value('all_down', _('a policy has no working exit, its traffic is blocked (and when it works again)'));
+		o.value('boot', _('the router rebooted: how many exits came up'));
+		o.value('wan', _('the provider\'s internet went away and came back'));
+		o.value('list_fail', _('a list failed to update'));
+		o.value('sub_fail', _('a subscription failed to update'));
+		o.value('sub_expire', _('a subscription ends in 3 days or 90% of its traffic is used'));
+		o.default = 'exit_down exit_up all_down switch boot wan list_fail sub_fail sub_expire';
 		o = s.option(form.Value, 'tg_api', _('Own Bot API address'), _('Only if api.telegram.org is blocked for you and you run a Bot API proxy.'));
 		o.placeholder = 'https://api.telegram.org';
 		o.datatype = 'string';

@@ -2,6 +2,8 @@
 POST /set/links  body: share links, one per line   POST /set/json  body: a sing-box config
 GET  /sub/<token>/b64   -> base64 of the links        GET /sub/<token>/json -> the sing-box config
 GET  /log               -> requests (path, user-agent, x-hwid)
+POST /set/userinfo  body: a subscription-userinfo value (empty = none); the answers then carry it and
+                    profile-update-interval: 12
 Run: python tests/stub/sub_stub.py 8768
 """
 import base64
@@ -9,7 +11,7 @@ import json
 import sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-DATA = {'links': b'', 'json': b'{}'}
+DATA = {'links': b'', 'json': b'{}', 'userinfo': b''}
 LOG = []
 
 
@@ -21,6 +23,9 @@ class H(BaseHTTPRequestHandler):
         self.send_response(code)
         self.send_header('Content-Type', ctype)
         self.send_header('Content-Length', str(len(body)))
+        if code == 200 and DATA['userinfo'] and self.path.startswith('/sub/'):
+            self.send_header('subscription-userinfo', DATA['userinfo'].decode())
+            self.send_header('profile-update-interval', '12')
         self.end_headers()
         self.wfile.write(body)
 
@@ -31,6 +36,8 @@ class H(BaseHTTPRequestHandler):
             DATA['links'] = body
         elif self.path == '/set/json':
             DATA['json'] = body
+        elif self.path == '/set/userinfo':
+            DATA['userinfo'] = body.strip()
         self._send(200, b'ok')
 
     def do_GET(self):

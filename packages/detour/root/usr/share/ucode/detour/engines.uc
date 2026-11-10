@@ -18,7 +18,7 @@ export const DIR = RUN + '/engines';
 const BIN = { singbox: '/usr/bin/sing-box', xray: '/usr/bin/xray' };
 
 // the sing-box tun address of an engine (render and devices_up must agree)
-function tun_addr(e) { return sprintf('172.19.%d.1/30', e.idx % 250); }
+function tun_addr(e) { return sprintf('172.19.%d.1/30', e.idx % 500 % 256); }
 
 export function check_name(name) {
 	return match(name ?? '', /^[a-z][a-z0-9_]{0,10}$/) ? null : 'name: a-z, 0-9, _ (max 11, starts with a letter)';
@@ -89,6 +89,10 @@ export function list() {
 	const out = [];
 	let i = 0;
 	const c = cursor();
+	// an engine's number (its tun address, its control API port) is the id of its exit: stable when other
+	// engines come and go. An engine without an exit keeps its position, away from the ids (1..250 -> 0..249)
+	const exit_id = {};
+	c.foreach('detour', 'exit', (x) => { exit_id[x.device ?? x.iface ?? x['.name']] = int(x.id); });
 	c.foreach('detour', 'engine', function(s) {
 		i++;
 		const t = s.type;
@@ -100,7 +104,7 @@ export function list() {
 			if (x?.['.type'] == 'exit') via_dev = x.device ?? x.iface ?? s.via;
 		}
 		push(out, {
-			name: s['.name'], type: t, idx: i,
+			name: s['.name'], type: t, idx: exit_id[s.device ?? s['.name']] ?? (250 + i),
 			device: s.device ?? s['.name'],
 			outbound: s.outbound,
 			via: s.via, via_dev,
@@ -110,6 +114,34 @@ export function list() {
 		});
 	});
 	return out;
+}
+
+// A group of servers (a subscription) gets sing-box's control API on 127.0.0.1, behind a secret: which server
+// the group chose and each server's delay, without switching. Its address and secret are written as a curl
+// config (mode 600) - the secret never shows on a command line.
+export function api_file(engine) { return sprintf('%s/%s.api', DIR, engine); }
+function api_conf(e) {
+	fs.mkdir(RUN); fs.mkdir(DIR);
+	const port = 19100 + e.idx % 500;
+	let secret = null;
+	const m = match(fs.readfile(api_file(e.name)) ?? '', /Bearer ([0-9a-f]{32})/);
+	if (m) secret = m[1];
+	else {
+		const fh = fs.open('/dev/urandom');
+		if (!fh) return null;
+		secret = hexenc(fh.read(16));
+		fh.close();
+		if (!match(secret ?? '', /^[0-9a-f]{32}$/)) return null;
+	}
+	const f = api_file(e.name);
+	fs.writefile(f + '.tmp', ''); fs.chmod(f + '.tmp', 0600);
+	fs.writefile(f + '.tmp', sprintf('header = "Authorization: Bearer %s"\n# url http://127.0.0.1:%d\n', secret, port));
+	fs.rename(f + '.tmp', f);
+	return { external_controller: sprintf('127.0.0.1:%d', port), secret };
+}
+export function api_port(engine) {
+	const m = match(fs.readfile(api_file(engine)) ?? '', /# url http:\/\/127\.0\.0\.1:([0-9]+)/);
+	return m ? int(m[1]) : null;
 }
 
 function read_outbound(e) {
@@ -154,6 +186,7 @@ export function render(e) {
 			push(outs, { type: 'urltest', tag: 'out', outbounds: map(outs, (x) => x.tag),
 				url: cursor().get('detour', 'main', 'urltest_url') ?? 'https://www.gstatic.com/generate_204',
 				interval: '3m', tolerance: 100 });
+		const api = (length(outs) > 1) ? api_conf(e) : null;
 		cfg = {
 			log: { level: 'warn' },
 			inbounds: [ { type: 'tun', tag: 'tun-in', interface_name: e.device,
@@ -162,6 +195,7 @@ export function render(e) {
 			outbounds: outs,
 			route: { final: 'out', auto_detect_interface: false }
 		};
+		if (api) cfg.experimental = { clash_api: api };
 	}
 	else {
 		o.streamSettings ??= {};

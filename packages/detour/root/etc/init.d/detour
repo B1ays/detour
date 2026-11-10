@@ -63,7 +63,10 @@ start_service() {
 	config_load detour
 	local enabled
 	config_get_bool enabled main enabled 1
-	[ "$enabled" = 1 ] || return 0
+	# switched off: no instances, and the routing core is taken down too (everything goes directly)
+	[ "$enabled" = 1 ] || { /usr/libexec/detour/fw start; return 0; }
+	# switched on again after that: the table has to be back before the daemon and the engines
+	nft -t list table inet detour >/dev/null 2>&1 || /usr/libexec/detour/fw start
 	mkdir -p /tmp/detour
 	procd_open_instance detourd
 	procd_set_param command /usr/sbin/detourd

@@ -4,9 +4,11 @@
 // to the host for TLS, IPv6 hosts in brackets.
 'use strict';
 
-function pct(s) {
+// plus: "+" is a space only in query values (form encoding); in the user part and the remark it is itself
+// (a password with "+" - Shadowsocks 2022 keys are base64 - must stay as it is)
+function pct(s, plus) {
 	if (s == null) return null;
-	s = replace(s, '+', ' ');
+	if (plus) s = replace(s, '+', ' ');
 	return replace(s, /%([0-9A-Fa-f]{2})/g, (m, h) => chr(hex(h)));
 }
 
@@ -22,7 +24,7 @@ function query(q) {
 		if (!length(kv)) continue;
 		const i = index(kv, '=');
 		if (i < 0) o[kv] = '';
-		else o[substr(kv, 0, i)] = pct(substr(kv, i + 1));
+		else o[substr(kv, 0, i)] = pct(substr(kv, i + 1), true);
 	}
 	return o;
 }

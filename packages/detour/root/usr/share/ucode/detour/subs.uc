@@ -19,9 +19,35 @@ const SDIR = RUN + '/subs';
 const PROXY_TYPES = [ 'vless', 'vmess', 'trojan', 'shadowsocks', 'hysteria2', 'hysteria', 'tuic', 'wireguard', 'anytls', 'shadowtls' ];
 
 // code: a stable key LuCI translates (the message stays English for the CLI and the log)
-function status(name, ok, count, msg, code, skipped) {
+// what the provider said about the subscription itself (headers subscription-userinfo, profile-update-interval)
+// survives a failed update: it is carried over from the previous status
+function status(name, ok, count, msg, code, skipped, info) {
 	fs.mkdir(RUN); fs.mkdir(SDIR);
-	fs.writefile(sprintf('%s/%s.status', SDIR, name), sprintf('%J\n', { name, ok, count, skipped: skipped ?? 0, code, ts: time(), message: msg }));
+	const f = sprintf('%s/%s.status', SDIR, name);
+	if (info == null) try { info = json(fs.readfile(f) ?? 'null')?.info; } catch (e) { }
+	fs.writefile(f, sprintf('%J\n', { name, ok, count, skipped: skipped ?? 0, code, ts: time(), message: msg, info }));
+}
+
+// subscription-userinfo: upload=1; download=2; total=3; expire=1700000000 (bytes, unix time; 0 or absent = none)
+export function parse_headers(text) {
+	let info = null;
+	for (let l in split(text ?? '', /\r?\n/)) {
+		const m = match(trim(l), /^([A-Za-z-]+):[ \t]*(.*)$/);
+		if (!m) continue;
+		const k = lc(m[1]);
+		if (k == 'subscription-userinfo') {
+			info ??= {};
+			for (let kv in split(m[2], ';')) {
+				const x = match(trim(kv), /^(upload|download|total|expire)=([0-9.eE+]+)$/);
+				if (x) info[x[1]] = int(+x[2]);
+			}
+		}
+		else if (k == 'profile-update-interval' && match(m[2], /^[0-9]+$/)) {
+			info ??= {};
+			info.update_hours = int(m[2]);
+		}
+	}
+	return info;
 }
 
 // the stock SSRF guard: the URL must not point into the router's own networks (unless allowed - lab)
@@ -70,7 +96,18 @@ export function parse_body(body) {
 	return { outbounds: out, skipped, names };
 }
 
-export function update(name) {
+// one update of a subscription at a time (cron, the daemon and LuCI may all ask): a lock directory, taken
+// over when it is older than any update can last
+function lock(name) {
+	fs.mkdir(RUN); fs.mkdir(SDIR);
+	const d = sprintf('%s/%s.lock', SDIR, name);
+	if (fs.mkdir(d)) return d;
+	const st = fs.stat(d);
+	if (st && time() - st.mtime > 180) { fs.rmdir(d); if (fs.mkdir(d)) return d; }
+	return null;
+}
+
+function update_locked(name) {
 	const c = cursor();
 	const s = c.get_all('detour', name);
 	if (s?.['.type'] != 'subscription') return { error: 'no subscription ' + name };
@@ -89,10 +126,15 @@ export function update(name) {
 	if (s.hwid) cfg += sprintf('header = "x-hwid: %s"\n', replace(s.hwid, '"', ''));
 	fs.writefile(k, cfg);
 	const body_f = sprintf('%s/%s.body', SDIR, name);
-	const r = run(sprintf('curl -fsSL --compressed -m 40 -K %s -o %s', k, body_f));
+	const head_f = sprintf('%s/%s.head', SDIR, name);
+	const r = run(sprintf('curl -fsSL --compressed -m 40 -K %s -D %s -o %s', k, head_f, body_f));
 	fs.unlink(k);
 	const body = fs.readfile(body_f);
-	fs.unlink(body_f);
+	// after redirects every hop's headers are in the file: the last block counts
+	const heads = split(fs.readfile(head_f) ?? '', /\r?\n\r?\n/);
+	let info = null;
+	for (let h in heads) if (length(trim(h))) info = parse_headers(h);
+	fs.unlink(body_f); fs.unlink(head_f);
 	if (r.code != 0 || !body) {
 		status(name, false, 0, 'download failed, previous servers kept', 'download_failed');
 		log(sprintf('subscription %s: download failed, previous servers kept', name));
@@ -117,11 +159,21 @@ export function update(name) {
 		if (s.via) c.set('detour', xn + '_eng', 'via', s.via); else c.delete('detour', xn + '_eng', 'via');
 		c.commit('detour');
 	}
-	status(name, true, length(outs), sprintf('%d servers%s', length(outs), length(p.skipped) ? sprintf(', %d skipped', length(p.skipped)) : ''), 'updated', length(p.skipped));
+	status(name, true, length(outs), sprintf('%d servers%s', length(outs), length(p.skipped) ? sprintf(', %d skipped', length(p.skipped)) : ''), 'updated', length(p.skipped), info ?? {});
 	log(sprintf('subscription %s: %d servers', name, length(outs)));
 	// procd restarts the engine when its generated config changed (procd "file" param)
 	run('/etc/init.d/detour reload');
 	return { name, exit: xn, servers: length(outs), skipped: length(p.skipped), created };
+}
+
+export function update(name) {
+	if (!match(name ?? '', /^[a-z][a-z0-9_]*$/)) return { error: 'no subscription ' + (name ?? '') };
+	const l = lock(name);
+	if (!l) return { error: 'this subscription is being updated right now' };
+	let r;
+	try { r = update_locked(name); } catch (e) { r = { error: 'update failed: ' + e }; }
+	fs.rmdir(l);
+	return r;
 }
 
 // cron, hourly: the subscriptions whose interval (option interval, hours, default 24) has passed
@@ -129,9 +181,10 @@ export function update_due() {
 	const out = [];
 	cursor().foreach('detour', 'subscription', function(s) {
 		if (s.enabled == '0') return;
-		const hours = int(s.interval ?? 24) || 24;
 		let st = null;
 		try { st = json(fs.readfile(sprintf('%s/%s.status', SDIR, s['.name'])) ?? 'null'); } catch (e) { }
+		// its own interval, else what the provider recommends, else a day
+		const hours = int(s.interval ?? st?.info?.update_hours ?? 24) || 24;
 		if (st?.ts && time() - st.ts < hours * 3600 - 300) return;
 		push(out, update(s['.name']));
 	});

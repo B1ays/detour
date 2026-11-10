@@ -112,11 +112,11 @@ export function flush_conntrack_exit(eid) {
 }
 
 // probe an exit: ICMP through its device, or an HTTP(S) URL bound to the device
-export function probe_cmd(ex) {
+export function probe_cmd(ex, timeout) {
 	const t = ex.probe;
 	if (!t) return null;
 	// run through sh to silence the output (it would go to the daemon's log via procd)
 	if (match(t, /^https?:\/\//))
-		return [ '/bin/sh', '-c', sprintf('curl -sf -o /dev/null -m 4 --interface %s %s >/dev/null 2>&1', shq(ex.device), shq(t)) ];
+		return [ '/bin/sh', '-c', sprintf('curl -sf -o /dev/null -m %d --interface %s %s >/dev/null 2>&1', timeout ?? 8, shq(ex.device), shq(t)) ];
 	return [ '/bin/sh', '-c', sprintf('ping -q -c 1 -W 2 -I %s %s >/dev/null 2>&1', shq(ex.device), shq(t)) ];
 }
