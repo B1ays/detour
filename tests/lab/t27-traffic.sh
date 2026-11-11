@@ -33,8 +33,10 @@ i=0; while [ ! -f /tmp/detour/traffic/last.json ] && [ $i -lt 30 ]; do sleep 1; 
 step
 [ "$(tr_ '@.source.running')" = true ] && ok "nlbwmon answers" || bad "nlbwmon: $(tr_ '@.source')"
 
+# the test before may have restarted dnsmasq: the client resolves again before anything is downloaded
+i=0; until cl "nslookup mirror.yandex.ru" | grep -q "^Name:" || [ $i -ge 30 ]; do sleep 2; i=$((i+2)); done
 T0=$(tr_ '@.total.rx'); V0=$(tr_ '@.vpn.rx'); D0=$(tr_ '@.direct.rx')
-n=$(dl); [ "$n" = 10000000 ] && ok "10 MB directly" || bad "direct download: $n"
+n=$(dl); [ "$n" = 10000000 ] && ok "10 MB directly" || bad "direct download: $n ($(cl "curl -s -r 0-999 -o /dev/null -m 20 -w '%{http_code} %{remote_ip} %{errormsg}' $U"))"
 uci add_list detour.vpn.domain=mirror.yandex.ru; uci commit detour; ubus call detour reload >/dev/null; sleep 3
 n=$(dl); [ "$n" = 10000000 ] && ok "10 MB through the policy vpn" || bad "vpn download: $n"
 # nlbwmon counts a closed connection when conntrack drops it (TIME_WAIT, up to 2 min): drop them now
@@ -61,7 +63,8 @@ T3=$(tr_ '@.total.rx')
 [ $(( (T3 - T2) / 1048576 )) -lt 2 ] && ok "nlbwmon restart: nothing counted twice (+$(( (T3 - T2) / 1024 )) KB)" || bad "nlbwmon restart added $(mb $((T3 - T2))) MB"
 # an interface coming up only reloads nlbwmon (procd keeps the process): its open connections are not lost
 P=$(pidof nlbwmon); ifdown wgx2; sleep 2; ifup wgx2; sleep 5
-[ "$(pidof nlbwmon)" = "$P" ] && ok "ifup: nlbwmon keeps running" || bad "ifup restarted nlbwmon ($P -> $(pidof nlbwmon))"
+# the reload may show a second short-lived process for a moment: what counts is that the first one lives on
+kill -0 "$P" 2>/dev/null && ok "ifup: nlbwmon keeps running" || bad "ifup restarted nlbwmon ($P -> $(pidof nlbwmon))"
 
 # flash: written at the first step after start (above) and then every 30 min - a stop writes what came since
 F=/etc/detour/traffic/$(date +%Y-%m).json
@@ -75,4 +78,5 @@ S2=$(fl)
 [ $(( (S2 - S1) / 1048576 )) -ge 4 ] && ok "stop: the day so far went to flash (+$(mb $((S2 - S1))) MB)" || bad "flash after stop: '$S2' was '$S1'"
 cleanup
 /etc/init.d/detour start
+i=0; while ! ubus call detour status >/dev/null 2>&1 && [ $i -lt 30 ]; do sleep 1; i=$((i+1)); done   # the next test talks to it
 echo "RESULT: $([ $FAIL = 0 ] && echo PASS || echo FAIL)"

@@ -11,7 +11,9 @@
 					"site_explain",
 					"traffic",
 					"dns_log",
-					"devices"
+					"devices",
+					"catalog_names",
+					"rates"
 				],
 				"luci": [
 					"getFeatures"
@@ -59,7 +61,8 @@
 					"exit_set_via",
 					"site_check",
 					"dns_watch",
-					"dns_watch_stop"
+					"dns_watch_stop",
+					"catalog_refresh"
 				]
 			},
 			"uci": [

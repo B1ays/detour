@@ -1,0 +1,38 @@
+#!/bin/sh
+# Restart dnsmasq - one restart at a time, never left stopped, and not killed halfway.
+# - The daemon (a reload that changed the DNS files) and lists-update (new list files) used to run
+#   /etc/init.d/dnsmasq restart independently: "restart" is stop + start, and two interleaved could end stopped.
+#   Here the restarts queue up on a lock, and a dnsmasq still not running afterwards is started again.
+# - The daemon waits for the restart; when procd stops the daemon meanwhile (a package upgrade right after a
+#   reload) it kills everything of the service - the whole cgroup /services/detour/detourd (cgroup.kill), or
+#   the process group where there are no cgroups. A restart cut between its stop and its start left the network
+#   without DNS (seen on the lab: minutes). So the work runs in its own session (start-stop-daemon -b) and moves
+#   itself out of the service's cgroup first; the caller only waits for it to finish.
+#   usage: dnsmasq-restart
+if [ "$1" != --work ]; then
+	mkdir -p /tmp/detour
+	done=/tmp/detour/.dnsmasq-restart.$$
+	rm -f "$done"
+	# -p: a pid file that never exists - without it any running sh would count as "already running"
+	start-stop-daemon -S -b -p /tmp/detour/none.pid -x /bin/sh -- "$0" --work "$done"
+	# a start with big lists takes a few seconds (much longer on the emulated lab)
+	i=0
+	while [ ! -e "$done" ] && [ $i -lt 240 ]; do sleep 0.5; i=$((i + 1)); done
+	rm -f "$done"
+	exit 0
+fi
+
+# out of the daemon's cgroup: procd's kill of the service must not reach this restart
+[ -w /sys/fs/cgroup/cgroup.procs ] && echo $$ > /sys/fs/cgroup/cgroup.procs 2>/dev/null
+exec 8> /tmp/detour/.dnsmasq.lock
+command -v flock >/dev/null 2>&1 && flock 8
+/etc/init.d/dnsmasq restart >/dev/null 2>&1
+if /etc/init.d/dnsmasq enabled; then   # switched off by the owner: not ours to start
+	i=0
+	while ! pidof dnsmasq >/dev/null && [ $i -lt 15 ]; do sleep 1; i=$((i + 1)); done
+	if ! pidof dnsmasq >/dev/null; then
+		logger -t detour "dnsmasq did not come back after a restart - starting it again"
+		/etc/init.d/dnsmasq start >/dev/null 2>&1
+	fi
+fi
+touch "$2"

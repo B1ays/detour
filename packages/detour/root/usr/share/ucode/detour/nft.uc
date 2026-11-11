@@ -40,7 +40,8 @@ export function stale(cfg) {
 	// nft fails, and a failed listing must not mean "nothing to remove" - a removed exit's chains stayed
 	let j = null;
 	for (let i = 0; i < 4 && j == null; i++) {
-		const r = run("nft -j list table inet detour");
+		// -t: names only, no set elements - the big lists would be listed whole on every reload for nothing
+		const r = run("nft -j -t list table inet detour");
 		if (r.code == 0) { try { j = json(r.out); } catch (e) { j = null; } }
 		else if (index(r.out, 'No such file') >= 0) return { sets: [], chains: [] };   // no table yet
 		if (j == null) system('sleep 0.2');

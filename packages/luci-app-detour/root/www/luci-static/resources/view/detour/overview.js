@@ -10,6 +10,18 @@
 const callStatus = rpc.declare({ object: 'detour', method: 'status' });
 const callPin = rpc.declare({ object: 'detour', method: 'pin', params: [ 'policy', 'exit' ] });
 const callUnpin = rpc.declare({ object: 'detour', method: 'unpin', params: [ 'policy' ] });
+const callRates = rpc.declare({ object: 'detour', method: 'rates' });
+
+const RATE_EVERY = 3;          // s between two readings of the counters
+const RATE_POINTS = 100;       // 100 x 3 s = 5 min
+const COLORS = [ '#1e88e5', '#8e24aa', '#f4511e', '#00897b', '#6d4c41', '#c0ca33' ];
+
+// a country code -> its flag (regional indicator letters); nothing for anything else
+function flag(cc) {
+	if (!/^[A-Z]{2}$/.test(cc || '') || cc == 'XX' || cc == 'T1') return '';
+	return String.fromCodePoint(0x1F1E6 + cc.charCodeAt(0) - 65, 0x1F1E6 + cc.charCodeAt(1) - 65) + ' ';
+}
+function mbit(bps) { return bps >= 1e6 ? (bps / 1e6).toFixed(bps >= 1e8 ? 0 : 1) + ' ' + _('Mbit/s') : Math.round(bps / 1e3) + ' ' + _('kbit/s'); }
 
 function badge(ok, yes, no) {
 	return E('span', { 'class': 'detour-badge ' + (ok ? 'ok' : 'bad') }, ok ? yes : no);
@@ -48,6 +60,100 @@ return view.extend({
 		return p.then(function(r) {
 			if (r && r.error) ui.addNotification(null, E('p', _('Error') + ': ' + r.error), 'danger');
 		});
+	},
+
+	// "VPN is on": main.enabled. Off = Detour takes everything down and all traffic goes directly - not blocked
+	vpnSwitch: function(on) {
+		const box = E('input', { 'type': 'checkbox', 'checked': on ? '' : null });
+		box.addEventListener('change', function() {
+			if (!box.checked) {
+				let t = _('Switch the VPN off?\n\nAll traffic will go directly through your provider - also the sites, devices and lists of your policies. Nothing is blocked while it is off: the kill-switch is off too.');
+				if (uci.get('detour', 'sshtun', 'enabled') == '1')
+					t += '\n\n' + _('The panel through your VPS stops too: if you are connected through it now, you lose this page.');
+				if (!confirm(t)) { box.checked = true; return; }
+			}
+			uci.set('detour', 'main', 'enabled', box.checked ? '1' : '0');
+			return uci.save().then(function() { return ui.changes.apply(); });
+		});
+		return E('div', { 'class': 'detour-vpn-switch' }, [
+			E('label', { 'class': 'detour-switch' }, [ box, E('span', { 'class': 'detour-switch-slider' }), E('strong', {}, on ? _('VPN is on') : _('VPN is off')) ]),
+			E('div', { 'class': 'detour-muted' }, on ? _('Traffic goes by your policies: through the exits, blocked when they are down.') : _('Everything goes directly through your provider: no policy, no exit, no blocking.'))
+		]);
+	},
+
+	// the outside address: directly and through the exit each policy uses now
+	renderIp: function(st) {
+		const self = this;
+		const x = st.extip || {};
+		const one = function(r) {
+			if (!r) return E('em', {}, _('checking…'));
+			if (r.error || !r.ip) return E('span', { 'class': 'detour-muted' }, _('no answer'));
+			return E('span', { 'title': r.colo ? _('Cloudflare point: %s').format(r.colo) : null }, [ flag(r.loc), E('strong', {}, r.ip), r.loc ? ' (' + r.loc + ')' : '' ]);
+		};
+		const rows = [ E('div', {}, [ _('Directly:') + ' ', one(x.direct) ]) ];
+		const seen = {};
+		(st.policies || []).forEach(function(p) {
+			if (!p.enabled || p.block || !p.active || seen[p.active]) return;
+			seen[p.active] = true;
+			rows.push(E('div', {}, [ _('Through «%s»:').format(self.lab(p.active)) + ' ', one((x.exits || {})[p.active]) ]));
+		});
+		return E('div', { 'id': 'detour-ip', 'class': 'detour-ip' }, rows);
+	},
+
+	// the speed of the last 5 minutes: the provider's line and each exit, download (or upload)
+	rateBox: function() {
+		const self = this;
+		this.hist = [];       // [ { t, wan: [rx, tx], exits: { name: [rx, tx] } } ] - per-second rates
+		this.last = null;
+		this.dir = 0;         // 0 download, 1 upload
+		const sel = E('select', { 'class': 'cbi-input-select', 'change': function() { self.dir = +sel.value; self.drawRates(); } }, [
+			E('option', { 'value': '0' }, _('download')), E('option', { 'value': '1' }, _('upload')) ]);
+		this.graph = E('div', { 'class': 'detour-graph' }, E('em', {}, _('Measuring…')));
+		this.legend = E('div', { 'class': 'detour-legend' });
+		return E('div', { 'class': 'detour-node' }, [ E('div', { 'class': 'detour-actions' }, [ sel, E('span', { 'class': 'detour-muted' }, _('the last 5 minutes, every %d s').format(RATE_EVERY)) ]),
+			E('div', { 'class': 'detour-result' }, [ this.graph, this.legend ]) ]);
+	},
+
+	pollRates: function() {
+		const self = this;
+		return callRates().then(function(r) {
+			if (!r || !r.t) return;
+			if (self.last && r.t > self.last.t) {
+				const dt = (r.t - self.last.t) / 1000;
+				const d = function(a, b) { return (a && b && a[0] >= b[0] && a[1] >= b[1]) ? [ (a[0] - b[0]) * 8 / dt, (a[1] - b[1]) * 8 / dt ] : null; };
+				const p = { t: r.t, wan: r.wan && self.last.wan ? d([ r.wan.rx, r.wan.tx ], [ self.last.wan.rx, self.last.wan.tx ]) : null, exits: {} };
+				for (const n in r.exits) { const v = d(r.exits[n], (self.last.exits || {})[n]); if (v) p.exits[n] = v; }
+				self.hist.push(p);
+				if (self.hist.length > RATE_POINTS) self.hist.shift();
+				self.drawRates();
+			}
+			self.last = r;
+		});
+	},
+
+	drawRates: function() {
+		const self = this, h = this.hist, k = this.dir;
+		if (h.length < 2) return;
+		const names = [];
+		h.forEach(function(p) { for (const n in p.exits) if (names.indexOf(n) < 0) names.push(n); });
+		const series = [ { name: _('Provider line (everything)'), color: '#757575', get: function(p) { return p.wan ? p.wan[k] : null; } } ]
+			.concat(names.map(function(n, i) { return { name: self.lab(n), color: COLORS[i % COLORS.length], get: function(p) { return p.exits[n] ? p.exits[n][k] : null; } }; }));
+		let max = 1;
+		h.forEach(function(p) { series.forEach(function(s) { const v = s.get(p); if (v > max) max = v; }); });
+		const W = 600, H = 160, step = W / (RATE_POINTS - 1), x0 = W - (h.length - 1) * step;
+		const svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" class="detour-graph-svg">' +
+			[ 0.25, 0.5, 0.75 ].map(function(f) { return '<line x1="0" x2="' + W + '" y1="' + (H * f) + '" y2="' + (H * f) + '" class="detour-grid"/>'; }).join('') +
+			series.map(function(s) {
+				const pts = [];
+				h.forEach(function(p, i) { const v = s.get(p); if (v != null) pts.push((x0 + i * step).toFixed(1) + ',' + (H - v / max * (H - 4)).toFixed(1)); });
+				return pts.length > 1 ? '<polyline fill="none" stroke="' + s.color + '" stroke-width="2" vector-effect="non-scaling-stroke" points="' + pts.join(' ') + '"/>' : '';
+			}).join('') + '</svg>';
+		this.graph.innerHTML = '<div class="detour-graph-max">' + mbit(max) + '</div>' + svg;
+		const now = h[h.length - 1];
+		dom.content(this.legend, series.map(function(s) {
+			const v = s.get(now);
+			return E('span', {}, [ E('span', { 'class': 'detour-dot', 'style': 'background:' + s.color }), s.name + ': ', E('strong', {}, v == null ? '—' : mbit(v)) ]);
+		}));
 	},
 
 	renderPolicies: function(st) {
@@ -132,12 +238,18 @@ return view.extend({
 	},
 
 	render: function(st) {
-		if (!st)
-			return E('div', { 'class': 'alert-message warning' }, _('The Detour service is not running.'));
 		const self = this;
+		const on = uci.get('detour', 'main', 'enabled') != '0';
+		// switched off: only the switch (the daemon may still be idling until procd stops it)
+		if (!st || !on)
+			return E('div', {}, [ css(), E('h2', {}, _('Detour')),
+				E('div', { 'class': 'cbi-section' }, [ E('div', { 'class': 'detour-node' }, [ E('div', { 'class': 'detour-result' }, this.vpnSwitch(on)) ]) ]),
+				on ? E('div', { 'class': 'alert-message warning' }, _('The Detour service is not running.')) : '' ]);
 		const body = E('div', {}, [
 			css(),
 			E('h2', {}, _('Detour')),
+			E('div', { 'class': 'cbi-section' }, [ E('div', { 'class': 'detour-node' }, [ E('div', { 'class': 'detour-result detour-lines' }, [ this.vpnSwitch(on), this.renderIp(st) ]) ]) ]),
+			E('div', { 'class': 'cbi-section' }, [ E('h3', {}, _('Speed')), this.rateBox() ]),
 			E('div', { 'class': 'cbi-section' }, [ E('h3', {}, _('Policies')), this.renderPolicies(st) ]),
 			E('div', { 'class': 'cbi-section' }, [ E('h3', {}, _('Exits')), this.renderExits(st) ]),
 			E('div', { 'class': 'cbi-section' }, [ E('h3', {}, _('State')), this.renderInfo(st) ]),
@@ -152,8 +264,12 @@ return view.extend({
 				dom.content(document.getElementById('detour-exits').parentNode, [ E('h3', {}, _('Exits')), self.renderExits(s) ]);
 				dom.content(document.getElementById('detour-info').parentNode, [ E('h3', {}, _('State')), self.renderInfo(s) ]);
 				dom.content(document.getElementById('detour-events'), self.renderEvents(s).textContent);
+				const ip = document.getElementById('detour-ip');
+				if (ip) ip.replaceWith(self.renderIp(s));
 			});
 		}, 5);
+		this.pollRates();
+		poll.add(function() { return self.pollRates(); }, RATE_EVERY);
 		return body;
 	},
 

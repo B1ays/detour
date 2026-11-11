@@ -11,6 +11,8 @@
 
 const callStatus = rpc.declare({ object: 'detour', method: 'status' });
 const callUpdate = rpc.declare({ object: 'detour', method: 'lists_update', params: [ 'name' ] });
+const callCatNames = rpc.declare({ object: 'detour', method: 'catalog_names' });
+const callCatRefresh = rpc.declare({ object: 'detour', method: 'catalog_refresh' });
 
 function busy(btn, on) { btn.disabled = on; btn.classList.toggle('spinning', on); }
 function note(text, cls) { return E('div', { 'class': 'alert-message ' + (cls || 'notice') }, text); }
@@ -72,7 +74,8 @@ return view.extend({
 		if (s) {
 			const kind = { 'cidr': _('addresses'), 'domain': _('domains') }[s.kind] || '';
 			body.push(E('div', {}, [ N_(s.count || 0, '%d entry', '%d entries').format(s.count || 0), kind ? ' · ' + kind : '',
-				s.ts ? ' · ' + _('updated %s').format(new Date(s.ts * 1000).toLocaleString()) : '' ]));
+				s.ts ? ' · ' + _('updated %s').format(new Date(s.ts * 1000).toLocaleString()) : '',
+				s.upstream ? ' · ' + _('the source changed %s').format(new Date(s.upstream).toLocaleDateString()) : '' ]));
 			if (!s.ok && s.message) body.push(note(failText(s.message), 'warning'));
 		}
 		else if (enabled) body.push(E('em', {}, _('not loaded yet')));
@@ -180,6 +183,7 @@ return view.extend({
 		const have = {};
 		uci.sections('detour', 'list').forEach(function(l) { arr(l.url).forEach(function(u) { have[u] = msg.listTitle(l); }); });
 		const size = function(e) {
+			if (e.n == null) return _('size unknown until added');
 			const b = e.n * (e.kind == 'cidr' ? 100 : 70);
 			return b > 1048576 ? _('~%s MB').format((b / 1048576).toFixed(1)) : _('~%d KB').format(Math.max(1, Math.round(b / 1024)));
 		};
@@ -189,12 +193,12 @@ return view.extend({
 			const hits = all.filter(function(e) {
 				return (!kindSel.value || e.kind == kindSel.value) && (!srcSel.value || e.src == srcSel.value) &&
 					(!q || e.key.indexOf(q) >= 0 || e.title.toLowerCase().indexOf(q) >= 0);
-			}).sort(function(a, b) { return (!q ? 0 : (a.key == q ? -1 : b.key == q ? 1 : 0)) || b.n - a.n; });
+			}).sort(function(a, b) { return (!q ? 0 : (a.key == q ? -1 : b.key == q ? 1 : 0)) || (b.n || 0) - (a.n || 0); });
 			const rows = hits.slice(0, 60).map(function(e) {
-				const big = e.n > 300000;
+				const big = e.n != null && e.n > 300000;
 				return E('div', { 'class': 'detour-server-row' }, [
 					E('span', {}, [ E('strong', {}, e.title), E('span', { 'class': 'detour-muted' },
-						' ' + [ e.src == 'v2fly' ? 'v2fly «' + e.key + '»' : 'runetfreedom «' + e.key + '»', N_(e.n, '%d entry', '%d entries').format(e.n), size(e) ].join(' · ')) ]),
+						' ' + [ e.src == 'v2fly' ? 'v2fly «' + e.key + '»' : 'runetfreedom «' + e.key + '»' ].concat(e.n != null ? [ N_(e.n, '%d entry', '%d entries').format(e.n), size(e) ] : [ _('new: the number of entries is known once added') ]).join(' · ')) ]),
 					big ? E('span', { 'class': 'detour-delay bad' }, _('very big: the router may run short of memory')) : '',
 					have[e.url] ? E('span', { 'class': 'detour-muted' }, _('already added')) : E('button', { 'class': 'btn', 'click': function() {
 						ui.hideModal();
@@ -206,19 +210,50 @@ return view.extend({
 			out.replaceChildren.apply(out, rows.length ? rows : [ E('em', {}, _('Nothing found.')) ]);
 		};
 		[ search, kindSel, srcSel ].forEach(function(el) { el.addEventListener(el.tagName == 'INPUT' ? 'input' : 'change', draw); });
+		// where the v2fly names come from: the router's own copy of the upstream listing (refreshed nightly and by
+		// the button), else the catalogue built into this version
+		const origin = E('span', { 'class': 'detour-muted' });
+		const refresh = E('button', { 'class': 'btn', 'click': function() {
+			busy(refresh, true);
+			return callCatRefresh().then(function(r) {
+				if (r && r.error) origin.textContent = _('The list of categories did not come: %s').format(r.error);
+				return load(r);
+			}).finally(function() { busy(refresh, false); });
+		} }, _('Refresh the list of categories'));
 		ui.showModal(_('Catalogue of categories'), [
-			E('div', { 'class': 'cbi-value-description' }, _('Categories kept up to date by their authors: v2fly (services and sites of the world) and runetfreedom (what is blocked in Russia). The number of entries is from the time this version was built.')),
+			E('div', { 'class': 'cbi-value-description' }, _('Categories kept up to date by their authors: v2fly (services and sites of the world) and runetfreedom (what is blocked in Russia). The numbers of entries are from the time this version was built; a category that appeared later shows its number once added.')),
 			E('div', { 'class': 'detour-actions' }, [ search, kindSel, srcSel ]),
+			E('div', { 'class': 'detour-actions' }, [ origin, refresh ]),
 			out,
 			E('div', { 'class': 'right' }, [ E('button', { 'class': 'btn', 'click': ui.hideModal }, _('Close')) ])
 		]);
-		L.Request.get(L.resource('detour/geo-catalog.json')).then(function(r) {
-			const c = r.json();
-			const mk = function(src, key, n, url, kind) { return { src, key, n, url, kind, title: msg.listTitle({ url: [ url ], '.name': key }) }; };
-			all = (c.v2fly || []).map(function(x) { return mk('v2fly', x[0], x[1], 'v2fly:' + x[0], 'domain'); })
+		let built = null;
+		const mk = function(src, key, n, url, kind) { return { src, key, n, url, kind, title: msg.listTitle({ url: [ url ], '.name': key }) }; };
+		// names: the router's (when it has them) - the numbers from the built-in catalogue, unknown for a new category
+		const load = function(names) {
+			const c = built || {};
+			const known = {};
+			(c.v2fly || []).forEach(function(x) { known[x[0]] = x[1]; });
+			const v2 = (names && names.v2fly && names.v2fly.length) ? names.v2fly.map(function(k) { return [ k, k in known ? known[k] : null ]; }) : (c.v2fly || []);
+			// 0: the category has nothing a router can use (only TLDs, keywords, regexps) - not offered
+			all = v2.filter(function(x) { return x[1] !== 0; }).map(function(x) { return mk('v2fly', x[0], x[1], 'v2fly:' + x[0], 'domain'); })
 				.concat((c.rfgs || []).map(function(x) { return mk('rf', x[0], x[1], msg.RFGS + x[0] + '.txt', 'domain'); }))
 				.concat((c.rfip || []).map(function(x) { return mk('rf', x[0], x[1], msg.RF + x[0] + '.txt', 'cidr'); }));
+			if (names && names.v2fly && names.v2fly.length) {
+				const fresh = names.v2fly.filter(function(k) { return !(k in known); }).length;
+				origin.textContent = _('v2fly categories: %d, as of %s (checked %s)').format(names.v2fly.length,
+					names.date ? new Date(names.date).toLocaleDateString() : '?', names.checked ? new Date(names.checked * 1000).toLocaleString() : '?') +
+					(fresh ? ' · ' + _('new since this version: %d').format(fresh) : '');
+			}
+			else origin.textContent = _('v2fly categories: built into this version (%s)').format(c.generated || '?');
 			draw();
+		};
+		Promise.all([
+			L.Request.get(L.resource('detour/geo-catalog.json') + '?v=' + encodeURIComponent(L.env.resource_version || '')).then(function(r) { return r.json(); }),
+			L.resolveDefault(callCatNames(), null)
+		]).then(function(r) {
+			built = r[0];
+			load(r[1]);
 			search.focus();
 		}).catch(function() { out.replaceChildren(E('em', {}, _('The catalogue is missing from this build.'))); });
 	},

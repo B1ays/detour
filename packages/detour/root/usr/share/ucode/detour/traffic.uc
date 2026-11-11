@@ -54,22 +54,31 @@ function own_macs() {
 
 // the home networks: those the router hands out addresses in (DHCP), whatever their names and devices.
 // A host met on another device (a VPN server in a private network, a modem) is not one of the devices.
+// netifd's view of the interfaces, asked with a short timeout: while it brings tunnels up it can take seconds to
+// answer (7 s measured on the lab), and the daemon waits on every call - nothing else is served meanwhile
+export function netifd_dump() {
+	try { return json(core.run('ubus -t 2 call network.interface dump').out); } catch (e) { return null; }
+}
+
+let home_cache = null, home_at = 0;
 export function home_devs() {
+	if (home_cache && time() - home_at < 60) return home_cache;
 	const nets = {};
 	cursor().foreach('dhcp', 'dhcp', (s) => { if (s.interface && s.ignore != '1') nets[s.interface] = true; });
 	const out = {};
-	let dump = null;
-	try { dump = json(core.run('ubus call network.interface dump').out); } catch (e) { }
-	for (let i in dump?.interface ?? [])
+	for (let i in netifd_dump()?.interface ?? [])
 		if (nets[i.interface]) for (let d in [ i.l3_device, i.device ]) if (d) out[d] = true;
-	// netifd busy (tunnels coming up) may not answer: the devices as configured, if they exist
-	if (!length(out))
+	// netifd busy may not answer: the devices as configured, if they exist (not cached - netifd is asked again)
+	if (!length(out)) {
 		for (let n in nets) {
 			let d = cursor().get('network', n, 'device');
 			if (type(d) == 'array') d = d[0];
 			if (d && fs.access('/sys/class/net/' + d)) out[d] = true;
 		}
-	return length(out) ? out : null;
+		return length(out) ? out : null;
+	}
+	home_cache = out; home_at = time();
+	return out;
 }
 
 // mac -> is it in a home network; remembered, as a device offline now has no neighbour entry

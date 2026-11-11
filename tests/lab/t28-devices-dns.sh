@@ -10,6 +10,7 @@ dev() { ubus call detour devices | jsonfilter -e "@.devices[@.mac='$MAC'].$1"; }
 log() { ubus call detour dns_log "{\"mac\":\"$MAC\"}"; }
 tcpd() { pgrep -x tcpdump | wc -l; }
 
+i=0; while ! ubus call detour status >/dev/null 2>&1 && [ $i -lt 30 ]; do sleep 1; i=$((i+1)); done   # just (re)started by the test before
 apk info -e tcpdump-mini >/dev/null || apk info -e tcpdump >/dev/null || apk add -q tcpdump-mini
 
 echo "== devices"
@@ -48,4 +49,5 @@ ubus call detour dns_watch "{\"mac\":\"$MAC\",\"seconds\":120}" >/dev/null; slee
 /etc/init.d/detour stop; sleep 1
 [ "$(tcpd)" = 0 ] && ok "daemon stop: tcpdump is gone" || bad "tcpdump after the daemon stopped: $(tcpd)"
 /etc/init.d/detour start
+i=0; while ! ubus call detour status >/dev/null 2>&1 && [ $i -lt 30 ]; do sleep 1; i=$((i+1)); done
 echo "RESULT: $([ $FAIL = 0 ] && echo PASS || echo FAIL)"

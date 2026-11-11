@@ -1159,6 +1159,9 @@ msgstr[0] "%d запись"
 msgstr[1] "%d записи"
 msgstr[2] "%d записей"
 
+msgid "the source changed %s"
+msgstr "источник обновлён %s"
+
 msgid "not loaded yet"
 msgstr "ещё не загружено"
 
@@ -1249,11 +1252,17 @@ msgstr "домены и адреса"
 msgid "all sources"
 msgstr "все источники"
 
+msgid "size unknown until added"
+msgstr "объём станет известен после добавления"
+
 msgid "~%s MB"
 msgstr "~%s МБ"
 
 msgid "~%d KB"
 msgstr "~%d КБ"
+
+msgid "new: the number of entries is known once added"
+msgstr "новая: число записей станет известно после добавления"
 
 msgid "very big: the router may run short of memory"
 msgstr "очень большой: роутеру может не хватить памяти"
@@ -1267,11 +1276,26 @@ msgstr "и ещё %d: уточните поиск"
 msgid "Nothing found."
 msgstr "Ничего не найдено."
 
+msgid "The list of categories did not come: %s"
+msgstr "Список категорий не получен: %s"
+
+msgid "Refresh the list of categories"
+msgstr "Обновить список категорий"
+
 msgid "Catalogue of categories"
 msgstr "Каталог категорий"
 
-msgid "Categories kept up to date by their authors: v2fly (services and sites of the world) and runetfreedom (what is blocked in Russia). The number of entries is from the time this version was built."
-msgstr "Категории, которые обновляют их авторы: v2fly (сервисы и сайты со всего мира) и runetfreedom (что заблокировано в России). Число записей — на момент сборки этой версии."
+msgid "Categories kept up to date by their authors: v2fly (services and sites of the world) and runetfreedom (what is blocked in Russia). The numbers of entries are from the time this version was built; a category that appeared later shows its number once added."
+msgstr "Категории, которые поддерживают их авторы: v2fly (сервисы и сайты мира) и runetfreedom (что заблокировано в России). Число записей — на момент сборки этой версии; у категории, появившейся позже, оно станет известно после добавления."
+
+msgid "v2fly categories: %d, as of %s (checked %s)"
+msgstr "Категорий v2fly: %d, по состоянию на %s (проверено %s)"
+
+msgid "new since this version: %d"
+msgstr "новых с выхода этой версии: %d"
+
+msgid "v2fly categories: built into this version (%s)"
+msgstr "Категории v2fly: из этой версии (%s)"
 
 msgid "The catalogue is missing from this build."
 msgstr "В этой сборке нет каталога."
@@ -1288,8 +1312,50 @@ msgstr "Добавить список"
 msgid "Catalogue of categories…"
 msgstr "Каталог категорий…"
 
+msgid "Mbit/s"
+msgstr "Мбит/с"
+
+msgid "kbit/s"
+msgstr "кбит/с"
+
 msgid "Error"
 msgstr "Ошибка"
+
+msgid "Switch the VPN off?\n\nAll traffic will go directly through your provider - also the sites, devices and lists of your policies. Nothing is blocked while it is off: the kill-switch is off too."
+msgstr "Выключить VPN?\n\nВесь трафик пойдёт напрямую через провайдера — в том числе сайты, устройства и списки ваших политик. Пока VPN выключен, ничего не блокируется: kill-switch тоже выключен."
+
+msgid "The panel through your VPS stops too: if you are connected through it now, you lose this page."
+msgstr "Панель через ваш VPS тоже остановится: если вы сейчас зашли через неё, эта страница станет недоступна."
+
+msgid "VPN is on"
+msgstr "VPN включён"
+
+msgid "VPN is off"
+msgstr "VPN выключен"
+
+msgid "Traffic goes by your policies: through the exits, blocked when they are down."
+msgstr "Трафик идёт по вашим политикам: через выходы, а когда они не работают — блокируется."
+
+msgid "Everything goes directly through your provider: no policy, no exit, no blocking."
+msgstr "Всё идёт напрямую через провайдера: без политик, выходов и блокировок."
+
+msgid "Cloudflare point: %s"
+msgstr "Точка Cloudflare: %s"
+
+msgid "download"
+msgstr "скачивание"
+
+msgid "upload"
+msgstr "отдача"
+
+msgid "Measuring…"
+msgstr "Измеряю…"
+
+msgid "the last 5 minutes, every %d s"
+msgstr "последние 5 минут, раз в %d с"
+
+msgid "Provider line (everything)"
+msgstr "Линия провайдера (весь трафик)"
 
 msgid "Policy"
 msgstr "Политика"

@@ -292,3 +292,38 @@ textarea.detour-code {
 }
 /* a device's "Connection" choice shows its whole text (themes give selects a fixed width) */
 .detour-card-actions select { width: auto; max-width: 100%; }
+
+/* Overview: the VPN switch, the outside addresses, the speed graph */
+.detour-vpn-switch { display: flex; flex-direction: column; gap: .25rem; }
+.detour-switch { display: inline-flex; align-items: center; gap: .75rem; cursor: pointer; font-size: 1.15rem; }
+.detour-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.detour-switch-slider {
+	position: relative;
+	width: 3.2rem;
+	height: 1.8rem;
+	border-radius: 1rem;
+	background: #9e9e9e;
+	transition: background .15s;
+	flex: none;
+}
+.detour-switch-slider::after {
+	content: '';
+	position: absolute;
+	top: .2rem;
+	left: .2rem;
+	width: 1.4rem;
+	height: 1.4rem;
+	border-radius: 50%;
+	background: #fff;
+	transition: transform .15s;
+}
+.detour-switch input:checked + .detour-switch-slider { background: #2e7d32; }
+.detour-switch input:checked + .detour-switch-slider::after { transform: translateX(1.4rem); }
+.detour-switch input:focus-visible + .detour-switch-slider { outline: 2px solid #1e88e5; outline-offset: 2px; }
+.detour-ip { display: flex; flex-direction: column; gap: .2rem; }
+.detour-graph { position: relative; height: 10rem; border: 1px solid rgba(128, 128, 128, .3); border-radius: 4px; }
+.detour-graph em { display: block; padding: 1rem; }
+.detour-graph-svg { width: 100%; height: 100%; display: block; }
+.detour-graph-svg .detour-grid { stroke: rgba(128, 128, 128, .25); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.detour-graph-max { position: absolute; top: .2rem; left: .4rem; font-size: .75em; opacity: .65; }
+.detour-legend { display: flex; flex-wrap: wrap; gap: .3rem 1.2rem; margin-top: .5rem; }

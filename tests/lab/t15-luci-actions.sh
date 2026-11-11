@@ -5,6 +5,9 @@ FAIL=0; ok() { echo "  ok   $*"; }; bad() { echo "  FAIL $*"; FAIL=1; }
 waitfor() { i=0; while [ $i -lt ${3:-15} ]; do [ "$(eval "$2")" = "$1" ] && return 0; sleep 1; i=$((i+1)); done; return 1; }
 PW=$(cat /tmp/lab-pw)
 lab tests/lab/restart-sb.sh >/dev/null   # the shadowsocks server the link exit dials (gone after a lab reboot)
+# the lists of earlier tests (the stock import's big ones) may still be loading in the background: the LuCI calls
+# below answer within uhttpd's 60 s, which a busy emulated router can miss - this test is about the calls, not the load
+i=0; while pgrep -f /usr/libexec/detour/lists-update >/dev/null && [ $i -lt 180 ]; do sleep 2; i=$((i+2)); done
 rm -f /tmp/cj
 curl -s -o /dev/null -c /tmp/cj --data-urlencode luci_username=root --data-urlencode "luci_password=$PW" http://127.0.0.1/cgi-bin/luci/
 SID=$(awk '/sysauth/{print $7}' /tmp/cj | head -n1)

@@ -168,7 +168,8 @@ export function write_servers(cfg, mode) {
 }
 
 export function hup() { return run('killall -HUP dnsmasq'); }
-export function restart() { return run('/etc/init.d/dnsmasq restart'); }
+// one at a time, and never left stopped (usr/libexec/detour/dnsmasq-restart)
+export function restart() { return run('/usr/libexec/detour/dnsmasq-restart'); }
 
 // the router's upstream resolvers must go through the DNS policy
 export function prepare(cfg) {

@@ -13,6 +13,10 @@
 # CIDR lists -> nft set lst4_<policy>/lst4_direct (one atomic transaction per set);
 # domain lists -> dnsmasq nftset files in every instance's conf-dir (+ AAAA suppression for policies).
 #   lists-update [--restore] [name...]   --restore: no downloads, load from RAM/snapshots (boot)
+#   lists-update --catalog               only refresh the names of the v2fly categories (LuCI catalogue)
+# Data from jsDelivr is taken at the source's current commit (@<sha>), not its branch: jsDelivr keeps a branch
+# up to 12 h old, so "the source changed" and the data would disagree (as stock geo.sh does). The commit and
+# its date come from the GitHub API; when it does not answer, the branch is used as before.
 . /lib/functions.sh
 
 RUN=/tmp/detour/lists
@@ -20,6 +24,64 @@ SNAP=/etc/detour/lists
 MAXSNAP=${MAXSNAP:-40000}
 T='inet detour'
 mkdir -p "$RUN" "$SNAP"
+V2NAMES=/etc/detour/v2fly-names.txt   # the v2fly categories as listed upstream (flash, written only when changed)
+
+# the commit a jsDelivr GitHub path stands on now, cached for the run: "owner/repo@branch sha date"
+upstream() {   # upstream owner repo branch -> "sha date" or nothing
+	local k="$1/$2@$3" l j sha date
+	l=$(grep -F "$k " "$RUN/.shas" 2>/dev/null | head -n1)
+	[ -n "$l" ] && { echo "${l#* }"; return; }
+	j=$(curl -fsS -m 15 -H 'Accept: application/vnd.github+json' "https://api.github.com/repos/$1/$2/commits/$3" 2>/dev/null)
+	sha=$(echo "$j" | jsonfilter -e '@.sha' 2>/dev/null)
+	date=$(echo "$j" | jsonfilter -e '@.commit.committer.date' 2>/dev/null)
+	case "$sha" in [0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]*) ;; *) echo "$k - -" >> "$RUN/.shas"; return ;; esac
+	echo "$k $sha $date" >> "$RUN/.shas"
+	echo "$sha $date"
+}
+# a jsDelivr GitHub URL at its branch -> the same at the current commit (unchanged when that is unknown);
+# PIN_DATE: the date of that commit (for the status)
+pin() {
+	local u="$1" rest owner repo br path sd
+	PIN_DATE=
+	case "$u" in https://cdn.jsdelivr.net/gh/*/*@*/*) ;; *) echo "$u"; return ;; esac
+	rest=${u#https://cdn.jsdelivr.net/gh/}
+	owner=${rest%%/*}; rest=${rest#*/}
+	repo=${rest%%@*}; rest=${rest#*@}
+	br=${rest%%/*}; path=${rest#*/}
+	case "$br" in [0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]*) echo "$u"; return ;; esac
+	sd=$(upstream "$owner" "$repo" "$br")
+	case "$sd" in ''|-*) echo "$u"; return ;; esac
+	PIN_DATE=${sd#* }
+	echo "https://cdn.jsdelivr.net/gh/$owner/$repo@${sd%% *}/$path"
+}
+
+# the date of the commit a jsDelivr URL was pinned to in this run (empty when not pinned)
+upstream_date() {
+	local rest owner repo br l
+	case "$1" in https://cdn.jsdelivr.net/gh/*/*@*/*) ;; *) return ;; esac
+	rest=${1#https://cdn.jsdelivr.net/gh/}; owner=${rest%%/*}; rest=${rest#*/}; repo=${rest%%@*}; rest=${rest#*@}; br=${rest%%/*}
+	l=$(grep -F "$owner/$repo@$br " "$RUN/.shas" 2>/dev/null | head -n1)
+	l=${l##* }; [ "$l" = - ] || echo "$l"
+}
+
+# the names of all v2fly categories (the files in data/), from the jsDelivr listing (stock geo.sh v2fly_enumerate);
+# a failed or odd answer keeps the previous names. First line: "# <the date of the commit>"
+v2fly_names() {
+	local sd ref t="$RUN/.v2names"
+	sd=$(upstream v2fly domain-list-community master)
+	case "$sd" in ''|-*) ref=master ;; *) ref=${sd%% *} ;; esac
+	curl -fsS -m 60 "https://data.jsdelivr.com/v1/packages/gh/v2fly/domain-list-community@$ref?structure=flat" 2>/dev/null | \
+		grep -oE '"/data/[^"/]+"' | sed 's|"/data/||; s|"$||' | grep -E '^[a-z0-9._!-]+$' | sort -u > "$t"
+	# fewer than 500 names is not the real listing
+	if [ "$(wc -l < "$t")" -ge 500 ]; then
+		{ echo "# ${sd#* }"; cat "$t"; } > "$t.new"
+		cmp -s "$t.new" "$V2NAMES" || { mkdir -p "${V2NAMES%/*}"; mv "$t.new" "$V2NAMES"; }
+		rm -f "$t" "$t.new"; return 0
+	fi
+	rm -f "$t"; return 1
+}
+# the catalogue alone: no lock (a long list update must not hold it up), its own work file
+if [ "$1" = --catalog ]; then RUN=$RUN/.catalog; mkdir -p "$RUN"; rm -f "$RUN/.shas"; v2fly_names; r=$?; rm -rf "$RUN"; exit $r; fi
 # one run at a time (cron, the daemon's --missing, LuCI): they share the work files and the sets
 if command -v flock >/dev/null 2>&1; then exec 9> "$RUN/.lock"; flock 9; fi
 RESTORE=0; MISSING=0
@@ -27,10 +89,11 @@ RESTORE=0; MISSING=0
 [ "$1" = --missing ] && { MISSING=1; shift; }   # download only lists that have no data yet
 ONLY=" $* "
 : > "$RUN/.targets"
+[ "$RESTORE" = 1 ] || rm -f "$RUN/.shas"   # the commits are asked once per run
 
-status() {  # status <list> <ok 0|1> <count> <kind> <target> <message>
-	printf '{"name":"%s","ok":%s,"count":%d,"kind":"%s","target":"%s","ts":%d,"message":"%s"}\n' \
-		"$1" "$([ "$2" = 1 ] && echo true || echo false)" "${3:-0}" "$4" "$5" "$(date +%s)" "$(printf '%s' "$6" | tr -d '"\\\n')" > "$RUN/$1.status"
+status() {  # status <list> <ok 0|1> <count> <kind> <target> <message> [the date of the source's commit]
+	printf '{"name":"%s","ok":%s,"count":%d,"kind":"%s","target":"%s","ts":%d,"message":"%s","upstream":"%s"}\n' \
+		"$1" "$([ "$2" = 1 ] && echo true || echo false)" "${3:-0}" "$4" "$5" "$(date +%s)" "$(printf '%s' "$6" | tr -d '"\\\n')" "$(printf '%s' "$7" | tr -cd '0-9TZ:-')" > "$RUN/$1.status"
 }
 
 norm_cidr() {
@@ -74,13 +137,14 @@ fetch() {
 # filters "include:x @cn" are not applied - the whole included category is taken)
 V2FLY=$(uci -q get detour.main.v2fly_base); V2FLY=${V2FLY:-https://cdn.jsdelivr.net/gh/v2fly/domain-list-community@master/data}   # lab: a copy on the PC
 fetch_v2fly() {
-	local queue="$1" out="$2" seen=" " nm n=0 i   # $2 is saved: "set --" below replaces the arguments
+	local queue="$1" out="$2" seen=" " nm n=0 i base   # $2 is saved: "set --" below replaces the arguments
+	base=$(pin "$V2FLY"); V2_DATE=$(upstream_date "$V2FLY")   # every file of one category from the same commit
 	while [ -n "$queue" ]; do
 		set -- $queue; nm=$1; shift; queue="$*"
 		case "$nm" in *[!a-z0-9!._-]*|'') continue ;; esac
 		case "$seen" in *" $nm "*) continue ;; esac
 		seen="$seen$nm "; n=$((n + 1)); [ $n -gt 200 ] && break
-		fetch "$V2FLY/$nm" "$RUN/.v2.part" || { rm -f "$RUN/.v2.part"; return 1; }
+		fetch "$base/$nm" "$RUN/.v2.part" || { rm -f "$RUN/.v2.part"; return 1; }
 		for i in $(tr 'A-Z' 'a-z' < "$RUN/.v2.part" | sed -n 's/^[[:space:]]*include:\([a-z0-9!._-]*\).*/\1/p'); do queue="$queue $i"; done
 		cat "$RUN/.v2.part" >> "$out"; echo >> "$out"
 	done
@@ -88,7 +152,7 @@ fetch_v2fly() {
 }
 
 handle_list() {
-	local s=$1 en pol kind minl file urls tgt pid raw n fail=0 msg skip
+	local s=$1 en pol kind minl file urls tgt pid raw n fail=0 msg skip up=
 	config_get_bool en "$s" enabled 1
 	config_get pol "$s" policy
 	config_get kind "$s" kind auto
@@ -115,8 +179,9 @@ handle_list() {
 	: > "$raw"
 	for u in $urls; do
 		case "$u" in
-		v2fly:*) fetch_v2fly "${u#v2fly:}" "$raw" || { fail=1; msg="download failed: $u"; } ;;
-		*) fetch "$u" "$raw.part" && cat "$raw.part" >> "$raw" || { fail=1; msg="download failed: $u"; }; rm -f "$raw.part" ;;
+		v2fly:*) fetch_v2fly "${u#v2fly:}" "$raw" || { fail=1; msg="download failed: $u"; }; up=${up:-$V2_DATE} ;;
+		*) fetch "$(pin "$u")" "$raw.part" && cat "$raw.part" >> "$raw" || { fail=1; msg="download failed: $u"; }; rm -f "$raw.part"
+		   up=${up:-$(upstream_date "$u")} ;;
 		esac
 		echo >> "$raw"
 	done
@@ -129,19 +194,21 @@ handle_list() {
 	if [ "$fail" = 1 ]; then
 		rm -f "$RUN/$s.new"
 		[ -s "$RUN/$s.data" ] || { [ -s "$SNAP/$s.snap" ] && cp "$SNAP/$s.snap" "$RUN/$s.data" && cp "$SNAP/$s.kind" "$RUN/$s.kind" 2>/dev/null; }
-		status "$s" 0 "$( [ -s "$RUN/$s.data" ] && wc -l < "$RUN/$s.data" || echo 0)" "$kind" "$tgt" "$msg; previous data kept"
+		status "$s" 0 "$( [ -s "$RUN/$s.data" ] && wc -l < "$RUN/$s.data" || echo 0)" "$kind" "$tgt" "$msg; previous data kept" "$up"
 		logger -t detour "list $s: $msg; previous data kept"
 	else
 		mv "$RUN/$s.new" "$RUN/$s.data"; echo "$kind" > "$RUN/$s.kind"
 		if [ "$n" -le "$MAXSNAP" ]; then cp "$RUN/$s.data" "$SNAP/$s.snap.tmp" && mv "$SNAP/$s.snap.tmp" "$SNAP/$s.snap"; echo "$kind" > "$SNAP/$s.kind"
 		else rm -f "$SNAP/$s.snap"; msg="(too big for a flash snapshot)"; fi
-		status "$s" 1 "$n" "$kind" "$tgt" "updated $msg"
+		status "$s" 1 "$n" "$kind" "$tgt" "updated $msg" "$up"
 	fi
 	[ -s "$RUN/$s.data" ] && echo "$s $tgt $(cat "$RUN/$s.kind" 2>/dev/null || echo "$kind")" >> "$RUN/.targets"
 }
 
 config_load detour
 config_foreach handle_list list
+# a full download run (the nightly one, "update all"): the names of the v2fly categories too
+[ "$RESTORE" = 0 ] && [ "$MISSING" = 0 ] && [ "$ONLY" = "  " ] && v2fly_names
 
 # --- CIDR: one transaction per set (flush + add) -------------------------------------------
 nft list table $T >/dev/null 2>&1 || { logger -t detour "lists: table $T missing"; exit 1; }
@@ -196,7 +263,11 @@ for dir in $dirs; do
 		[ "${keep#* $s }" = "$keep" ] && { rm -f "$f"; changed=1; }
 	done
 done
-[ "$changed" = 1 ] && pidof dnsmasq >/dev/null && /etc/init.d/dnsmasq restart >/dev/null 2>&1
+# at boot (--restore, before dnsmasq has started) dnsmasq reads the files itself; otherwise one restart at a time,
+# never left stopped (dnsmasq-restart)
+if [ "$changed" = 1 ]; then
+	[ "$RESTORE" = 1 ] && ! pidof dnsmasq >/dev/null || /usr/libexec/detour/dnsmasq-restart
+fi
 # snapshots of lists that are gone from the config
 for f in "$SNAP"/*.snap; do
 	[ -e "$f" ] || continue

@@ -81,8 +81,9 @@ def v2fly():
                 if m:
                     queue.append(m.group(1))
             doms |= norm_domains(data[n])
-        if doms:
-            out.append([name, len(doms)])
+        # kept with 0 too (only TLDs, keywords or regexps - nothing a router can use): the router's own listing of
+        # the names must not take such a category for a new one
+        out.append([name, len(doms)])
     return out
 
 
