@@ -536,7 +536,7 @@ msgid "any device"
 msgstr "любое устройство"
 
 msgid "the one the rules choose"
-msgstr "тот, что выбирают правила"
+msgstr "стандартный для правил"
 
 msgid "Looking up the rules…"
 msgstr "Смотрю правила…"
@@ -594,6 +594,138 @@ msgstr "Правила для устройств учитываются толь
 
 msgid "Compare through"
 msgstr "Сравнить через"
+
+msgid "blocked"
+msgstr "заблокирован"
+
+msgid "VPN «%s»"
+msgstr "VPN «%s»"
+
+msgid "VPN (no exit works)"
+msgstr "VPN (ни один выход не работает)"
+
+msgid "directly (exits down)"
+msgstr "напрямую (выходы не работают)"
+
+msgid "as configured (by sites and lists)"
+msgstr "как настроено (по сайтам и спискам)"
+
+msgid "everything through «%s»"
+msgstr "всё через «%s»"
+
+msgid "always directly"
+msgstr "всегда напрямую"
+
+msgid "no internet"
+msgstr "без интернета"
+
+msgid "The device «%s» will have no internet at all. Continue?"
+msgstr "Устройство «%s» останется совсем без интернета. Продолжить?"
+
+msgid "Device name"
+msgstr "Имя устройства"
+
+msgid "Latin letters, digits and hyphens: the name is also given to the device in the local DNS (%s). Saving restarts the router's DNS for a few seconds."
+msgstr "Латинские буквы, цифры и дефисы: по этому имени устройство будет видно и в локальном DNS (%s). Сохранение на несколько секунд перезапускает DNS роутера."
+
+msgid "Cancel"
+msgstr "Отмена"
+
+msgid "Only Latin letters, digits and hyphens, up to 63."
+msgstr "Только латинские буквы, цифры и дефисы, до 63 знаков."
+
+msgid "Save"
+msgstr "Сохранить"
+
+msgid "Starting…"
+msgstr "Запускаю…"
+
+msgid "through"
+msgstr "через"
+
+msgid "Watching: %d s left. Names asked: %d, requests: %d."
+msgstr "Смотрю: осталось %d с. Разных имён: %d, запросов: %d."
+
+msgid "Stopped. Names asked: %d, requests: %d."
+msgstr "Остановлено. Разных имён: %d, запросов: %d."
+
+msgid "The device also uses encrypted DNS (DNS over TLS): those requests cannot be seen here, and they bypass the router's rules for sites."
+msgstr "Устройство пользуется и шифрованным DNS (DNS over TLS): эти запросы здесь не видны и проходят мимо правил роутера для сайтов."
+
+msgid "Nothing yet. Use the device - open an app or a site."
+msgstr "Пока ничего. Воспользуйтесь устройством — откройте приложение или сайт."
+
+msgid "It asked nothing. It may use encrypted DNS (DoH in the browser), which cannot be seen."
+msgstr "Запросов не было. Возможно, устройство пользуется шифрованным DNS (DoH в браузере) — его не видно."
+
+msgid "Site"
+msgstr "Сайт"
+
+msgid "Times"
+msgstr "Раз"
+
+msgid "Goes"
+msgstr "Куда"
+
+msgid "DNS log: «%s»"
+msgstr "Журнал DNS: «%s»"
+
+msgid "The names the device looks up in DNS for %d s: which sites and services it reaches. A change applies to every device."
+msgstr "Имена, которые устройство ищет в DNS за %d с: к каким сайтам и сервисам оно обращается. Изменение действует для всех устройств."
+
+msgid "Close"
+msgstr "Закрыть"
+
+msgid "This needs tcpdump: install the tcpdump-mini package."
+msgstr "Для этого нужен tcpdump: установите пакет tcpdump-mini."
+
+msgid "Wi-Fi «%s», signal %d dBm"
+msgstr "Wi-Fi «%s», сигнал %d дБм"
+
+msgid "Wi-Fi «%s»"
+msgstr "Wi-Fi «%s»"
+
+msgid "wired"
+msgstr "по кабелю"
+
+msgid "Rename"
+msgstr "Переименовать"
+
+msgid "online"
+msgstr "в сети"
+
+msgid "offline"
+msgstr "не в сети"
+
+msgid "no address now"
+msgstr "адреса сейчас нет"
+
+msgid "Today:"
+msgstr "Сегодня:"
+
+msgid "downloaded %s, uploaded %s"
+msgstr "скачано %s, отдано %s"
+
+msgid "Connection:"
+msgstr "Подключение:"
+
+msgid "DNS log"
+msgstr "Журнал DNS"
+
+msgid "No devices found."
+msgstr "Устройств не найдено."
+
+msgid "The Detour service is not running."
+msgstr "Служба Detour не запущена."
+
+msgid "Devices"
+msgstr "Устройства"
+
+msgid "The devices of your home network. For each: whether it is online, how it is connected, how much it downloaded today, where its internet goes, and what it asks for."
+msgstr "Устройства домашней сети: в сети ли, как подключено, сколько скачало сегодня, куда идёт его интернет и что оно запрашивает."
+
+msgid "The DNS log needs tcpdump: install the tcpdump-mini package."
+msgstr "Для журнала DNS нужен tcpdump: установите пакет tcpdump-mini."
 
 msgid "Junk packets (Jc)"
 msgstr "Мусорные пакеты (Jc)"
@@ -655,12 +787,6 @@ msgstr "подписка"
 msgid "masking"
 msgstr "маскировка"
 
-msgid "Save"
-msgstr "Сохранить"
-
-msgid "Cancel"
-msgstr "Отмена"
-
 msgid "Server: %s"
 msgstr "Сервер: %s"
 
@@ -707,7 +833,7 @@ msgid "Speed"
 msgstr "Скорость"
 
 msgid "Share"
-msgstr "Поделиться"
+msgstr "Доля"
 
 msgid "Edit"
 msgstr "Изменить"
@@ -747,9 +873,6 @@ msgstr "Загрузка…"
 
 msgid "Share «%s»"
 msgstr "Поделиться «%s»"
-
-msgid "Close"
-msgstr "Закрыть"
 
 msgid "A link for v2rayN, v2rayNG, Hiddify, NekoBox, Streisand…"
 msgstr "Ссылка для v2rayN, v2rayNG, Hiddify, NekoBox, Streisand…"
@@ -1072,9 +1195,6 @@ msgstr "Латинские буквы, цифры и _; используется
 msgid "How the list is shown everywhere. Empty: made from its source."
 msgstr "Как список называется везде. Пусто — название берётся из источника."
 
-msgid "Goes"
-msgstr "Куда"
-
 msgid "Through which policy (its exits) the addresses of the list go - or never through a tunnel, whatever the policies say."
 msgstr "Через какую политику (её выходы) идут адреса списка — или никогда через туннель, что бы ни говорили политики."
 
@@ -1261,9 +1381,6 @@ msgstr "у root нет ключа SSH: войти по SSH снаружи нел
 msgid "No events yet."
 msgstr "Событий пока нет."
 
-msgid "The Detour service is not running."
-msgstr "Служба Detour не запущена."
-
 msgid "Detour"
 msgstr "Detour"
 
@@ -1410,9 +1527,6 @@ msgstr "Всё, что подходит под одно из этого, бло�
 
 msgid "Anything that matches one of these goes through the policy. Bigger sets (all blocked sites, a service) are added as lists on the Lists page."
 msgstr "Всё, что подходит хотя бы под одно из условий, идёт через политику. Большие наборы (все заблокированные сайты, сервис целиком) добавляются списками на странице «Списки»."
-
-msgid "Devices"
-msgstr "Устройства"
 
 msgid "The checked devices get no internet at all."
 msgstr "Отмеченные устройства не получают интернет вообще."
@@ -1662,6 +1776,78 @@ msgstr "Иначе только на 127.0.0.1 VPS (доступ через ssh 
 
 msgid "Key and state"
 msgstr "Ключ и состояние"
+
+msgid "Today"
+msgstr "Сегодня"
+
+msgid "3 days"
+msgstr "3 дня"
+
+msgid "7 days"
+msgstr "7 дней"
+
+msgid "30 days"
+msgstr "30 дней"
+
+msgid "12 months"
+msgstr "12 месяцев"
+
+msgid "nlbwmon is not installed: devices are not counted (install the nlbwmon package)."
+msgstr "nlbwmon не установлен: трафик устройств не считается (установите пакет nlbwmon)."
+
+msgid "nlbwmon is not running: devices are not counted now (System → Startup: nlbwmon)."
+msgstr "nlbwmon не запущен: трафик устройств сейчас не считается (Система → Автозапуск: nlbwmon)."
+
+msgid "Hardware flow offloading works on this router: some traffic may bypass the counting, the numbers by device can be too low."
+msgstr "На роутере работает аппаратное ускорение: часть трафика может пройти мимо учёта, цифры по устройствам бывают занижены."
+
+msgid "Counted since %s."
+msgstr "Считается с %s."
+
+msgid "Nothing counted yet: the first numbers appear within 5 minutes."
+msgstr "Пока ничего не посчитано: первые цифры появятся в течение 5 минут."
+
+msgid "Downloaded"
+msgstr "Скачано"
+
+msgid "uploaded %s"
+msgstr "отдано %s"
+
+msgid "Through VPN"
+msgstr "Через VPN"
+
+msgid "Directly"
+msgstr "Напрямую"
+
+msgid "%s: downloaded %s, through VPN %s, directly %s"
+msgstr "%s: скачано %s, через VPN %s, напрямую %s"
+
+msgid "No device traffic in this period."
+msgstr "За этот период устройства ничего не передавали."
+
+msgid "Uploaded"
+msgstr "Отдано"
+
+msgid "Nothing went through the exits in this period."
+msgstr "За этот период через выходы ничего не шло."
+
+msgid "(rides through «%s»: counted there too)"
+msgstr "(идёт через «%s»: учтён и там)"
+
+msgid "Through VPN and directly are counted from the tunnels: the router's own checks and downloads through a tunnel count as VPN, so the split is approximate."
+msgstr "Деление на «через VPN» и «напрямую» считается по туннелям: собственные проверки и загрузки роутера через туннель тоже попадают в VPN, поэтому оно приблизительное."
+
+msgid "By device"
+msgstr "По устройствам"
+
+msgid "By exit"
+msgstr "По выходам"
+
+msgid "Traffic"
+msgstr "Трафик"
+
+msgid "How much each device downloaded and uploaded, and how much of it went through the VPN. Counted every 5 minutes; kept for a year."
+msgstr "Сколько скачало и отдало каждое устройство и сколько из этого прошло через VPN. Считается раз в 5 минут, хранится год."
 
 msgid "Blocked in Russia"
 msgstr "Заблокированное в РФ"

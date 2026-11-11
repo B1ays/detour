@@ -275,7 +275,7 @@ return view.extend({
 		const hints = data[2] || {};
 		const all = uci.sections('detour', 'policy');
 		return E('div', {}, [
-			E('link', { 'rel': 'stylesheet', 'href': L.resource('detour/detour.css') }),
+			E('link', { 'rel': 'stylesheet', 'href': L.resource('detour/detour.css') + '?v=' + encodeURIComponent(L.env.resource_version || '') }),
 			E('h2', {}, _('Policies')),
 			E('div', { 'class': 'cbi-map-descr' }, _('A policy says what goes through which exits: devices, sites, addresses, ports, lists. Policies are checked from top to bottom, the first that matches takes the traffic; what matches none goes directly through your provider. «Always direct» in Settings is checked before all of them.')),
 			E('div', { 'class': 'cbi-section' }, [

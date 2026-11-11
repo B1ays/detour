@@ -512,7 +512,7 @@ return view.extend({
 		const subs = info.exits.filter(function(x) { return x.kind == 'subscription'; });
 
 		return E('div', {}, [
-			E('link', { 'rel': 'stylesheet', 'href': L.resource('detour/detour.css') }),
+			E('link', { 'rel': 'stylesheet', 'href': L.resource('detour/detour.css') + '?v=' + encodeURIComponent(L.env.resource_version || '') }),
 			E('h2', {}, _('Exits')),
 			E('div', { 'class': 'cbi-map-descr' }, _('An exit is a way out to the internet other than your provider: a VPN server, WARP, a proxy. Policies send chosen traffic into exits. If an exit stops, its traffic is blocked or goes to the next exit of the policy - never directly.')),
 			E('div', { 'class': 'cbi-section' }, [

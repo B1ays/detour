@@ -32,7 +32,7 @@
 	},
 	"admin/services/detour/exits": {
 		"title": "Exits",
-		"order": 4,
+		"order": 5,
 		"action": {
 			"type": "view",
 			"path": "detour/exits"
@@ -40,7 +40,7 @@
 	},
 	"admin/services/detour/settings": {
 		"title": "Settings",
-		"order": 6,
+		"order": 7,
 		"action": {
 			"type": "view",
 			"path": "detour/settings"
@@ -48,7 +48,7 @@
 	},
 	"admin/services/detour/lists": {
 		"title": "Lists",
-		"order": 3,
+		"order": 4,
 		"action": {
 			"type": "view",
 			"path": "detour/lists"
@@ -56,7 +56,7 @@
 	},
 	"admin/services/detour/add": {
 		"title": "Add and import",
-		"order": 5,
+		"order": 6,
 		"action": {
 			"type": "view",
 			"path": "detour/add"
@@ -64,10 +64,26 @@
 	},
 	"admin/services/detour/check": {
 		"title": "Check a site",
-		"order": 7,
+		"order": 8,
 		"action": {
 			"type": "view",
 			"path": "detour/check"
+		}
+	},
+	"admin/services/detour/traffic": {
+		"title": "Traffic",
+		"order": 9,
+		"action": {
+			"type": "view",
+			"path": "detour/traffic"
+		}
+	},
+	"admin/services/detour/devices": {
+		"title": "Devices",
+		"order": 3,
+		"action": {
+			"type": "view",
+			"path": "detour/devices"
 		}
 	}
 }

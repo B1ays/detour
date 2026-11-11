@@ -304,7 +304,7 @@ return view.extend({
 
 	render: function() {
 		return E('div', {}, [
-			E('link', { 'rel': 'stylesheet', 'href': L.resource('detour/detour.css') }),
+			E('link', { 'rel': 'stylesheet', 'href': L.resource('detour/detour.css') + '?v=' + encodeURIComponent(L.env.resource_version || '') }),
 			E('h2', {}, _('Add and import')), this.renderLink(), this.renderWarp(), this.renderImport()
 		]);
 	},

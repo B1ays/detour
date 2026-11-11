@@ -18,6 +18,9 @@ import * as exitui from 'detour.exitui';
 import * as exitadd from 'detour.exitadd';
 import * as watch from 'detour.watch';
 import * as sitecheck from 'detour.sitecheck';
+import * as traffic from 'detour.traffic';
+import * as dnswatch from 'detour.dnswatch';
+import * as devices from 'detour.devices';
 import { cursor } from 'uci';
 
 const t0 = time();
@@ -586,6 +589,12 @@ conn.publish('detour', {
 	exit_diag:       { call: (req) => { req.defer(); diag_exit(req.args.name ?? '', (d) => req.reply(d)); }, args: { name: '', ...S } },
 	site_explain:    { call: (req) => site_explain(req), args: { target: '', mac: '', ...S } },
 	site_check:      { call: (req) => site_check(req), args: { target: '', exit: '', ...S } },
+	devices:         { call: () => devices.list(), args: { ...S } },
+	// stage 4.2: what a device asks for (tcpdump for a few minutes)
+	dns_watch:       { call: (req) => dnswatch.start(req.args.mac, req.args.seconds), args: { mac: '', seconds: 120, ...S } },
+	dns_watch_stop:  { call: () => dnswatch.stop(), args: { ...S } },
+	dns_log:         { call: (req) => ({ available: dnswatch.available(), ...dnswatch.log(req.args.mac) }), args: { mac: '', ...S } },
+	traffic:         { call: (req) => traffic.report(index([ 'day', 'days3', 'week', 'month', 'year' ], req.args.period) >= 0 ? req.args.period : 'day'), args: { period: '', ...S } },
 	exit_set_via:    { call: (req) => cli_job(req, [ 'exit-set-via', req.args.name, length(req.args.via ?? '') ? req.args.via : '-' ], true), args: { name: '', via: '', ...S } },
 	sshtun_status:   { call: () => { try { return json(core.run('/bin/sh /usr/libexec/detour/sshtun status').out); } catch (e) { return { error: 'no status' }; } }, args: { ...S } },
 	sshtun_keygen:   { call: (req) => cli_job(req, [ 'sshtun', 'keygen' ]), args: { ...S } },
@@ -668,4 +677,14 @@ tick = uloop.timer(500, function() {
 	tick.set(cfg.main.probe_period * 1000);
 });
 
+// traffic by device and exit (traffic.uc): every 5 min, the first step soon after start takes the starting point
+let ttick;
+ttick = uloop.timer(15000, function() {
+	try { traffic.tick(cfg, (n) => cursor().get('detour', n + '_eng', 'via')); } catch (x) { core.log('traffic: ' + x); }
+	ttick.set(1000 * (int(cursor().get('detour', 'main', 'traffic_period') ?? 300) || 300));   // the lab tests use a short one
+});
+
 uloop.run();
+// SIGTERM (stop, reboot, upgrade) ends the loop: today's traffic so far goes to flash
+try { traffic.flush(); } catch (x) { }
+try { dnswatch.stop(); } catch (x) { }

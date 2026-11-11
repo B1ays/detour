@@ -152,7 +152,7 @@ return view.extend({
 
 		// detour.css: the last field of a card must not touch its bottom (Argon gives the node no padding)
 		return m.render().then(function(node) {
-			node.insertBefore(E('link', { 'rel': 'stylesheet', 'href': L.resource('detour/detour.css') }), node.firstChild);
+			node.insertBefore(E('link', { 'rel': 'stylesheet', 'href': L.resource('detour/detour.css') + '?v=' + encodeURIComponent(L.env.resource_version || '') }), node.firstChild);
 			return node;
 		});
 	}

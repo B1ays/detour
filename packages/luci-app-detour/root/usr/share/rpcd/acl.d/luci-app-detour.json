@@ -8,7 +8,10 @@
 					"sshtun_status",
 					"exits_info",
 					"sub_state",
-					"site_explain"
+					"site_explain",
+					"traffic",
+					"dns_log",
+					"devices"
 				],
 				"luci": [
 					"getFeatures"
@@ -54,12 +57,15 @@
 					"exit_speed",
 					"exit_diag",
 					"exit_set_via",
-					"site_check"
+					"site_check",
+					"dns_watch",
+					"dns_watch_stop"
 				]
 			},
 			"uci": [
 				"detour",
-				"network"
+				"network",
+				"dhcp"
 			],
 			"file": {
 				"/tmp/detour-import.tgz": [

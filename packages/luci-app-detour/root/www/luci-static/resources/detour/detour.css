@@ -1,7 +1,9 @@
 /* Detour LuCI pages. Spacing for our own (non-form) content, in the theme's units when it defines them
  * (Argon 3.x: --section-inset / --field-gap / --control-gap) and plain values otherwise. Argon pads only
  * its standard pieces (h3, .cbi-section-descr, .cbi-value); a <pre>, a button row or text placed straight
- * into a .cbi-section touched the card edges. */
+ * into a .cbi-section touched the card edges.
+ * Linked as detour.css?v=<LuCI resource_version>: the version changes with every package upgrade (post-upgrade
+ * drops the index cache), so a browser never keeps the old styles. */
 
 /* body of a card: rows (.cbi-value), action rows and results, spaced and kept off the bottom edge */
 .detour-node {
@@ -194,3 +196,99 @@ textarea.detour-code {
 	padding: 8px;
 	border-radius: 4px;
 }
+
+/* "Traffic": period buttons, the three totals, bars by day (VPN below, directly above), a device's share */
+.detour-period {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--control-gap, .5rem);
+	margin: .5rem 0 1rem;
+}
+.detour-traffic-sum {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+	gap: var(--field-gap, 1rem);
+}
+.detour-traffic-sum strong {
+	display: block;
+	font-size: 1.5rem;
+	line-height: 1.3;
+}
+.detour-dot {
+	display: inline-block;
+	width: .7em;
+	height: .7em;
+	border-radius: 2px;
+	margin-inline-end: .35em;
+}
+.detour-dot.vpn, .detour-bar-vpn { background: #2e7d32; }
+.detour-dot.direct, .detour-bar-direct { background: #90a4ae; }
+.detour-bars {
+	display: flex;
+	align-items: stretch;
+	gap: 2px;
+	height: 9rem;
+	margin-top: var(--field-gap, 1rem);
+}
+.detour-bar {
+	flex: 1 1 0;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+}
+.detour-bar-col {
+	flex: 1 1 auto;
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-end;
+}
+.detour-bar:hover .detour-bar-col { opacity: .75; }
+.detour-bar-label {
+	text-align: center;
+	font-size: .75em;
+	opacity: .65;
+	white-space: nowrap;
+	overflow: hidden;
+}
+.detour-share {
+	width: 8rem;
+	max-width: 100%;
+	height: .6rem;
+	background: rgba(128, 128, 128, .2);
+	border-radius: 3px;
+	overflow: hidden;
+}
+.detour-share > div {
+	height: 100%;
+	background: #2e7d32;
+}
+
+/* "Devices": an offline device is muted; the DNS dialog is wide and its table scrolls */
+.detour-card.detour-offline { opacity: .7; }
+.modal.detour-wide { width: min(60rem, 96vw); max-width: 96vw; }
+.detour-dnslog { max-height: 60vh; overflow: auto; margin: .5rem 0; }
+.detour-dnslog td { overflow-wrap: anywhere; }
+.detour-dnslog-act { display: inline-flex; flex-wrap: wrap; gap: .25rem; align-items: center; }
+.detour-dnslog-act .btn, .detour-dnslog-act select { padding: 0 .5em; line-height: 1.6; font-size: .85em; height: auto; }
+
+/* a column of result lines with air between them ("Check a site"); its action rows sit in the column, not inset */
+.detour-lines {
+	display: flex;
+	flex-direction: column;
+	gap: .5rem;
+	line-height: 1.5;
+}
+.detour-lines:empty { display: none; }
+.detour-lines ul { margin: 0 0 0 1.25rem; }
+.detour-lines h4 { margin: .5rem 0 0; }
+.detour-check-acts .detour-actions { padding: 0; }
+/* a small icon button next to a title (rename a device) */
+.detour-icon-btn {
+	padding: 0 .45em;
+	line-height: 1.5;
+	min-height: 0;
+	height: auto;
+	font-size: .95em;
+}
+/* a device's "Connection" choice shows its whole text (themes give selects a fixed width) */
+.detour-card-actions select { width: auto; max-width: 100%; }

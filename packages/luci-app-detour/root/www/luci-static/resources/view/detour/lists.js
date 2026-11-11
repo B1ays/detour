@@ -229,7 +229,7 @@ return view.extend({
 		((data[1] || {}).lists || []).forEach(function(l) { st[l.name] = l; });
 		const all = uci.sections('detour', 'list');
 		return E('div', {}, [
-			E('link', { 'rel': 'stylesheet', 'href': L.resource('detour/detour.css') }),
+			E('link', { 'rel': 'stylesheet', 'href': L.resource('detour/detour.css') + '?v=' + encodeURIComponent(L.env.resource_version || '') }),
 			E('h2', {}, _('Lists')),
 			E('div', { 'class': 'cbi-map-descr' }, _('Big sets of sites or addresses from the internet: everything blocked in Russia, a service (YouTube, Telegram…). Each list goes through a policy or never through a tunnel. They are updated every night; if a source does not answer, the previous list stays in use.')),
 			E('div', { 'class': 'cbi-section' }, [

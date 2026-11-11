@@ -108,7 +108,7 @@ return view.extend({
 		]));
 		items.push(E('div', { 'class': 'cbi-value-description' }, isIp ? _('The address %s is added to the chosen rule.').format(val)
 			: _('The site %s (with its subdomains) is added to the chosen rule.').format(val)));
-		return E('div', {}, items);
+		return E('div', { 'class': 'detour-lines detour-check-acts' }, items);
 	},
 
 	render: function(data) {
@@ -121,7 +121,7 @@ return view.extend({
 		})));
 		const via = E('select', { 'class': 'cbi-input-select' }, [ E('option', { 'value': '' }, _('the one the rules choose')) ].concat(
 			(st.exits || []).filter(function(e) { return e.healthy; }).map(function(e) { return E('option', { 'value': e.name }, uci.get('detour', e.name, 'label') || e.name); })));
-		const where = E('div', {}), opens = E('div', {}), acts = E('div', {});
+		const where = E('div', { 'class': 'detour-lines' }), opens = E('div', { 'class': 'detour-lines' }), acts = E('div', { 'class': 'detour-lines' });
 		const btn = E('button', { 'class': 'btn cbi-button-action', 'click': function() {
 			const q = target.value.trim();
 			if (!q) return;
@@ -157,7 +157,7 @@ return view.extend({
 		target.addEventListener('keydown', function(ev) { if (ev.key == 'Enter') btn.click(); });
 
 		return E('div', {}, [
-			E('link', { 'rel': 'stylesheet', 'href': L.resource('detour/detour.css') }),
+			E('link', { 'rel': 'stylesheet', 'href': L.resource('detour/detour.css') + '?v=' + encodeURIComponent(L.env.resource_version || '') }),
 			E('h2', {}, _('Check a site')),
 			E('div', { 'class': 'cbi-map-descr' }, _('Where a site or an address goes by your rules, and why; does it open directly and through the VPN. The router opens it itself, the same way a device would.')),
 			E('div', { 'class': 'cbi-section' }, [ E('div', { 'class': 'cbi-section-node detour-node' }, [
@@ -165,7 +165,7 @@ return view.extend({
 				row(_('From the device'), dev, _('Rules for devices count only for the chosen one.')),
 				row(_('Compare through'), via),
 				E('div', { 'class': 'detour-actions' }, [ btn ]),
-				E('div', { 'class': 'detour-result' }, [ where, opens, acts ])
+				E('div', { 'class': 'detour-result detour-lines' }, [ where, opens, acts ])
 			]) ])
 		]);
 	},

@@ -21,7 +21,7 @@ function td(title, content) {
 }
 
 function css() {
-	return E('link', { 'rel': 'stylesheet', 'href': L.resource('detour/detour.css') });
+	return E('link', { 'rel': 'stylesheet', 'href': L.resource('detour/detour.css') + '?v=' + encodeURIComponent(L.env.resource_version || '') });
 }
 
 function fmtTime(ts) {
