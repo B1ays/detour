@@ -40,9 +40,12 @@ function list_reason(m) {
 	let x;
 	if ((x = match(m, /^download failed: https?:\/\/([^\/?]+)/))) return 'не удалось скачать с ' + x[1];
 	if ((x = match(m, /^download failed: v2fly:(.+)$/))) return 'не удалось скачать категорию v2fly ' + x[1];
-	if ((x = match(m, /^only (\d+) entries \(minimum (\d+)\)$/))) return sprintf('пришло только %s записей (нужно не меньше %s)', x[1], x[2]);
+	if ((x = match(m, /^only ([0-9]+) entries \(minimum ([0-9]+)\)$/))) return sprintf('пришло только %s записей (нужно не меньше %s)', x[1], x[2]);
 	if ((x = match(m, /^file missing: (.+)$/))) return 'нет файла ' + x[1];
 	if ((x = match(m, /^unknown policy '(.+)'$/))) return 'его политики ' + x[1] + ' больше нет';
+	if ((x = match(m, /^not enough memory: needs ~([0-9.]+) MB, ([0-9.]+) MB left for lists$/)))
+		return sprintf('не хватает памяти роутера: нужно ещё ~%s МБ, для списков осталось %s МБ', x[1], x[2]);
+	if ((x = match(m, /^download too big for the memory: over ([0-9]+) MB$/))) return sprintf('скачанное больше, чем помещается в память (больше %s МБ)', x[1]);
 	return m;
 }
 

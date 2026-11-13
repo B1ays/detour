@@ -5,7 +5,7 @@ FAIL=0; ok() { echo "  ok   $*"; }; bad() { echo "  FAIL $*"; FAIL=1; }
 waitfor() { i=0; while [ $i -lt ${3:-15} ]; do [ "$(eval "$2")" = "$1" ] && return 0; sleep 1; i=$((i+1)); done; return 1; }
 PW=$(cat /tmp/lab-pw)
 lab tests/lab/restart-sb.sh >/dev/null   # the shadowsocks server the link exit dials (gone after a lab reboot)
-# the lists of earlier tests (the stock import's big ones) may still be loading in the background: the LuCI calls
+# the lists of earlier tests may still be loading in the background: the LuCI calls
 # below answer within uhttpd's 60 s, which a busy emulated router can miss - this test is about the calls, not the load
 i=0; while pgrep -f /usr/libexec/detour/lists-update >/dev/null && [ $i -lt 180 ]; do sleep 2; i=$((i+2)); done
 rm -f /tmp/cj
@@ -44,20 +44,27 @@ r=$(rpc warp_unregister '{"name":"warpui"}'); echo "$r" | grep -q '"deregistered
 r=$(rpc warp_register '{"name":"warpaw","awg":true}'); [ "$(uci -q get network.warpaw.proto)" = amneziawg ] && ok "warp_register with AmneziaWG masking" || bad "awg: $r"
 rpc warp_unregister '{"name":"warpaw"}' >/dev/null
 
-echo "== import (file as LuCI uploads it)"
-[ -s /tmp/stock.tgz ] || lab tests/lab/t13-import.sh >/dev/null 2>&1
-cp /tmp/stock.tgz /tmp/detour-import.tgz
-r=$(rpc import_check); echo "$r" | grep -q 'st_main: wg' && echo "$r" | grep -q '"note"' && ok "import_check (dry run)" || bad "import_check: $(echo "$r" | head -c 300)"
-[ -z "$(uci -q get detour.st_main)" ] && ok "nothing written by the check" || bad "check wrote config"
+echo "== backup: saved, downloaded and uploaded back the way the Backup page does it"
+r=$(rpc backup_create '{"password":"lab-backup-pw"}'); echo "$r" | grep -q '"manifest"' && ok "backup_create" || bad "backup_create: $r"
+curl -s -o /tmp/t15.bak --data-urlencode "sessionid=$SID" --data-urlencode path=/tmp/detour-backup.bin http://127.0.0.1/cgi-bin/cgi-download
+cmp -s /tmp/t15.bak /tmp/detour-backup.bin && ok "downloaded through cgi-download (ACL read)" || bad "download: $(head -c 200 /tmp/t15.bak)"
+r=$(curl -s -F "sessionid=$SID" -F filename=/tmp/detour-restore.bin -F filedata=@/tmp/t15.bak http://127.0.0.1/cgi-bin/cgi-upload)
+cmp -s /tmp/t15.bak /tmp/detour-restore.bin && ok "uploaded through cgi-upload (ACL write)" || bad "upload: $r"
+r=$(rpc backup_check '{"password":"lab-backup-pw"}'); echo "$r" | grep -q '"note"' && ok "backup_check (dry run)" || bad "backup_check: $(echo "$r" | head -c 300)"
+r=$(curl -s -o /dev/null -w '%{http_code}' --data-urlencode "sessionid=$SID" --data-urlencode path=/etc/shadow http://127.0.0.1/cgi-bin/cgi-download)
+[ "$r" != 200 ] && ok "other files cannot be downloaded ($r)" || bad "/etc/shadow downloadable"
+rm -f /tmp/t15.bak /tmp/detour-backup.bin /tmp/detour-restore.bin
 
 echo "== actions need the write ACL: a read-only session is refused"
 ubus call session create '{"timeout":60}' > /tmp/s.json; RO=$(jsonfilter -i /tmp/s.json -e '@.ubus_rpc_session')
 ubus call session grant "{\"ubus_rpc_session\":\"$RO\",\"scope\":\"access-group\",\"objects\":[[\"luci-app-detour\",\"read\"]]}"
 r=$(curl -s http://127.0.0.1/ubus -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"call\",\"params\":[\"$RO\",\"detour\",\"engine_add\",{\"name\":\"x\",\"link\":\"$L\"}]}")
 echo "$r" | grep -q 'Access denied' && ok "read-only session cannot add exits" || bad "ro: $r"
+r=$(curl -s http://127.0.0.1/ubus -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"call\",\"params\":[\"$RO\",\"detour\",\"backup_create\",{\"password\":\"lab-backup-pw\"}]}")
+echo "$r" | grep -q 'Access denied' && ok "read-only session cannot save a backup" || bad "ro backup: $r"
 
 echo "== cleanup"
 for s in lnk1 lnk1_eng lnk2 lnk2_eng tl_ui; do uci -q delete detour.$s; done; uci -q delete network.lnk1; uci -q delete network.lnk2; uci -q del_list firewall.vpn.network=lnk2
 uci -q del_list firewall.vpn.network=lnk1; uci -q delete detour.main.warp_api; uci -q delete detour.main.warp_peer; uci -q delete detour.main.warp_port
-uci commit; rm -f /etc/detour/engines/lnk1.json /etc/detour/engines/lnk2.json /tmp/detour-import.tgz; /etc/init.d/network reload; reload_config
+uci commit; rm -f /etc/detour/engines/lnk1.json /etc/detour/engines/lnk2.json; /etc/init.d/network reload; reload_config
 echo "RESULT: $([ $FAIL = 0 ] && echo PASS || echo FAIL)"

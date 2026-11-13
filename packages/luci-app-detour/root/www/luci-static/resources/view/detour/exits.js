@@ -131,7 +131,7 @@ return view.extend({
 			}).finally(function() { busy(bSpeed, false); });
 		} }, _('Speed'));
 		const bShare = E('button', { 'class': 'btn', 'click': function() { self.exportExit(x); } }, _('Share'));
-		const bEdit = E('button', { 'class': 'btn cbi-button-edit', 'click': function() { self.editExit(x, by); } }, _('Edit'));
+		const bEdit = E('button', { 'class': 'btn', 'click': function() { self.editExit(x, by); } }, _('Edit'));
 		const bToggle = E('button', { 'class': 'btn', 'click': function() {
 			uci.set('detour', x.name, 'enabled', x.enabled ? '0' : '1');
 			return applyUci();
@@ -177,8 +177,12 @@ return view.extend({
 			E('div', { 'class': 'right' }, [ E('button', { 'class': 'btn', 'click': ui.hideModal }, _('Close')) ]) ]);
 		callExport(x.name).then(function(r) {
 			if (!r || r.error) return body.replaceChildren(note((r && r.error) || _('No answer from the router'), 'warning'));
-			const ta = E('textarea', { 'class': 'cbi-input-textarea detour-code', 'rows': r.link ? 4 : 12, 'readonly': '', 'spellcheck': 'false' }, r.text);
-			const url = URL.createObjectURL(new Blob([ r.text ], { type: 'text/plain' }));
+			// JSON from the engine comes tab-indented and wraps in a narrow box: two spaces, no wrapping
+			let text = r.text;
+			const json = /\.json$/.test(r.filename || '');
+			if (json) try { text = JSON.stringify(JSON.parse(r.text), null, 2); } catch (e) { }
+			const ta = E('textarea', { 'class': 'cbi-input-textarea detour-code' + (json ? ' detour-json' : ''), 'rows': r.link ? 4 : 14, 'readonly': '', 'spellcheck': 'false', 'wrap': json ? 'off' : 'soft' }, text);
+			const url = URL.createObjectURL(new Blob([ text ], { type: 'text/plain' }));
 			const kind = r.link ? _('A link for v2rayN, v2rayNG, Hiddify, NekoBox, Streisand…')
 				: (/\.conf$/.test(r.filename) ? _('A config for the WireGuard or AmneziaWG app.') : _('The engine\'s settings (JSON).'));
 			const items = [
@@ -188,7 +192,7 @@ return view.extend({
 				E('div', { 'class': 'detour-actions' }, [
 					E('button', { 'class': 'btn', 'click': function(ev) {
 						ta.select();
-						try { navigator.clipboard.writeText(r.text); } catch (e) { document.execCommand('copy'); }
+						try { navigator.clipboard.writeText(text); } catch (e) { document.execCommand('copy'); }
 						ev.target.textContent = _('Copied');
 					} }, _('Copy')),
 					E('a', { 'class': 'btn', 'href': url, 'download': r.filename }, _('Download %s').format(r.filename))
@@ -196,7 +200,7 @@ return view.extend({
 			];
 			if (r.qr_svg) items.push(E('div', { 'class': 'detour-qr' }, E('img', { 'src': 'data:image/svg+xml;base64,' + btoa(r.qr_svg), 'alt': 'QR' })));
 			else if (r.qr_missing) items.push(E('div', { 'class': 'detour-muted' }, _('For a QR code install the qrencode package (System → Software).')));
-			body.replaceChildren.apply(body, items);
+			body.replaceChildren(E('div', { 'class': 'detour-modal-body' }, items));
 		});
 	},
 
@@ -259,7 +263,7 @@ return view.extend({
 				fieldsOrig = JSON.stringify(form.read());
 			}
 			else fieldsBox.replaceChildren(E('div', { 'class': 'cbi-value-description' },
-				x.kind == 'xray' ? _('This exit runs on Xray: its settings are edited as JSON below, or replaced by a link (the exit then moves to sing-box).')
+				x.kind == 'xray' ? _('This exit runs on Xray: its settings are edited as JSON below, or replaced by a link (it stays on Xray when Xray runs that link, else moves to sing-box).')
 					: _('This kind of server is edited as JSON below.')));
 		});
 		modal(_('Exit «%s»').format(x.label), [
@@ -423,7 +427,7 @@ return view.extend({
 					: note((r && r.error) ? _('No answer through this exit (%s).').format(r.error) : _('No answer from the router'), 'warning'));
 			}).finally(function() { busy(bCheck, false); });
 		} }, _('Check'));
-		const bEdit = E('button', { 'class': 'btn cbi-button-edit', 'click': function() { self.editSub(x, by); } }, _('Edit'));
+		const bEdit = E('button', { 'class': 'btn', 'click': function() { self.editSub(x, by); } }, _('Edit'));
 		const bRemove = E('button', { 'class': 'btn cbi-button-negative', 'click': function() { self.removeExit(x); } }, _('Remove'));
 
 		return E('div', { 'class': 'detour-card' }, [
@@ -522,7 +526,7 @@ return view.extend({
 						: E('div', { 'class': 'detour-result' }, E('em', {}, _('No exits yet.'))),
 					E('div', { 'class': 'detour-actions' }, [
 						E('a', { 'class': 'btn cbi-button-add', 'href': L.url('admin/services/detour/add') }, _('Add an exit…')),
-						E('span', { 'class': 'detour-muted' }, _('from a link, WARP or a settings backup'))
+						E('span', { 'class': 'detour-muted' }, _('from a link, a config file or WARP'))
 					])
 				])
 			]),

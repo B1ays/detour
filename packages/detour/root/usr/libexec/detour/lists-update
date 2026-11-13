@@ -7,6 +7,10 @@
 #     option kind 'auto'             # auto | cidr | domain
 #     option min_lines '10'          # fewer lines = treat the update as a failure
 #     option enabled '1'
+# Memory (listmem.uc): a download is capped by what is free; a list that would not fit (all lists under a cap, a
+# reserve left free after loading - counted for what the whole run adds) is refused like a failed download: the
+# previous data stays and the reason goes to the status. A list that does not grow is never refused; --restore
+# (boot) loads what was accepted before without asking.
 # Data lives in RAM (/tmp/detour/lists); a snapshot goes to flash only up to MAXSNAP lines, so a
 # huge de-aggregated list cannot fill the flash. A failed or suspicious download keeps the
 # previous data (RAM, then snapshot) - the routing never empties because a source is down.
@@ -88,6 +92,7 @@ RESTORE=0; MISSING=0
 [ "$1" = --restore ] && { RESTORE=1; shift; }
 [ "$1" = --missing ] && { MISSING=1; shift; }   # download only lists that have no data yet
 ONLY=" $* "
+ACCEPTED=0   # bytes the lists of this run have added (not yet seen in MemAvailable)
 : > "$RUN/.targets"
 [ "$RESTORE" = 1 ] || rm -f "$RUN/.shas"   # the commits are asked once per run
 
@@ -126,25 +131,30 @@ detect_kind() {
 
 # up to 3 attempts 5 s apart: the daemon starts us right after a reload that may restart dnsmasq,
 # and a name that does not resolve meanwhile is not a "transient" error for curl --retry
+# RAWMAX: the biggest download this list may take (bytes); curl stops past it (exit 63: no retry)
 fetch() {
-	local a=0
-	until curl -fsSL -m 180 --retry 2 "$1" > "$2" 2>/dev/null; do
+	local a=0 rc
+	while :; do
+		curl -fsSL -m 180 --retry 2 ${RAWMAX:+--max-filesize $RAWMAX} "$1" > "$2" 2>/dev/null; rc=$?
+		[ $rc = 0 ] && return 0
+		[ $rc = 63 ] && return 63
 		a=$((a + 1)); [ $a -ge 3 ] && return 1; sleep 5
 	done
 }
+mb() { echo $(( $1 / 1048576 )); }   # the limit, rounded down
 
 # a v2fly domain-list-community category with its include: lines (stock geo.sh fetch_v2fly; attribute
 # filters "include:x @cn" are not applied - the whole included category is taken)
 V2FLY=$(uci -q get detour.main.v2fly_base); V2FLY=${V2FLY:-https://cdn.jsdelivr.net/gh/v2fly/domain-list-community@master/data}   # lab: a copy on the PC
 fetch_v2fly() {
-	local queue="$1" out="$2" seen=" " nm n=0 i base   # $2 is saved: "set --" below replaces the arguments
+	local queue="$1" out="$2" seen=" " nm n=0 i base rc   # $2 is saved: "set --" below replaces the arguments
 	base=$(pin "$V2FLY"); V2_DATE=$(upstream_date "$V2FLY")   # every file of one category from the same commit
 	while [ -n "$queue" ]; do
 		set -- $queue; nm=$1; shift; queue="$*"
 		case "$nm" in *[!a-z0-9!._-]*|'') continue ;; esac
 		case "$seen" in *" $nm "*) continue ;; esac
 		seen="$seen$nm "; n=$((n + 1)); [ $n -gt 200 ] && break
-		fetch "$base/$nm" "$RUN/.v2.part" || { rm -f "$RUN/.v2.part"; return 1; }
+		fetch "$base/$nm" "$RUN/.v2.part" || { rc=$?; rm -f "$RUN/.v2.part"; return $rc; }
 		for i in $(tr 'A-Z' 'a-z' < "$RUN/.v2.part" | sed -n 's/^[[:space:]]*include:\([a-z0-9!._-]*\).*/\1/p'); do queue="$queue $i"; done
 		cat "$RUN/.v2.part" >> "$out"; echo >> "$out"
 	done
@@ -152,7 +162,7 @@ fetch_v2fly() {
 }
 
 handle_list() {
-	local s=$1 en pol kind minl file urls tgt pid raw n fail=0 msg skip up=
+	local s=$1 en pol kind minl file urls tgt pid raw n fail=0 msg skip up= rc add
 	config_get_bool en "$s" enabled 1
 	config_get pol "$s" policy
 	config_get kind "$s" kind auto
@@ -177,20 +187,33 @@ handle_list() {
 	fi
 	raw="$RUN/$s.raw"
 	: > "$raw"
+	RAWMAX=$(/usr/sbin/detour lists-mem rawmax "$ACCEPTED" 2>/dev/null); case "$RAWMAX" in ''|*[!0-9]*) RAWMAX= ;; esac
 	for u in $urls; do
 		case "$u" in
-		v2fly:*) fetch_v2fly "${u#v2fly:}" "$raw" || { fail=1; msg="download failed: $u"; }; up=${up:-$V2_DATE} ;;
-		*) fetch "$(pin "$u")" "$raw.part" && cat "$raw.part" >> "$raw" || { fail=1; msg="download failed: $u"; }; rm -f "$raw.part"
+		v2fly:*) fetch_v2fly "${u#v2fly:}" "$raw"; rc=$?; up=${up:-$V2_DATE} ;;
+		*) fetch "$(pin "$u")" "$raw.part"; rc=$?; [ $rc = 0 ] && cat "$raw.part" >> "$raw"; rm -f "$raw.part"
 		   up=${up:-$(upstream_date "$u")} ;;
 		esac
+		[ $rc = 63 ] && { fail=1; msg="download too big for the memory: over $(mb "$RAWMAX") MB"; }
+		[ $rc != 0 ] && [ $rc != 63 ] && { fail=1; msg="download failed: $u"; }
 		echo >> "$raw"
 	done
 	[ -n "$file" ] && { [ -r "$file" ] && cat "$file" >> "$raw" || { fail=1; msg="file missing: $file"; }; }
+	# several sources (and v2fly includes) add up: the whole text must fit too
+	[ "$fail" = 0 ] && [ -n "$RAWMAX" ] && [ "$(wc -c < "$raw")" -gt "$RAWMAX" ] && { fail=1; msg="download too big for the memory: over $(mb "$RAWMAX") MB"; }
+	[ "$fail" = 1 ] && : > "$raw"   # nothing of a failed download is normalised (sorting holds it in memory again)
 	[ "$kind" = auto ] && kind=$(detect_kind "$raw")
 	if [ "$kind" = cidr ]; then norm_cidr < "$raw" > "$RUN/$s.new"; else norm_domains < "$raw" > "$RUN/$s.new"; fi
 	rm -f "$raw"
 	n=$(wc -l < "$RUN/$s.new")
 	[ "$fail" = 0 ] && [ "$n" -lt "$minl" ] && { fail=1; msg="only $n entries (minimum $minl)"; }
+	# does it fit in memory (what it adds, with what this run already let in)?
+	if [ "$fail" = 0 ]; then
+		if add=$(/usr/sbin/detour lists-mem check "$s" "$kind" "$n" "$tgt" "$ACCEPTED" 2>/dev/null); then
+			case "$add" in ''|*[!0-9]*) add=0 ;; esac
+			ACCEPTED=$((ACCEPTED + add))
+		else fail=1; msg=${add:-not enough memory}; fi
+	fi
 	if [ "$fail" = 1 ]; then
 		rm -f "$RUN/$s.new"
 		[ -s "$RUN/$s.data" ] || { [ -s "$SNAP/$s.snap" ] && cp "$SNAP/$s.snap" "$RUN/$s.data" && cp "$SNAP/$s.kind" "$RUN/$s.kind" 2>/dev/null; }

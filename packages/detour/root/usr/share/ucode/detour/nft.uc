@@ -44,7 +44,7 @@ export function stale(cfg) {
 		const r = run("nft -j -t list table inet detour");
 		if (r.code == 0) { try { j = json(r.out); } catch (e) { j = null; } }
 		else if (index(r.out, 'No such file') >= 0) return { sets: [], chains: [] };   // no table yet
-		if (j == null) system('sleep 0.2');
+		if (j == null) system('sleep 0.2 2>/dev/null || sleep 1');   // a busybox without fractions (Beam WRT): 1 s
 	}
 	if (j == null) { log('nft: could not list the table - stale objects stay until the next reload'); return { sets: [], chains: [] }; }
 	const w = wanted(cfg);

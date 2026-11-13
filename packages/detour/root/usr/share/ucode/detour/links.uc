@@ -1,4 +1,8 @@
 // Share links -> sing-box outbound (vless, vmess, trojan, ss, hysteria2/hy2, tuic), and back (to_link, export).
+// What only Xray can run rides in the same object: the XHTTP transport ({ type: 'xhttp' }) and, under "_x", VLESS
+// encryption, Reality's spiderX and ML-DSA key. to_xray() / from_xray() convert between that form and an Xray
+// outbound; singbox_why() / xray_why() tell why an engine cannot run a server (null: it can). The "_x" part never
+// reaches a sing-box config (for_singbox() drops it; engines.render calls it for every server).
 // Mirrors the stock Detour parser (subs-update.sh parse_link/parse_vmess/parse_ss/parse_hy2):
 // SIP002 and legacy ss, '@' allowed inside the hy2 auth (split on the last one), sni defaults
 // to the host for TLS, IPv6 hosts in brackets.
@@ -73,6 +77,12 @@ function transport_of(type, q) {
 	case 'grpc': return { type: 'grpc', service_name: q.serviceName ?? '' };
 	case 'http': case 'h2': return { type: 'http', host: q.host ? split(q.host, ',') : null, path: q.path ?? '/' };
 	case 'httpupgrade': return { type: 'httpupgrade', host: q.host, path: q.path ?? '/' };
+	case 'xhttp': case 'splithttp': {
+		let extra = null;
+		if (length(q.extra ?? '')) { try { extra = json(q.extra); } catch (e) { return { error: 'xhttp: "extra" is not valid JSON' }; } }
+		// ("type" is this function's argument here, not the builtin)
+		return { type: 'xhttp', path: q.path ?? '/', host: q.host, mode: q.mode, extra: (extra != null && length(keys(extra) ?? [])) ? extra : null };
+	}
 	default: return { error: 'transport "' + type + '" is not supported' };
 	}
 }
@@ -97,6 +107,10 @@ function vless_trojan(proto, body) {
 	const t = transport_of(q.type, q);
 	if (t?.error) return t;
 	o.transport = t;
+	const x = {};
+	if (proto == 'vless' && length(q.encryption ?? '') && q.encryption != 'none') x.encryption = q.encryption;
+	if (sec == 'reality') { if (length(q.spx ?? '')) x.spx = q.spx; if (length(q.pqv ?? '')) x.pqv = q.pqv; }
+	if (length(keys(x))) o._x = x;
 	return { outbound: clean(o), remark: l.remark };
 }
 
@@ -213,6 +227,8 @@ function tq(o) {
 	else if (tr.type == 'grpc') q.serviceName = tr.service_name;
 	else if (tr.type == 'http') { q.path = tr.path; q.host = (type(tr.host) == 'array') ? join(',', tr.host) : tr.host; }
 	else if (tr.type == 'httpupgrade') { q.path = tr.path; q.host = tr.host; }
+	else if (tr.type == 'xhttp') { q.path = tr.path; q.host = tr.host; q.mode = tr.mode; q.extra = tr.extra ? sprintf('%J', tr.extra) : null; }
+	if (t.reality?.enabled) { q.spx = o._x?.spx; q.pqv = o._x?.pqv; }
 	return q;
 }
 
@@ -222,7 +238,7 @@ export function to_link(o, remark) {
 	switch (o?.type) {
 	case 'vless': {
 		const q = tq(o);
-		return 'vless://' + enc(o.uuid) + '@' + hp(o) + qs({ encryption: 'none', flow: o.flow, ...q }) + r;
+		return 'vless://' + enc(o.uuid) + '@' + hp(o) + qs({ encryption: o._x?.encryption ?? 'none', flow: o.flow, ...q }) + r;
 	}
 	case 'trojan': return 'trojan://' + enc(o.password) + '@' + hp(o) + qs(tq(o)) + r;
 	case 'vmess': {
@@ -249,4 +265,117 @@ export function to_link(o, remark) {
 	}
 	}
 	return null;
+}
+
+// --- one server, two engines -----------------------------------------------------------------------------------
+
+// Checked with "xray run -test" (Xray 26.10) and "sing-box check" (1.14): both run VLESS, VMess, Trojan and
+// Shadowsocks over TCP, WebSocket, gRPC and HTTPUpgrade, with TLS or Reality. Xray has no HTTP/2 transport and no
+// "skip the certificate check" any more; sing-box has no XHTTP, no VLESS encryption and no ML-DSA Reality check.
+const XRAY_TYPES = [ 'vless', 'vmess', 'trojan', 'shadowsocks' ];
+
+export function singbox_why(o) {
+	if (o?.transport?.type == 'xhttp') return 'sing-box has no XHTTP transport';
+	if (o?._x?.encryption) return 'sing-box has no VLESS encryption';
+	if (o?._x?.pqv) return 'sing-box has no ML-DSA check of Reality';
+	return null;
+}
+
+// a server in the form above -> { xray: outbound } | { error }
+export function to_xray(o) {
+	if (index(XRAY_TYPES, o?.type) < 0) return { error: 'Xray runs here only VLESS, VMess, Trojan and Shadowsocks' };
+	const t = o.tls ?? {}, tr = o.transport ?? {}, x = o._x ?? {};
+	if (t.enabled && t.insecure) return { error: 'Xray no longer skips the certificate check' };
+	const ss = { network: 'tcp' };
+	switch (tr.type ?? 'tcp') {
+	case 'tcp': break;
+	case 'ws': ss.network = 'ws'; ss.wsSettings = { path: tr.path ?? '/', host: tr.headers?.Host }; break;
+	case 'grpc': ss.network = 'grpc'; ss.grpcSettings = { serviceName: tr.service_name ?? '' }; break;
+	case 'httpupgrade': ss.network = 'httpupgrade'; ss.httpupgradeSettings = { path: tr.path ?? '/', host: tr.host }; break;
+	case 'xhttp': ss.network = 'xhttp'; ss.xhttpSettings = { path: tr.path ?? '/', host: tr.host, mode: tr.mode, extra: tr.extra }; break;
+	case 'http': return { error: 'Xray has no HTTP/2 transport any more' };
+	default: return { error: 'Xray has no transport ' + tr.type };
+	}
+	if (t.enabled && t.reality?.enabled) {
+		ss.security = 'reality';
+		ss.realitySettings = { serverName: t.server_name, fingerprint: t.utls?.fingerprint ?? 'chrome',
+			publicKey: t.reality.public_key, shortId: t.reality.short_id ?? '', spiderX: x.spx, mldsa65Verify: x.pqv };
+	}
+	else if (t.enabled) {
+		ss.security = 'tls';
+		ss.tlsSettings = { serverName: t.server_name, alpn: t.alpn, fingerprint: t.utls?.fingerprint };
+	}
+	let settings;
+	if (o.type == 'vless')
+		settings = { vnext: [ { address: o.server, port: o.server_port, users: [ { id: o.uuid, encryption: x.encryption ?? 'none', flow: o.flow } ] } ] };
+	else if (o.type == 'vmess')
+		settings = { vnext: [ { address: o.server, port: o.server_port, users: [ { id: o.uuid, alterId: o.alter_id ?? 0, security: o.security ?? 'auto' } ] } ] };
+	else if (o.type == 'trojan')
+		settings = { servers: [ { address: o.server, port: o.server_port, password: o.password } ] };
+	else
+		settings = { servers: [ { address: o.server, port: o.server_port, method: o.method, password: o.password } ] };
+	return { xray: clean({ protocol: o.type, settings, streamSettings: ss }) };
+}
+
+export function xray_why(o) { return to_xray(o).error; }
+
+// an Xray outbound -> { outbound } in the form above | { error } (then it stays an Xray-only server)
+export function from_xray(xo) {
+	const p = xo?.protocol, st = xo?.settings ?? {}, ss = xo?.streamSettings ?? {};
+	if (index(XRAY_TYPES, p) < 0) return { error: 'no sing-box form for Xray ' + p };
+	// "vnext" / "servers", or the newer flat form (address, port, id right in settings)
+	const srv = (p == 'vless' || p == 'vmess') ? (st.vnext?.[0] ?? st) : (st.servers?.[0] ?? st);
+	const u = (p == 'vless' || p == 'vmess') ? (srv.users?.[0] ?? srv) : srv;
+	if (!srv?.address || !srv?.port) return { error: 'no server address' };
+	const o = { type: p, server: '' + srv.address, server_port: int(srv.port) }, x = {};
+	if (p == 'vless') {
+		o.uuid = u.id;
+		if (length(u.flow ?? '')) o.flow = u.flow;
+		if (length(u.encryption ?? '') && u.encryption != 'none') x.encryption = u.encryption;
+	}
+	else if (p == 'vmess') { o.uuid = u.id; o.alter_id = int(u.alterId ?? 0); o.security = u.security ?? 'auto'; }
+	else if (p == 'trojan') o.password = u.password;
+	else { o.method = u.method; o.password = u.password; }
+	const net = ss.network ?? 'tcp';
+	switch (net) {
+	case 'tcp': case 'raw':
+		if ((ss.tcpSettings ?? ss.rawSettings)?.header?.type == 'http') return { error: 'no sing-box form for TCP with an HTTP header' };
+		break;
+	case 'ws': {
+		const w = ss.wsSettings ?? {}, h = w.host ?? w.headers?.Host;
+		o.transport = { type: 'ws', path: w.path ?? '/', headers: h ? { Host: h } : null };
+		break;
+	}
+	case 'grpc': o.transport = { type: 'grpc', service_name: ss.grpcSettings?.serviceName ?? '' }; break;
+	case 'httpupgrade': { const h = ss.httpupgradeSettings ?? {}; o.transport = { type: 'httpupgrade', path: h.path ?? '/', host: h.host }; break; }
+	case 'xhttp': case 'splithttp': {
+		const h = ss.xhttpSettings ?? ss.splithttpSettings ?? {};
+		o.transport = { type: 'xhttp', path: h.path ?? '/', host: h.host, mode: h.mode, extra: h.extra };
+		break;
+	}
+	default: return { error: 'no sing-box form for the transport ' + net };
+	}
+	if (ss.security == 'reality') {
+		const r = ss.realitySettings ?? {};
+		o.tls = { enabled: true, server_name: r.serverName, utls: { enabled: true, fingerprint: r.fingerprint ?? 'chrome' },
+			reality: { enabled: true, public_key: r.publicKey ?? '', short_id: r.shortId ?? '' } };
+		if (length(r.spiderX ?? '')) x.spx = r.spiderX;
+		if (length(r.mldsa65Verify ?? '')) x.pqv = r.mldsa65Verify;
+	}
+	else if (ss.security == 'tls') {
+		const t = ss.tlsSettings ?? {};
+		o.tls = { enabled: true, server_name: t.serverName ?? o.server, alpn: t.alpn, insecure: t.allowInsecure ? true : null,
+			utls: t.fingerprint ? { enabled: true, fingerprint: t.fingerprint } : null };
+	}
+	else if (length(ss.security ?? '') && ss.security != 'none') return { error: 'no sing-box form for the security ' + ss.security };
+	if (length(keys(x))) o._x = x;
+	return { outbound: clean(o) };
+}
+
+// the server in sing-box's own terms: what only Xray needs left out
+export function for_singbox(o) {
+	if (type(o) != 'object' || o._x == null) return o;
+	const c = { ...o };
+	delete c._x;
+	return c;
 }

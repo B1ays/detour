@@ -9,6 +9,26 @@ const callTunKeygen = rpc.declare({ object: 'detour', method: 'sshtun_keygen' })
 const callTunTest = rpc.declare({ object: 'detour', method: 'sshtun_test' });
 const callTunForget = rpc.declare({ object: 'detour', method: 'sshtun_forget' });
 
+// a list option shown as checkboxes, one per line: the theme's multi-select cuts long names to a few letters
+const CheckList = form.MultiValue.extend({
+	renderWidget: function(section_id, option_index, cfgvalue) {
+		const chosen = L.toArray(cfgvalue != null ? cfgvalue : this.default);
+		const id = this.cbid(section_id);
+		return E('div', { 'class': 'detour-checklist', 'id': id }, this.keylist.map(function(k, i) {
+			return E('label', {}, [
+				E('input', { 'type': 'checkbox', 'value': k, 'checked': chosen.indexOf(k) > -1 ? '' : null, 'disabled': this.readonly ? '' : null }),
+				E('span', {}, this.vallist[i])
+			]);
+		}, this));
+	},
+	formvalue: function(section_id) {
+		const box = this.map.findElement('id', this.cbid(section_id));
+		if (!box) return null;
+		return Array.prototype.filter.call(box.querySelectorAll('input[type=checkbox]'), function(c) { return c.checked; })
+			.map(function(c) { return c.value; });
+	}
+});
+
 return view.extend({
 	load: function() {
 		return Promise.all([ uci.load('detour'), L.resolveDefault(callTunStatus(), {}) ]);
@@ -100,7 +120,7 @@ return view.extend({
 		o.validate = function(section_id, v) { return (!v || /^[0-9]+:[A-Za-z0-9_-]{30,}$/.test(v)) ? true : _('Looks like 123456:ABC… from @BotFather'); };
 		o = s.option(form.Value, 'tg_chat', _('Chat id'));
 		o.datatype = 'integer';
-		o = s.option(form.MultiValue, 'event', _('Notify about'),
+		o = s.option(CheckList, 'event', _('Notify about'),
 			_('While the provider\'s internet is gone (and 3 minutes after it is back) nothing is said about the exits: they fall and rise with the line, one message about the line says it all.'));
 		o.value('exit_down', _('an exit stopped responding'));
 		o.value('exit_up', _('an exit works again'));

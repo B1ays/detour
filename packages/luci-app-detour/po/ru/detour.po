@@ -19,6 +19,21 @@ msgstr "имя %s уже занято, пропущено"
 msgid "%s: the %s package is not installed"
 msgstr "%s: не установлен пакет %s"
 
+msgid "the %s package is not installed"
+msgstr "не установлен пакет %s"
+
+msgid "%s refused the configuration: %s"
+msgstr "%s не принял настройки: %s"
+
+msgid "XHTTP runs only on Xray, and Xray cannot take this server"
+msgstr "XHTTP работает только на Xray, а этот сервер Xray принять не может"
+
+msgid "VLESS encryption runs only on Xray, and Xray cannot take this server"
+msgstr "Шифрование VLESS работает только на Xray, а этот сервер Xray принять не может"
+
+msgid "Reality with an ML-DSA key runs only on Xray, and Xray cannot take this server"
+msgstr "Reality с ключом ML-DSA работает только на Xray, а этот сервер Xray принять не может"
+
 msgid "this key needs the ucode-mod-zlib package (System → Software)"
 msgstr "для этого ключа нужен пакет ucode-mod-zlib («Система» → «Программное обеспечение»)"
 
@@ -67,248 +82,14 @@ msgstr "прокси без сервера или порта"
 msgid "No answer from the router"
 msgstr "Роутер не ответил"
 
-msgid "proxy (Xray)"
-msgstr "прокси (Xray)"
-
-msgid "in stock it fell back to a direct connection; here a policy with no working exit blocks its traffic instead"
-msgstr "в стоке при отказе шёл напрямую; здесь политика без работающего выхода блокирует свой трафик"
-
-msgid "wrong list of ports"
-msgstr "неверный список портов"
-
-msgid "blocking and DPI-bypass lists are not part of Detour for OpenWrt"
-msgstr "списки блокировки и обхода DPI не входят в Detour для OpenWrt"
-
-msgid "a group for particular devices: such rules are not carried over yet"
-msgstr "группа для отдельных устройств: такие правила пока не переносятся"
-
-msgid "its exit could not be carried over"
-msgstr "её выход не удалось перенести"
-
-msgid "its exit is not carried over"
-msgstr "его выход не переносится"
-
-msgid "its file is not in the backup"
-msgstr "его файла нет в бэкапе"
-
-msgid "no http(s) address"
-msgstr "нет адреса http(s)"
-
-msgid "not an address"
-msgstr "не адрес"
-
-msgid "neither an address nor a domain"
-msgstr "не адрес и не домен"
-
-msgid "port rules for particular devices are not carried over"
-msgstr "правила портов для отдельных устройств не переносятся"
-
-msgid "switched off in stock"
-msgstr "выключено в стоке"
-
-msgid "that exit is not carried over - this one connects directly"
-msgstr "тот выход не переносится — этот подключается напрямую"
-
-msgid "the main policy could not be carried over"
-msgstr "основную политику не удалось перенести"
-
-msgid "unknown protocol"
-msgstr "неизвестный протокол"
-
-msgid "unknown source"
-msgstr "неизвестный источник"
-
-msgid "the action «%s» is not part of Detour for OpenWrt"
-msgstr "действие «%s» не входит в Detour для OpenWrt"
-
-msgid "the direction «%s» is not supported"
-msgstr "направление «%s» не поддерживается"
-
-msgid "port rules «block» are not part of Detour for OpenWrt"
-msgstr "правила портов «блокировать» не входят в Detour для OpenWrt"
-
-msgid "port rules «direct» are not part of Detour for OpenWrt"
-msgstr "правила портов «напрямую» не входят в Detour для OpenWrt"
-
-msgid "not in the catalogue (your own or an ODoH resolver) - set it in «Router DNS» on the Settings page"
-msgstr "нет в каталоге (свой сервер или ODoH) — укажите его в «DNS роутера» на странице «Настройки»"
-
-msgid "%s: this address has no DHCP reservation, the device is unknown"
-msgstr "%s: у этого адреса нет закреплённого DHCP, устройство неизвестно"
-
-msgid "a device past VPN"
-msgstr "устройство мимо VPN"
-
-msgid "a whole device through VPN"
-msgstr "всё устройство через VPN"
-
-msgid "panel password"
-msgstr "пароль панели"
-
-msgid "LuCI uses the router's root password"
-msgstr "LuCI использует пароль root роутера"
-
-msgid "2FA secret"
-msgstr "секрет 2FA"
-
-msgid "set up two-factor login again (luci-plugin-2fa, a new QR code)"
-msgstr "настройте двухфакторный вход заново (luci-plugin-2fa, новый QR-код)"
-
-msgid "home access server"
-msgstr "сервер доступа домой"
-
-msgid "set it up again (new keys)"
-msgstr "настройте заново (новые ключи)"
-
-msgid "access schedules"
-msgstr "расписания доступа"
-
-msgid "use firewall rules with a time window"
-msgstr "используйте правила фаервола с временем действия"
-
-msgid "install the zapret package and choose a strategy"
-msgstr "установите пакет zapret и выберите стратегию"
-
-msgid "split DNS for Russian domains"
-msgstr "раздельный DNS для российских доменов"
-
-msgid "not needed here: the router resolves names through dnsmasq"
-msgstr "здесь не нужен: роутер разрешает имена через dnsmasq"
-
-msgid "encrypted DNS"
-msgstr "шифрованный DNS"
-
-msgid "choose it in «Router DNS» on the Settings page"
-msgstr "выберите его в «DNS роутера» на странице «Настройки»"
-
-msgid "WARP registration"
-msgstr "регистрация WARP"
-
-msgid "register WARP again here (a new device)"
-msgstr "зарегистрируйте WARP здесь заново (новое устройство)"
-
-msgid "group «%s», entry %s"
-msgstr "группа «%s», запись %s"
-
-msgid "group «%s»"
-msgstr "группа «%s»"
-
-msgid "extra exit %d: falling back"
-msgstr "доп. выход %d: запасной путь"
-
-msgid "extra exit %d"
-msgstr "доп. выход %d"
-
-msgid "device %s"
-msgstr "устройство %s"
-
-msgid "list %s, source %s"
-msgstr "список %s, источник %s"
-
-msgid "through VPN: %s"
-msgstr "через VPN: %s"
-
-msgid "past VPN: %s"
-msgstr "мимо VPN: %s"
-
-msgid "the main policy"
-msgstr "основная политика"
-
-msgid "port rule %s for %s → %s"
-msgstr "правило порта %s для %s → %s"
-
-msgid "the whole network"
-msgstr "всей сети"
-
-msgid "directly"
-msgstr "напрямую"
-
-msgid "block"
-msgstr "заблокировать"
-
-msgid "geo category %s"
-msgstr "гео-категория %s"
-
-msgid "stock lists «%s»"
-msgstr "списки «%s» из стока"
-
-msgid "%d address"
-msgid_plural "%d addresses"
-msgstr[0] "%d адрес"
-msgstr[1] "%d адреса"
-msgstr[2] "%d адресов"
-
-msgid "%d site"
-msgid_plural "%d sites"
-msgstr[0] "%d сайт"
-msgstr[1] "%d сайта"
-msgstr[2] "%d сайтов"
-
-msgid "%d device"
-msgid_plural "%d devices"
-msgstr[0] "%d устройство"
-msgstr[1] "%d устройства"
-msgstr[2] "%d устройств"
-
-msgid "ports %s"
-msgstr "порты %s"
-
-msgid "nothing yet"
-msgstr "пока ничего"
-
-msgid "Exits"
-msgstr "Выходы"
-
-msgid "connects through «%s»"
-msgstr "подключается через «%s»"
-
-msgid "Policies"
-msgstr "Политики"
-
-msgid "Lists"
-msgstr "Списки"
-
-msgid "own entries"
-msgstr "свои записи"
-
-msgid "never through a tunnel"
-msgstr "никогда через туннель"
-
-msgid "through the policy «%s»"
-msgstr "через политику «%s»"
-
-msgid "with own entries"
-msgstr "со своими записями"
-
-msgid "Subscriptions"
-msgstr "Подписки"
-
-msgid "the address stays secret"
-msgstr "адрес не показывается"
-
-msgid "Always direct: %s"
-msgstr "Всегда напрямую: %s"
-
-msgid "Telegram notifications"
-msgstr "Уведомления в Telegram"
-
-msgid "Encrypted DNS: %s"
-msgstr "Шифрованный DNS: %s"
-
-msgid "%d DHCP reservation"
-msgid_plural "%d DHCP reservations"
-msgstr[0] "%d закреплённый адрес DHCP"
-msgstr[1] "%d закреплённых адреса DHCP"
-msgstr[2] "%d закреплённых адресов DHCP"
-
-msgid "Not carried over"
-msgstr "Не переносится"
-
 msgid "The file is too big for a config (over 256 KB)."
 msgstr "Файл слишком большой для конфига (больше 256 КБ)."
 
 msgid "Choose a file…"
 msgstr "Выбрать файл…"
+
+msgid "directly"
+msgstr "напрямую"
 
 msgid "through %s"
 msgstr "через %s"
@@ -328,6 +109,18 @@ msgstr[2] "Выходы %s добавлены. Добавьте их в поли
 msgid "Add the chosen"
 msgstr "Добавить отмеченные"
 
+msgid "Engine"
+msgstr "Движок"
+
+msgid "not installed"
+msgstr "не установлен"
+
+msgid "Engine:"
+msgstr "Движок:"
+
+msgid "%s is not installed"
+msgstr "%s не установлен"
+
 msgid "Nothing here can become an exit."
 msgstr "Здесь нет ничего, что может стать выходом."
 
@@ -340,8 +133,8 @@ msgstr "Посмотреть, что внутри"
 msgid "Exit from a link, a key or a file"
 msgstr "Выход из ссылки, ключа или файла"
 
-msgid "Paste one or more links (vless, vmess, trojan, ss, hysteria2, tuic, wireguard), an Amnezia vpn:// key, a WireGuard / AmneziaWG config, a sing-box or Xray JSON or a Clash YAML - or choose such a file. Proxies run on sing-box (Xray for Xray configs), WireGuard and AmneziaWG on the router itself."
-msgstr "Вставьте одну или несколько ссылок (vless, vmess, trojan, ss, hysteria2, tuic, wireguard), ключ Amnezia vpn://, конфиг WireGuard / AmneziaWG, JSON sing-box или Xray, YAML Clash — или выберите такой файл. Прокси работают на sing-box (конфиги Xray — на Xray), WireGuard и AmneziaWG — средствами самого роутера."
+msgid "Paste one or more links (vless, vmess, trojan, ss, hysteria2, tuic, wireguard), an Amnezia vpn:// key, a WireGuard / AmneziaWG config, a sing-box or Xray JSON or a Clash YAML - or choose such a file. Proxies run on sing-box or Xray: where both can, you choose; XHTTP only on Xray, HTTP/2, Hysteria2 and TUIC only on sing-box. WireGuard and AmneziaWG run on the router itself."
+msgstr "Вставьте одну или несколько ссылок (vless, vmess, trojan, ss, hysteria2, tuic, wireguard), ключ Amnezia vpn://, конфиг WireGuard / AmneziaWG, JSON sing-box или Xray, YAML Clash — или выберите такой файл. Прокси работают на sing-box или Xray: где подходят оба, движок выбираете вы; XHTTP — только на Xray, HTTP/2, Hysteria2 и TUIC — только на sing-box. WireGuard и AmneziaWG — средствами самого роутера."
 
 msgid "Link, key or config"
 msgstr "Ссылка, ключ или конфиг"
@@ -391,23 +184,155 @@ msgstr "Cloudflare WARP"
 msgid "Registers a new free WARP device at Cloudflare and adds it as an exit."
 msgstr "Регистрирует у Cloudflare новое бесплатное устройство WARP и добавляет его как выход."
 
-msgid "Imported."
-msgstr "Импортировано."
+msgid "Add an exit"
+msgstr "Добавить выход"
 
-msgid "Import these settings"
-msgstr "Импортировать эти настройки"
+msgid "The password must be at least 8 characters."
+msgstr "Пароль — не короче 8 символов."
+
+msgid "Wrong password, or the file is damaged."
+msgstr "Неверный пароль или файл повреждён."
+
+msgid "This is not a Detour backup."
+msgstr "Это не резервная копия Detour."
+
+msgid "The file did not reach the router."
+msgstr "Файл не дошёл до роутера."
+
+msgid "Another action is running, try again in a moment."
+msgstr "Выполняется другое действие, повторите чуть позже."
+
+msgid "The backup is too big."
+msgstr "Резервная копия слишком большая."
+
+msgid "The backup was made by a newer Detour (%s): update Detour first."
+msgstr "Копия сделана более новой Detour (%s): сначала обновите Detour."
+
+msgid "The router already has network interfaces with these names that are not Detour exits: %s. Rename or remove them first."
+msgstr "На роутере уже есть сетевые интерфейсы с такими именами, и это не выходы Detour: %s. Сначала переименуйте или удалите их."
+
+msgid "The backup file is damaged or was altered - refusing it."
+msgstr "Файл копии повреждён или изменён — восстановление отклонено."
+
+msgid "none"
+msgstr "нет"
+
+msgid "The passwords differ."
+msgstr "Пароли не совпадают."
+
+msgid "The backup is saved: %d exits, %d policies, %d lists, %d subscriptions."
+msgstr "Копия сохранена: выходов — %d, политик — %d, списков — %d, подписок — %d."
+
+msgid "Keep the password: without it the file cannot be restored."
+msgstr "Сохраните пароль: без него файл не восстановить."
+
+msgid "Save a backup"
+msgstr "Сохранить копию"
+
+msgid "Save the settings"
+msgstr "Сохранить настройки"
+
+msgid "One file with everything of Detour: exits (with their keys), policies, lists, subscriptions, notifications, router DNS, devices' names and modes, the panel tunnel key and the traffic history. The router's own settings (network, Wi-Fi, passwords) are not in it - those are saved in System → Backup / Flash Firmware."
+msgstr "Один файл со всем, что есть в Detour: выходы (с ключами), политики, списки, подписки, уведомления, DNS роутера, имена и режимы устройств, ключ туннеля к панели и история трафика. Собственных настроек роутера (сеть, Wi-Fi, пароли) в нём нет — их сохраняет «Система → Резервное копирование»."
+
+msgid "Password"
+msgstr "Пароль"
+
+msgid "The file holds private keys, the Telegram token and the subscription addresses, so it is always encrypted. At least 8 characters."
+msgstr "В файле закрытые ключи, токен Telegram и адреса подписок, поэтому он всегда шифруется. Не короче 8 символов."
+
+msgid "Password again"
+msgstr "Пароль ещё раз"
+
+msgid "Replace the current Detour settings with the backup? The tunnels restart; for a few seconds the internet may pause."
+msgstr "Заменить текущие настройки Detour настройками из копии? Туннели перезапустятся, интернет может пропасть на несколько секунд."
+
+msgid "Download the previous settings"
+msgstr "Скачать прежние настройки"
+
+msgid "Restored: %d exits, %d policies, %d lists, %d subscriptions, %d new device names."
+msgstr "Восстановлено: выходов — %d, политик — %d, списков — %d, подписок — %d, новых имён устройств — %d."
+
+msgid "Big lists and subscriptions load in the background over the next minutes."
+msgstr "Большие списки и подписки загрузятся в фоне в ближайшие минуты."
+
+msgid "The previous settings are kept on the router until it restarts, encrypted with the same password:"
+msgstr "Прежние настройки хранятся на роутере до перезагрузки, зашифрованные тем же паролем:"
+
+msgid "The router did not answer in time (%s). The restore may still be running: open the Overview in a minute."
+msgstr "Роутер не ответил вовремя (%s). Восстановление может ещё идти: откройте «Обзор» через минуту."
+
+msgid "Restore these settings"
+msgstr "Восстановить эти настройки"
+
+msgid "Backup:"
+msgstr "Копия:"
+
+msgid "%s, router «%s», Detour %s"
+msgstr "%s, роутер «%s», Detour %s"
+
+msgid "Exits:"
+msgstr "Выходы:"
+
+msgid "Policies:"
+msgstr "Политики:"
+
+msgid "Lists:"
+msgstr "Списки:"
+
+msgid "Also:"
+msgstr "Ещё:"
+
+msgid "%d subscription"
+msgid_plural "%d subscriptions"
+msgstr[0] "%d подписка"
+msgstr[1] "%d подписки"
+msgstr[2] "%d подписок"
+
+msgid "%d device name"
+msgid_plural "%d device names"
+msgstr[0] "%d имя устройства"
+msgstr[1] "%d имени устройств"
+msgstr[2] "%d имён устройств"
+
+msgid "Telegram notifications"
+msgstr "Уведомления в Telegram"
+
+msgid "%d WARP registration"
+msgid_plural "%d WARP registrations"
+msgstr[0] "%d регистрация WARP"
+msgstr[1] "%d регистрации WARP"
+msgstr[2] "%d регистраций WARP"
+
+msgid "the panel tunnel key"
+msgstr "ключ туннеля к панели"
+
+msgid "traffic history: %d month"
+msgid_plural "traffic history: %d months"
+msgstr[0] "история трафика: %d месяц"
+msgstr[1] "история трафика: %d месяца"
+msgstr[2] "история трафика: %d месяцев"
+
+msgid "What is on the router now goes away - exits: %s; policies: %s; lists: %s. Device names the router already has stay."
+msgstr "Текущие настройки будут удалены — выходы: %s; политики: %s; списки: %s. Имена устройств, которые уже есть на роутере, останутся."
+
+msgid "Not installed on this router: %s. The exits that need it will not work until it is installed (System → Software)."
+msgstr "На этом роутере не установлено: %s. Выходы, которым это нужно, не заработают, пока пакет не установлен («Система → Программное обеспечение»)."
+
+msgid "Enter the password of the backup first."
+msgstr "Сначала введите пароль копии."
 
 msgid "Choose the backup file…"
 msgstr "Выбрать файл резервной копии…"
 
-msgid "Import from Detour for stock firmware"
-msgstr "Импорт из Detour для стоковой прошивки"
+msgid "Restore"
+msgstr "Восстановление"
 
-msgid "The settings backup (.tar.gz) saved in the old Detour panel. First you see what will be carried over; nothing changes until you confirm."
-msgstr "Резервная копия настроек (.tar.gz), сохранённая в старой панели Detour. Сначала вы увидите, что будет перенесено; ничего не меняется, пока вы не подтвердите."
+msgid "A backup saved on this page, on this router or another one. First you see what it holds; nothing changes until you confirm. Settings of an older Detour are brought up to date."
+msgstr "Копия, сохранённая на этой странице — на этом роутере или на другом. Сначала будет показано, что в ней; ничего не меняется, пока вы не подтвердите. Настройки старой версии Detour приводятся к текущей."
 
-msgid "Add and import"
-msgstr "Добавить и импорт"
+msgid "Backup"
+msgstr "Резервная копия"
 
 msgid "a local address (%s): never through a tunnel"
 msgstr "локальный адрес (%s): никогда через туннель"
@@ -643,6 +568,9 @@ msgstr "Запускаю…"
 msgid "through"
 msgstr "через"
 
+msgid "block"
+msgstr "заблокировать"
+
 msgid "Watching: %d s left. Names asked: %d, requests: %d."
 msgstr "Смотрю: осталось %d с. Разных имён: %d, запросов: %d."
 
@@ -781,6 +709,9 @@ msgstr "не поднят"
 msgid "proxy (sing-box)"
 msgstr "прокси (sing-box)"
 
+msgid "proxy (Xray)"
+msgstr "прокси (Xray)"
+
 msgid "subscription"
 msgstr "подписка"
 
@@ -833,7 +764,7 @@ msgid "Speed"
 msgstr "Скорость"
 
 msgid "Share"
-msgstr "Доля"
+msgstr "Поделиться"
 
 msgid "Edit"
 msgstr "Изменить"
@@ -910,8 +841,8 @@ msgstr "Будет удалён выход и всё, что к нему отн�
 msgid "through «%s»"
 msgstr "через «%s»"
 
-msgid "This exit runs on Xray: its settings are edited as JSON below, or replaced by a link (the exit then moves to sing-box)."
-msgstr "Этот выход работает на Xray: его настройки правятся в JSON ниже или заменяются ссылкой (тогда выход переходит на sing-box)."
+msgid "This exit runs on Xray: its settings are edited as JSON below, or replaced by a link (it stays on Xray when Xray runs that link, else moves to sing-box)."
+msgstr "Этот выход работает на Xray: его настройки правятся в JSON ниже или заменяются ссылкой (выход остаётся на Xray, если Xray эту ссылку поддерживает, иначе переходит на sing-box)."
 
 msgid "This kind of server is edited as JSON below."
 msgstr "Такой сервер правится в JSON ниже."
@@ -1096,6 +1027,9 @@ msgstr "Это имя уже занято"
 msgid "Add"
 msgstr "Добавить"
 
+msgid "Exits"
+msgstr "Выходы"
+
 msgid "An exit is a way out to the internet other than your provider: a VPN server, WARP, a proxy. Policies send chosen traffic into exits. If an exit stops, its traffic is blocked or goes to the next exit of the policy - never directly."
 msgstr "Выход — это путь в интернет в обход провайдера: VPN-сервер, WARP, прокси. Политики направляют в выходы выбранный трафик. Если выход перестал работать, его трафик блокируется или уходит в следующий выход политики — но никогда напрямую."
 
@@ -1105,8 +1039,11 @@ msgstr "Выходов пока нет."
 msgid "Add an exit…"
 msgstr "Добавить выход…"
 
-msgid "from a link, WARP or a settings backup"
-msgstr "по ссылке, WARP или из резервной копии"
+msgid "from a link, a config file or WARP"
+msgstr "по ссылке, из файла конфигурации или WARP"
+
+msgid "Subscriptions"
+msgstr "Подписки"
 
 msgid "A subscription is an address from your VPN provider that gives the current list of its servers. All of them form one exit: it picks a working server by itself, or you choose one."
 msgstr "Подписка — это адрес от VPN-провайдера, по которому выдаётся актуальный список его серверов. Все они образуют один выход: он сам выбирает рабочий сервер, или вы выбираете конкретный."
@@ -1129,14 +1066,26 @@ msgstr "нет файла: %s"
 msgid "unknown policy %s"
 msgstr "неизвестная политика %s"
 
+msgid "not enough memory on the router: it needs ~%s MB more, %s MB are left for lists"
+msgstr "не хватает памяти роутера: нужно ещё ~%s МБ, для списков осталось %s МБ"
+
+msgid "the download is bigger than the memory can take (over %d MB)"
+msgstr "скачанное больше, чем помещается в память (больше %d МБ)"
+
 msgid "the previous list stays in use"
 msgstr "используется прежний список"
+
+msgid "never through a tunnel"
+msgstr "никогда через туннель"
 
 msgid "nowhere: its policy «%s» no longer exists - choose another in «Edit»"
 msgstr "никуда: его политики «%s» больше нет — выберите другую в «Изменить»"
 
 msgid "blocked (the policy «%s»)"
 msgstr "блокируется (политика «%s»)"
+
+msgid "through the policy «%s»"
+msgstr "через политику «%s»"
 
 msgid "Goes:"
 msgstr "Куда:"
@@ -1264,8 +1213,11 @@ msgstr "~%d КБ"
 msgid "new: the number of entries is known once added"
 msgstr "новая: число записей станет известно после добавления"
 
-msgid "very big: the router may run short of memory"
-msgstr "очень большой: роутеру может не хватить памяти"
+msgid "does not fit: %s MB are left for lists"
+msgstr "не поместится: для списков осталось %s МБ"
+
+msgid "takes most of the %s MB left for lists"
+msgstr "займёт большую часть из %s МБ, оставшихся для списков"
 
 msgid "already added"
 msgstr "уже добавлен"
@@ -1300,8 +1252,14 @@ msgstr "Категории v2fly: из этой версии (%s)"
 msgid "The catalogue is missing from this build."
 msgstr "В этой сборке нет каталога."
 
+msgid "Lists"
+msgstr "Списки"
+
 msgid "Big sets of sites or addresses from the internet: everything blocked in Russia, a service (YouTube, Telegram…). Each list goes through a policy or never through a tunnel. They are updated every night; if a source does not answer, the previous list stays in use."
 msgstr "Большие наборы сайтов или адресов из интернета: всё заблокированное в РФ, отдельный сервис (YouTube, Telegram…). Каждый список идёт через политику или никогда через туннель. Списки обновляются каждую ночь; если источник не ответил, остаётся прежний список."
+
+msgid "Memory: the lists take ~%s MB; up to %s MB more can be added (the router has %s MB, %s MB of it stay free for everything else)."
+msgstr "Память: списки занимают ~%s МБ, можно добавить ещё до %s МБ (у роутера %s МБ, из них %s МБ всегда остаются свободными для остального)."
 
 msgid "No lists yet."
 msgstr "Списков пока нет."
@@ -1450,6 +1408,9 @@ msgstr "Событий пока нет."
 msgid "Detour"
 msgstr "Detour"
 
+msgid "Policies"
+msgstr "Политики"
+
 msgid "Events"
 msgstr "События"
 
@@ -1506,9 +1467,6 @@ msgstr "(с поддоменами)"
 
 msgid "Ports:"
 msgstr "Порты:"
-
-msgid "Lists:"
-msgstr "Списки:"
 
 msgid "(on the Lists page)"
 msgstr "(на странице «Списки»)"
@@ -1894,6 +1852,9 @@ msgstr "За этот период устройства ничего не пер
 msgid "Uploaded"
 msgstr "Отдано"
 
+msgid "Share of the traffic"
+msgstr "Доля"
+
 msgid "Nothing went through the exits in this period."
 msgstr "За этот период через выходы ничего не шло."
 
@@ -2110,14 +2071,8 @@ msgstr "DNS через туннель: не установлен пакет dnsp
 msgid "encrypted DNS: the dnsproxy package is not installed - the provider's DNS is used unencrypted"
 msgstr "шифрованный DNS: не установлен пакет dnsproxy — используется DNS провайдера без шифрования"
 
-msgid "Password"
-msgstr "Пароль"
-
 msgid "Encryption"
 msgstr "Шифрование"
-
-msgid "none"
-msgstr "нет"
 
 msgid "Vision is used with TCP and TLS or Reality, as the server says."
 msgstr "Vision используется с TCP и TLS или Reality — как указано на сервере."

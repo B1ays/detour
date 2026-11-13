@@ -92,7 +92,7 @@ return view.extend({
 		if (!r.devices.length) return E('p', { 'class': 'detour-muted' }, _('No device traffic in this period.'));
 		const top = r.devices[0].rx || 1;
 		const rows = [ E('tr', { 'class': 'tr table-titles' }, [
-			E('th', { 'class': 'th' }, _('Device')), E('th', { 'class': 'th' }, _('Downloaded')), E('th', { 'class': 'th' }, _('Uploaded')), E('th', { 'class': 'th' }, _('Share'))
+			E('th', { 'class': 'th' }, _('Device')), E('th', { 'class': 'th' }, _('Downloaded')), E('th', { 'class': 'th' }, _('Uploaded')), E('th', { 'class': 'th' }, _('Share of the traffic'))
 		]) ];
 		r.devices.forEach(function(d) {
 			const name = self.devName(d.mac), ip = self.devIp(d.mac);
@@ -100,7 +100,7 @@ return view.extend({
 				td(_('Device'), [ E('strong', {}, name || ip || d.mac), E('br'), E('span', { 'class': 'detour-muted' }, name ? [ ip, ip ? ' · ' : '', d.mac ].join('') : (ip ? d.mac : '')) ]),
 				td(_('Downloaded'), size(d.rx)),
 				td(_('Uploaded'), size(d.tx)),
-				td(_('Share'), E('div', { 'class': 'detour-share', 'title': pct(d.rx, r.total.rx) }, E('div', { 'style': 'width:' + (d.rx * 100 / top) + '%' })))
+				td(_('Share of the traffic'), E('div', { 'class': 'detour-share', 'title': pct(d.rx, r.total.rx) }, E('div', { 'style': 'width:' + (d.rx * 100 / top) + '%' })))
 			]));
 		});
 		return E('table', { 'class': 'table' }, rows);

@@ -224,20 +224,31 @@ export function outbound_set(name, text) {
 	return { name, proto: summary(o) };
 }
 
-// another server for the same exit from a share link (its place in policies stays); an Xray exit becomes sing-box
+// another server for the same exit from a share link (its place in policies stays). The exit keeps its engine when
+// that engine runs the link, else it moves to the one that does (an XHTTP link -> Xray, an HTTP/2 one -> sing-box)
 export function set_link(name, link) {
 	const c = cursor();
 	const eng = engine_of(c, name);
 	if (!eng || sub_of(c, name)) return { error: 'only a proxy exit (not a subscription) can take a link' };
 	const r = links.parse(link ?? '');
 	if (r.error) return r;
-	const f = engines.write_outbound(name, r.outbound);
-	c.set('detour', eng, 'type', 'singbox');
+	const cur = c.get('detour', eng, 'type') ?? 'singbox';
+	const sb_why = links.singbox_why(r.outbound), xr = links.to_xray(r.outbound);
+	const can = filter([ sb_why ? null : 'singbox', xr.error ? null : 'xray' ], (e) => e);
+	if (!length(can)) return { error: sb_why };
+	let et = (index(can, cur) >= 0) ? cur : can[0];
+	if (et != cur && !fs.access(et == 'xray' ? '/usr/bin/xray' : '/usr/bin/sing-box'))
+		return { error: (et == 'xray' ? 'xray-core' : 'sing-box') + ' is not installed' };
+	const ob = (et == 'xray') ? xr.xray : links.for_singbox(r.outbound);
+	const bad = engines.test(et, ob);
+	if (bad) return { error: (et == 'xray' ? 'Xray' : 'sing-box') + ' refused the configuration: ' + bad };
+	const f = engines.write_outbound(name, ob);
+	c.set('detour', eng, 'type', et);
 	c.set('detour', eng, 'outbound', f);
 	c.commit('detour');
 	run('/etc/init.d/detour reload');
-	log(sprintf('exit %s: server replaced from a link', name));
-	return { name, proto: summary(r.outbound), server: r.outbound.server };
+	log(sprintf('exit %s: server replaced from a link (%s)', name, et));
+	return { name, proto: summary(r.outbound), server: r.outbound.server, engine: et };
 }
 
 // Export: the exit as a share link (a proxy) or a wg-quick .conf (WireGuard / AmneziaWG), and a QR code of it

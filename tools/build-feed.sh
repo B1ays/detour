@@ -1,5 +1,7 @@
 #!/bin/sh
-# Build every package in packages/*/ into a signed apk v3 feed (noarch) with apk-tools 3.
+# Build every package in packages/*/ into a signed apk v3 feed with apk-tools 3. Packages are noarch unless
+# their control sets arch=; prepare=<script> fills the package root first (sh <script> <root> <version> <arch>),
+# e.g. tools/fetch-xray.sh puts in a release binary that is not kept in git.
 # No OpenWrt SDK needed. Run as root on Linux (WSL: wsl -u root -- sh tools/build-feed.sh).
 #   KEY   private ECDSA P-256 key (default /root/detour-keys/detour-dev.key, created if missing)
 #   OUT   output dir (default <repo>/feed)
@@ -24,12 +26,14 @@ trap 'rm -rf "$W"' EXIT
 rm -rf "$OUT"; mkdir -p "$OUT"
 for d in "$REPO"/packages/*/; do
 	[ -f "$d/control" ] || continue
-	name= version= description= license= depends=
+	name= version= description= license= depends= arch=noarch prepare=
 	while IFS='=' read -r k v; do
-		case "$k" in name|version|description|license|depends) eval "$k=\$v";; esac
+		case "$k" in name|version|description|license|depends|arch|prepare) eval "$k=\$v";; esac
 	done < "$d/control"
 	cp -a "$d" "$W/$name"
 	P="$W/$name"
+	mkdir -p "$P/root"
+	[ -z "$prepare" ] || sh "$REPO/$prepare" "$P/root" "$version" "$arch"
 	find "$P/root" -type d -exec chmod 755 {} +
 	find "$P/root" -type f -exec chmod 644 {} +
 	for x in "$P"/root/etc/init.d/* "$P"/root/usr/sbin/* "$P"/root/usr/bin/* "$P"/root/usr/libexec/*/* "$P"/root/etc/uci-defaults/* "$P"/scripts/*; do
@@ -48,7 +52,7 @@ for d in "$REPO"/packages/*/; do
 		chmod 755 "$P/root/usr/lib" "$P/root/usr/lib/lua" "$P/root/usr/lib/lua/luci" "$P/root/usr/lib/lua/luci/i18n"
 	fi
 	chown -R root:root "$P"
-	set -- -I "name:$name" -I "version:$version" -I "arch:noarch" -I "description:$description" -I "license:$license"
+	set -- -I "name:$name" -I "version:$version" -I "arch:$arch" -I "description:$description" -I "license:$license"
 	[ -n "$depends" ] && set -- "$@" -I "depends:$depends"
 	for s in post-install post-upgrade pre-deinstall post-deinstall pre-install pre-upgrade; do
 		[ -f "$P/scripts/$s" ] && set -- "$@" -s "$s:$P/scripts/$s"

@@ -327,3 +327,87 @@ textarea.detour-code {
 .detour-graph-svg .detour-grid { stroke: rgba(128, 128, 128, .25); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .detour-graph-max { position: absolute; top: .2rem; left: .4rem; font-size: .75em; opacity: .65; }
 .detour-legend { display: flex; flex-wrap: wrap; gap: .3rem 1.2rem; margin-top: .5rem; }
+
+/* a page title right above a card: the theme leaves almost no air between them */
+[data-page^="admin-services-detour"] h2 + .cbi-section {
+	margin-top: var(--field-gap, 1rem);
+}
+
+/* buttons of a card: the main action is coloured, the rest plain, "Remove" (red) apart on the right */
+.detour-card-actions > .cbi-button-negative:last-child {
+	margin-inline-start: auto;
+}
+
+/* a button under a field ("Choose a file…"): in line with the field, with air above */
+.cbi-value-field .detour-field-actions {
+	padding: 0;
+	margin-top: var(--control-gap, .5rem);
+}
+
+/* a dialog's own content (share an exit): one column with air between the pieces */
+.detour-modal-body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--control-gap, .75rem);
+}
+.detour-modal-body > .detour-actions {
+	padding: 0;
+}
+.detour-modal-body > .alert-message {
+	margin: 0;
+}
+.detour-modal-body .detour-qr {
+	margin-top: 0;
+}
+textarea.detour-code.detour-json {
+	white-space: pre;
+	overflow: auto;
+	overflow-wrap: normal;
+	tab-size: 2;
+	line-height: 1.45;
+}
+
+/* notification events: one checkbox per line, the whole text visible */
+.detour-checklist {
+	display: flex;
+	flex-direction: column;
+	gap: .4rem;
+	padding-top: .3rem;
+}
+.detour-checklist label {
+	display: flex;
+	align-items: flex-start;
+	gap: .5rem;
+	cursor: pointer;
+	line-height: 1.4;
+}
+.detour-checklist input {
+	flex: none;
+	margin-top: .15em;
+}
+
+/* "Add an exit": the engine of a server both sing-box and Xray run */
+.detour-engine-pick {
+	display: inline-flex;
+	align-items: center;
+	gap: .3rem;
+}
+.detour-engine-pick select {
+	width: auto;
+	height: auto;
+	padding: 0 .5em;
+	line-height: 1.6;
+	font-size: .85em;
+}
+
+/* "Lists": how much memory the lists take of what they may */
+.detour-mem {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: .4rem .75rem;
+}
+.detour-mem .detour-share {
+	width: 10rem;
+	flex: none;
+}

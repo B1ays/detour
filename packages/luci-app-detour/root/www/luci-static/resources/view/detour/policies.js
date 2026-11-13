@@ -116,7 +116,7 @@ return view.extend({
 			' ', E('a', { 'href': L.url('admin/services/detour/lists') }, _('(on the Lists page)')) ]));
 		if (!what.length) what.push(E('em', {}, _('Nothing goes through it yet: add devices, sites, addresses, ports or lists.')));
 
-		const bEdit = E('button', { 'class': 'btn cbi-button-edit', 'click': function() { self.edit(p, hints, block); } }, _('Edit'));
+		const bEdit = E('button', { 'class': 'btn cbi-button-action', 'click': function() { self.edit(p, hints, block); } }, _('Edit'));
 		const bUp = E('button', { 'class': 'btn', 'title': _('Checked earlier'), 'disabled': idx == 0 ? '' : null, 'click': function() {
 			uci.move('detour', name, all[idx - 1]['.name']); return applyUci(); } }, '↑ ' + _('Up'));
 		const bDown = E('button', { 'class': 'btn', 'title': _('Checked later'), 'disabled': idx == all.length - 1 ? '' : null, 'click': function() {

@@ -337,21 +337,48 @@ function from_text(text) {
 	return length(l) ? { list: l } : { error: 'nothing recognised: a link, a key, a WireGuard config, JSON or Clash YAML is expected' };
 }
 
+// --- which engine runs a proxy ----------------------------------------------------------------------------------
+
+const ENGINE_BIN = { singbox: '/usr/bin/sing-box', xray: '/usr/bin/xray' };
+function installed(et) { return !!fs.access(ENGINE_BIN[et]); }
+
+// a proxy in both forms where it has them, the engines that can run it (its own format first: a link or a
+// sing-box / Clash config -> sing-box, an Xray config or an Amnezia key -> Xray), and why the others cannot
+function engines_of(x) {
+	if (x.xray) {
+		const sb = links.from_xray(x.xray);
+		const sb_why = sb.error ?? links.singbox_why(sb.outbound);
+		return { xray: x.xray, outbound: sb.error ? null : sb.outbound, can: sb_why ? [ 'xray' ] : [ 'xray', 'singbox' ], why: { singbox: sb_why } };
+	}
+	const sb_why = links.singbox_why(x.outbound), xr = links.to_xray(x.outbound);
+	const can = filter([ sb_why ? null : 'singbox', xr.error ? null : 'xray' ], (e) => e);
+	return { outbound: x.outbound, xray: xr.xray, can, why: { singbox: sb_why, xray: xr.error } };
+}
+
+// the engine when the person did not choose: its own one if installed, else another installed one that can
+function default_engine(can) {
+	for (let et in can) if (installed(et)) return et;
+	return can[0];
+}
+
 function describe(x) {
 	if (x.error) return { error: x.error };
 	if (x.wg) return { kind: x.wg.kind, label: x.label, proto: x.wg.kind == 'awg' ? 'AmneziaWG · masking' : 'WireGuard',
 		server: x.wg.peer.endpoint_host, port: int(x.wg.peer.endpoint_port), warp: x.wg.warp };
 	const o = x.xray ?? x.outbound;
-	const v = o.protocol ? (o.settings?.vnext?.[0] ?? o.settings?.servers?.[0]) : null;
-	return { kind: x.xray ? 'xray' : 'singbox', label: x.label, proto: summary(o),
+	const v = o.protocol ? (o.settings?.vnext?.[0] ?? o.settings?.servers?.[0] ?? o.settings) : null;
+	const en = engines_of(x);
+	if (!length(en.can)) return { error: en.why.singbox ?? en.why.xray };
+	return { kind: default_engine(en.can), engines: en.can, label: x.label, proto: summary(o),
 		server: v ? v.address : o.server, port: v ? v.port : o.server_port };
 }
 
-// what a text holds, without secrets: [{ kind, label, proto, server, port } | { error }]
+// what a text holds, without secrets: [{ kind, engines, label, proto, server, port } | { error }]; installed: the
+// engines on this router (LuCI marks the others)
 export function candidates(text) {
 	const r = from_text(text);
 	if (r.error) return { error: r.error };
-	return { candidates: map(r.list, describe) };
+	return { candidates: map(r.list, describe), installed: { singbox: installed('singbox'), xray: installed('xray') } };
 }
 
 function free_id(c) {
@@ -380,8 +407,9 @@ function make_wg(n, w, label) {
 	return id;
 }
 
-// picks: indices of candidates (empty = all usable); name: the exit's name (several: name1, name2 ..)
-export function add(text, picks, name, via, label) {
+// picks: indices of candidates (empty = all usable); name: the exit's name (several: name1, name2 ..);
+// engs: the engine chosen for a candidate, by its index ('singbox' / 'xray'; none or one that cannot: the default)
+export function add(text, picks, name, via, label, engs) {
 	const r = from_text(text);
 	if (r.error) return { error: r.error };
 	const ne = engines.check_name(name);
@@ -403,10 +431,16 @@ export function add(text, picks, name, via, label) {
 			push(out, { name: n, id, kind: x.wg.kind });
 			continue;
 		}
-		const et = x.xray ? 'xray' : 'singbox';
-		const bin = et == 'xray' ? '/usr/bin/xray' : '/usr/bin/sing-box';
-		if (!fs.access(bin)) { push(notes, n + ': ' + (et == 'xray' ? 'xray-core' : 'sing-box') + ' is not installed'); continue; }
-		const f = engines.write_outbound(n, x.xray ?? x.outbound);
+		const en = engines_of(x);
+		if (!length(en.can)) { push(notes, n + ': ' + (en.why.singbox ?? en.why.xray)); continue; }
+		const want = (type(engs) == 'array') ? engs[int(i)] : null;
+		const et = (want && index(en.can, want) >= 0) ? want : default_engine(en.can);
+		if (!installed(et)) { push(notes, n + ': ' + (et == 'xray' ? 'xray-core' : 'sing-box') + ' is not installed'); continue; }
+		const ob = (et == 'xray') ? en.xray : links.for_singbox(en.outbound);
+		// the engine itself must take it: an exit that never starts is worse than none
+		const bad = engines.test(et, ob);
+		if (bad) { push(notes, n + ': ' + (et == 'xray' ? 'Xray' : 'sing-box') + ' refused the configuration: ' + bad); continue; }
+		const f = engines.write_outbound(n, ob);
 		const e = engines.create_exit(n, f, via, lab, null, et);
 		push(out, { name: n, id: e.exit_id, kind: et });
 	}

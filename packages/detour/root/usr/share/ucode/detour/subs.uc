@@ -90,8 +90,11 @@ export function parse_body(body) {
 		if (!length(l) || index(l, '://') < 0) continue;
 		const r = links.parse(l);
 		if (r.error) { push(skipped, r.error); continue; }
+		// a subscription runs on sing-box: a server only Xray runs (XHTTP, VLESS encryption) is left out, saying why
+		const why = links.singbox_why(r.outbound);
+		if (why) { push(skipped, sprintf('%s: %s, needs Xray', r.remark ?? r.outbound.server, why)); continue; }
 		push(names, r.remark ?? null);
-		push(out, r.outbound);
+		push(out, links.for_singbox(r.outbound));
 	}
 	return { outbounds: out, skipped, names };
 }

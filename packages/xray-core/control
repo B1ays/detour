@@ -1,0 +1,7 @@
+name=xray-core
+version=26.10.21-r1
+arch=aarch64_cortex-a73
+description=Xray (XTLS), the official static release binary as /usr/bin/xray: the second engine of Detour, for builds whose feeds have no xray-core (Beam WRT)
+license=MPL-2.0
+depends=ca-bundle
+prepare=tools/fetch-xray.sh

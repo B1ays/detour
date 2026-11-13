@@ -22,6 +22,7 @@ import * as traffic from 'detour.traffic';
 import * as dnswatch from 'detour.dnswatch';
 import * as devices from 'detour.devices';
 import { cursor } from 'uci';
+import * as listmem from 'detour.listmem';
 
 const t0 = time();
 let cfg, active, pins;
@@ -257,7 +258,7 @@ function status() {
 			active: active['' + p.id] ? exit_name(active['' + p.id]) : null, pinned: pins[p.name],
 			block: p.block, on_down: p.on_down, direct: !!opened[p.name] });
 	return { version: core.VERSION, uptime: time() - t0, exits: ex, policies: pol, blocked: nft.counter_blocked(), dns: dns_mode ?? cfg.main.dns,
-		switches, last_switch, engines: engines.list(), lists: lists_status(), subscriptions: lists_status('subs'), auth: auth.status(), notify_queued: notify.queued(), wan: watch.wan_down() ? 'down' : 'up', notify_quiet: watch.quiet(), errors: apply_errors, events, extip };
+		switches, last_switch, engines: engines.list(), lists: lists_status(), lists_memory: listmem.budget(), subscriptions: lists_status('subs'), auth: auth.status(), notify_queued: notify.queued(), wan: watch.wan_down() ? 'down' : 'up', notify_quiet: watch.quiet(), errors: apply_errors, events, extip };
 }
 
 function do_pin(pol, ex) {
@@ -283,7 +284,9 @@ watch.init();
 load_all('start');
 
 // --- LuCI actions ------------------------------------------------------------------------------
-const IMPORT_FILE = '/tmp/detour-import.tgz';   // LuCI uploads the stock backup here (ACL: write)
+// backup: the daemon's job writes it here, LuCI downloads it (ACL: read, write = remove); a restore: LuCI uploads here
+const BACKUP_OUT = '/tmp/detour-backup.bin';
+const RESTORE_IN = '/tmp/detour-restore.bin';
 let job_busy = false;
 
 function cli_job(req, argv, reload_after) {
@@ -302,7 +305,10 @@ function cli_job(req, argv, reload_after) {
 		res.code = code;
 		if (code != 0 && !res.error) res.error = trim(text) || ('exit code ' + code);
 		ev(sprintf('LuCI: %s -> %s', argv[0], code == 0 ? 'ok' : 'error'));
-		if (reload_after && code == 0) { load_all('import'); evaluate(); }
+		if (reload_after && code == 0) {
+			if (argv[0] == 'restore') traffic.reset();   // the history on flash was merged with the backup's
+			load_all(argv[0]); evaluate();
+		}
 		req.reply(res);
 	});
 }
@@ -408,6 +414,15 @@ function secret_arg(text) {
 	fs.writefile(f, ''); fs.chmod(f, 0600);
 	fs.writefile(f, text ?? '');
 	return '@' + f;
+}
+
+function backup_job(req, argv, reload_after) {
+	const pw = req.args.password ?? '';
+	if (type(pw) != 'string' || length(pw) < 8) return { error: 'the password must be at least 8 characters' };
+	if (job_busy) return { error: 'another action is running, try again in a moment' };
+	const a = argv();
+	splice(a, 2, 0, secret_arg(pw));
+	return cli_job(req, a, reload_after);
 }
 
 // curl as the system user dtnotify: Detour never classifies its traffic, so "directly" really is direct even when
@@ -660,8 +675,10 @@ conn.publish('detour', {
 	engine_add:      { call: (req) => cli_job(req, [ 'engine-add', req.args.name, length(req.args.link ?? '') ? secret_arg(req.args.link) : '', ...(length(req.args.via ?? '') ? [ req.args.via ] : []) ]), args: { name: '', link: '', via: '', ...S } },
 	warp_register:   { call: (req) => cli_job(req, [ ...warp_args(req.args.name), ...(req.args.awg ? [ 'awg=1' ] : []) ]), args: { name: '', awg: false, ...S } },
 	warp_unregister: { call: (req) => cli_job(req, [ 'warp-unregister', req.args.name ]), args: { name: '', ...S } },
-	import_check:    { call: (req) => cli_job(req, [ 'import', IMPORT_FILE ]), args: { ...S } },
-	import_apply:    { call: (req) => cli_job(req, [ 'import', IMPORT_FILE, '--apply' ], true), args: { ...S } },
+	// backup / restore of Detour's settings (backup.uc); the password reaches the CLI in a file of mode 600
+	backup_create:   { call: (req) => backup_job(req, () => { try { traffic.flush(); } catch (e) { } return [ 'backup', BACKUP_OUT ]; }), args: { password: '', ...S } },
+	backup_check:    { call: (req) => backup_job(req, () => [ 'restore', RESTORE_IN ]), args: { password: '', ...S } },
+	backup_restore:  { call: (req) => backup_job(req, () => { try { traffic.flush(); } catch (e) { } return [ 'restore', RESTORE_IN, '--apply' ]; }, true), args: { password: '', ...S } },
 	sub_update:      { call: (req) => cli_job(req, [ 'sub-update', ...(length(req.args.name ?? '') ? [ req.args.name ] : []) ]), args: { name: '', ...S } },
 	exits_info:      { call: () => exits_info(), args: { ...S } },
 	exit_check:      { call: (req) => exit_check(req), args: { name: '', ...S } },
@@ -676,8 +693,9 @@ conn.publish('detour', {
 	exit_parse:      { call: (req) => exitadd.candidates(req.args.text), args: { text: '', ...S } },
 	exit_add:        { call: (req) => length(req.args.text ?? '') ? cli_job(req, [ 'exit-add', secret_arg(req.args.text),
 		(type(req.args.picks) == 'array' && length(req.args.picks)) ? join(',', map(req.args.picks, (x) => '' + int(x))) : '-',
-		req.args.name, length(req.args.via ?? '') ? req.args.via : '-', ...(length(req.args.label ?? '') ? [ req.args.label ] : []) ], true)
-		: { error: 'missing argument' }, args: { text: '', picks: [], name: '', via: '', label: '', ...S } },
+		req.args.name, length(req.args.via ?? '') ? req.args.via : '-', length(req.args.label ?? '') ? req.args.label : '-',
+		replace(join(',', map((type(req.args.engines) == 'array') ? req.args.engines : [], (e) => (e == 'singbox' || e == 'xray') ? e : '')), /^,*$/, '-') ], true)
+		: { error: 'missing argument' }, args: { text: '', picks: [], name: '', via: '', label: '', engines: [], ...S } },
 	exit_export:     { call: (req) => exitui.export_exit(req.args.name), args: { name: '', ...S } },
 	exit_speed:      { call: (req) => exit_speed(req), args: { name: '', direct: false, ...S } },
 	exit_diag:       { call: (req) => { req.defer(); diag_exit(req.args.name ?? '', (d) => req.reply(d)); }, args: { name: '', ...S } },

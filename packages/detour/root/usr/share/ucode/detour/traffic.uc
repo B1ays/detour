@@ -126,7 +126,7 @@ export function tick(cfg, via_of) {
 	if (trim(fs.readfile('/proc/sys/net/netfilter/nf_conntrack_acct') ?? '1') == '0')
 		fs.writefile('/proc/sys/net/netfilter/nf_conntrack_acct', '1');
 	const now = time();
-	const [ m, day ] = ymd(now);
+	const md = ymd(now), m = md[0], day = md[1];   // no destructuring: older ucode (Beam WRT) lacks it
 	if (month != m) {
 		if (month) save_disk();   // the month that ended goes to flash whole
 		month = m; data = load_month(m);
@@ -171,6 +171,13 @@ export function tick(cfg, via_of) {
 
 // the daemon stops (reboot, upgrade): today so far goes to flash
 export function flush() { if (month && data) save_disk(); }
+
+// the history on flash was replaced (a restore from a backup): what is in memory is dropped, the next step loads
+// the month from flash again (the step's counters stay: growth goes on from where it was)
+export function reset() {
+	month = null; data = null; saved_at = 0;
+	for (let f in fs.glob(RAMDIR + '/[0-9]*.json') ?? []) fs.unlink(f);
+}
 
 function days_back(n) {
 	const out = [];

@@ -55,7 +55,7 @@
 		}
 	},
 	"admin/services/detour/add": {
-		"title": "Add and import",
+		"title": "Add an exit",
 		"order": 6,
 		"action": {
 			"type": "view",
@@ -84,6 +84,14 @@
 		"action": {
 			"type": "view",
 			"path": "detour/devices"
+		}
+	},
+	"admin/services/detour/backup": {
+		"title": "Backup",
+		"order": 10,
+		"action": {
+			"type": "view",
+			"path": "detour/backup"
 		}
 	}
 }

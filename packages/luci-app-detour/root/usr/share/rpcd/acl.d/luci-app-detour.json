@@ -27,7 +27,15 @@
 				"detour",
 				"network",
 				"dhcp"
-			]
+			],
+			"file": {
+				"/tmp/detour-backup.bin": [
+					"read"
+				],
+				"/tmp/detour-before-restore.bin": [
+					"read"
+				]
+			}
 		},
 		"write": {
 			"ubus": {
@@ -39,8 +47,9 @@
 					"engine_add",
 					"warp_register",
 					"warp_unregister",
-					"import_check",
-					"import_apply",
+					"backup_create",
+					"backup_check",
+					"backup_restore",
 					"lists_update",
 					"sub_update",
 					"sshtun_keygen",
@@ -71,7 +80,10 @@
 				"dhcp"
 			],
 			"file": {
-				"/tmp/detour-import.tgz": [
+				"/tmp/detour-restore.bin": [
+					"write"
+				],
+				"/tmp/detour-backup.bin": [
 					"write"
 				]
 			}

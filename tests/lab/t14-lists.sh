@@ -8,7 +8,7 @@ FAIL=0; ok() { echo "  ok   $*"; }; bad() { echo "  FAIL $*"; FAIL=1; }
 waitfor() { i=0; while [ $i -lt ${3:-15} ]; do [ "$(eval "$2")" = "$1" ] && return 0; sleep 1; i=$((i+1)); done; return 1; }
 B=http://10.0.2.2:8765/tests/stub/lists
 st() { jsonfilter -i /tmp/detour/lists/$1.status -e "@.$2" 2>/dev/null; }
-# the lists of earlier tests (the stock import's big ones) may still be loading: one run at a time, so ours would wait
+# the lists of earlier tests may still be loading: one run at a time, so ours would wait
 # behind them longer than the checks below allow - this test is about our lists, not that queue
 i=0; while pgrep -f /usr/libexec/detour/lists-update >/dev/null && [ $i -lt 300 ]; do sleep 2; i=$((i+2)); done
 inset() { nft get element inet detour $1 "{ $2 }" >/dev/null 2>&1 && echo yes || echo no; }

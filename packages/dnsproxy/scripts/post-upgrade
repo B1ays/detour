@@ -1,0 +1,16 @@
+#!/bin/sh
+[ -n "$IPKG_INSTROOT" ] && exit 0
+# Detour runs dnsproxy as this user: its queries are exempt from the policies (meta skuid) and go direct.
+# Id 411 as in the OpenWrt dnsproxy package, the next free one when 411 is taken
+. /lib/functions.sh
+if ! user_exists dnsproxy; then
+	if group_exists dnsproxy || grep -qs '^[^:]*:[^:]*:411:' /etc/group /etc/passwd; then
+		g=$(group_add_next dnsproxy)
+	else
+		g=411; group_add dnsproxy 411
+	fi
+	user_add dnsproxy "$g" "$g" dnsproxy /var/run /bin/false
+fi
+# the encrypted DNS fallback starts if Detour's DNS mode wants it
+[ -x /etc/init.d/detour ] && /etc/init.d/detour running && /etc/init.d/detour reload
+exit 0

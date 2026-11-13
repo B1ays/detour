@@ -17,7 +17,8 @@ if [ "$1" != --work ]; then
 	start-stop-daemon -S -b -p /tmp/detour/none.pid -x /bin/sh -- "$0" --work "$done"
 	# a start with big lists takes a few seconds (much longer on the emulated lab)
 	i=0
-	while [ ! -e "$done" ] && [ $i -lt 240 ]; do sleep 0.5; i=$((i + 1)); done
+	# sleep 0.5 where sleep takes fractions; a busybox without them (Beam WRT) fails at once: then a whole second
+	while [ ! -e "$done" ] && [ $i -lt 240 ]; do sleep 0.5 2>/dev/null || sleep 1; i=$((i + 1)); done
 	rm -f "$done"
 	exit 0
 fi

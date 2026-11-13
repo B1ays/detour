@@ -8,6 +8,8 @@ sed -i '\#/usr/libexec/detour/#d' /etc/crontabs/root 2>/dev/null
 # list files first: purge restarts dnsmasq, which must not see nftset lines of a removed table.
 # RAM data goes; flash snapshots stay with the config (/etc/detour), like the user's settings.
 rm -rf /tmp/detour/lists
+# backup files (encrypted settings with keys) LuCI left for download or upload
+rm -f /tmp/detour-backup.bin /tmp/detour-restore.bin /tmp/detour-before-restore.bin
 for f in /tmp/dnsmasq.*.d/detour-list-*.conf; do [ -e "$f" ] && rm -f "$f"; done
 # leave a stock router: no table/rules, dnsmasq back on its own upstreams, rpcd ACL restored
 /usr/libexec/detour/fw purge

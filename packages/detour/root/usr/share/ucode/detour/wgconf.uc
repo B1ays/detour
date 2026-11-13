@@ -1,6 +1,6 @@
 // WireGuard / AmneziaWG exits as netifd interfaces: from a .conf (wg-quick INI, AmneziaWG keys Jc..I5), from a
 // wireguard:// link, into network UCI (proto wireguard | amneziawg, a peer section), and back into a .conf for export.
-// Shared by the stock import and by adding an exit from a link or a file.
+// Used when adding an exit from a link or a file, and for its export.
 'use strict';
 
 import { M_UNDERLAY } from 'detour.core';

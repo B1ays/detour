@@ -1,16 +1,12 @@
 'use strict';
 'require view';
 'require rpc';
-'require ui';
 'require uci';
-'require detour.msg as msg';
 
 const callParse = rpc.declare({ object: 'detour', method: 'exit_parse', params: [ 'text' ] });
-const callExitAdd = rpc.declare({ object: 'detour', method: 'exit_add', params: [ 'text', 'picks', 'name', 'via', 'label' ] });
+const callExitAdd = rpc.declare({ object: 'detour', method: 'exit_add', params: [ 'text', 'picks', 'name', 'via', 'label', 'engines' ] });
 const callWarpReg = rpc.declare({ object: 'detour', method: 'warp_register', params: [ 'name', 'awg' ] });
 const callWarpDel = rpc.declare({ object: 'detour', method: 'warp_unregister', params: [ 'name' ] });
-const callImportCheck = rpc.declare({ object: 'detour', method: 'import_check' });
-const callImportApply = rpc.declare({ object: 'detour', method: 'import_apply' });
 
 // what the router says about a link or a config is English (it also goes to the log); the known ones for people
 function errText(e) {
@@ -22,6 +18,11 @@ function errText(e) {
 	if ((m = e.match(/^transport "?(.+?)"? is not supported$/))) return _('the transport «%s» is not supported').format(m[1]);
 	if ((m = e.match(/^(.+) is already used, skipped$/))) return _('the name %s is already used, skipped').format(m[1]);
 	if ((m = e.match(/^(.+): (sing-box|xray-core) is not installed$/))) return _('%s: the %s package is not installed').format(m[1], m[2]);
+	if ((m = e.match(/^(sing-box|xray-core) is not installed$/))) return _('the %s package is not installed').format(m[1]);
+	if ((m = e.match(/^(Xray|sing-box) refused the configuration: (.*)$/))) return _('%s refused the configuration: %s').format(m[1], m[2]);
+	if (e == 'sing-box has no XHTTP transport') return _('XHTTP runs only on Xray, and Xray cannot take this server');
+	if (e == 'sing-box has no VLESS encryption') return _('VLESS encryption runs only on Xray, and Xray cannot take this server');
+	if (e == 'sing-box has no ML-DSA check of Reality') return _('Reality with an ML-DSA key runs only on Xray, and Xray cannot take this server');
 	if (/the ucode-mod-zlib package is needed/.test(e)) return _('this key needs the ucode-mod-zlib package (System → Software)');
 	if (/^vpn:\/\/: no AmneziaWG/.test(e)) return _('the vpn:// key has no AmneziaWG, WireGuard or Xray (other Amnezia protocols are not supported)');
 	if (/^vpn:\/\//.test(e)) return _('the vpn:// key could not be read');
@@ -46,106 +47,6 @@ function result(box, r, okText) {
 		box.replaceChildren(E('div', { 'class': 'alert-message warning' }, (r && r.error) || _('No answer from the router')));
 	else
 		box.replaceChildren(E('div', { 'class': 'alert-message success' }, okText(r)));
-}
-
-function list(title, items) {
-	if (!items || !items.length) return '';
-	return E('div', {}, [ E('strong', {}, title), E('ul', {}, items.map(function(x) { return E('li', {}, x); })) ]);
-}
-
-const KIND = { 'wg': 'WireGuard', 'awg': 'AmneziaWG', 'xray': _('proxy (Xray)'), 'hy2': 'Hysteria2' };
-
-// the importer explains in English what it leaves behind; the known reasons for people
-function whyText(w) {
-	let m;
-	const fixed = {
-		'"direct" fallback is fail-open in stock; here the policy is fail-closed': _('in stock it fell back to a direct connection; here a policy with no working exit blocks its traffic instead'),
-		'bad port list': _('wrong list of ports'),
-		'blocking/desync lists are not part of Detour for OpenWrt': _('blocking and DPI-bypass lists are not part of Detour for OpenWrt'),
-		'device-bound group (src) - per-device rules are not carried over yet': _('a group for particular devices: such rules are not carried over yet'),
-		'its exit could not be carried over': _('its exit could not be carried over'),
-		'its exit is not carried over': _('its exit is not carried over'),
-		'its file is not in the backup': _('its file is not in the backup'),
-		'no http(s) URL': _('no http(s) address'),
-		'not an address': _('not an address'),
-		'not an address/domain': _('neither an address nor a domain'),
-		'per-device port rules are not carried over': _('port rules for particular devices are not carried over'),
-		'switched off in stock': _('switched off in stock'),
-		'that exit is not carried over - it connects directly': _('that exit is not carried over - this one connects directly'),
-		'the main policy could not be carried over': _('the main policy could not be carried over'),
-		'unknown protocol': _('unknown protocol'),
-		'unknown source': _('unknown source')
-	};
-	if (fixed[w]) return fixed[w];
-	if ((m = w.match(/^action "(.+)" is not part of Detour for OpenWrt$/))) return _('the action «%s» is not part of Detour for OpenWrt').format(m[1]);
-	if ((m = w.match(/^direction (.+) not supported$/))) return _('the direction «%s» is not supported').format(m[1]);
-	if ((m = w.match(/^"(direct|block)" port rules are not part of Detour for OpenWrt$/))) return m[1] == 'block' ? _('port rules «block» are not part of Detour for OpenWrt') : _('port rules «direct» are not part of Detour for OpenWrt');
-	if (/^not in the catalogue/.test(w)) return _('not in the catalogue (your own or an ODoH resolver) - set it in «Router DNS» on the Settings page');
-	if ((m = w.match(/^(.*): no DHCP reservation for this IP, MAC unknown$/)))
-		return _('%s: this address has no DHCP reservation, the device is unknown').format({ 'device past VPN': _('a device past VPN'), 'whole device via VPN': _('a whole device through VPN') }[m[1]] || m[1]);
-	return w;
-}
-// what the stock firmware had that is deliberately left behind (importer: "not")
-const LEFT = {
-	'.panel-pass': [ _('panel password'), _('LuCI uses the router\'s root password') ],
-	'.totp': [ _('2FA secret'), _('set up two-factor login again (luci-plugin-2fa, a new QR code)') ],
-	'server': [ _('home access server'), _('set it up again (new keys)') ],
-	'sched': [ _('access schedules'), _('use firewall rules with a time window') ],
-	'.zapret-on': [ 'zapret', _('install the zapret package and choose a strategy') ],
-	'.split-runet': [ _('split DNS for Russian domains'), _('not needed here: the router resolves names through dnsmasq') ],
-	'.doh-on': [ _('encrypted DNS'), _('choose it in «Router DNS» on the Settings page') ],
-	'.warp-reg': [ _('WARP registration'), _('register WARP again here (a new device)') ]
-};
-function skippedText(s) {
-	if (LEFT[s.what]) return LEFT[s.what][0] + ': ' + LEFT[s.what][1];
-	return whatText(s.what) + ': ' + whyText(s.why);
-}
-function whatText(w) {
-	let m;
-	if ((m = w.match(/^group (.+) member (.+)$/))) return _('group «%s», entry %s').format(m[1], m[2]);
-	if ((m = w.match(/^group (.+)$/))) return _('group «%s»').format(m[1]);
-	if ((m = w.match(/^extra exit s(\d)( fallback)?$/))) return m[2] ? _('extra exit %d: falling back').format(+m[1]) : _('extra exit %d').format(+m[1]);
-	if ((m = w.match(/^device (.+)$/))) return _('device %s').format(m[1]);
-	if ((m = w.match(/^list (\S+) source (.+)$/))) return _('list %s, source %s').format(m[1], m[2]);
-	if ((m = w.match(/^\.(vpn|bypass)-dst (.+)$/))) return (m[1] == 'vpn' ? _('through VPN: %s') : _('past VPN: %s')).format(m[2]);
-	if (w == 'main policy') return _('the main policy');
-	if ((m = w.match(/^port rule (\S+) (\S+) -> (\S+)$/)))
-		return _('port rule %s for %s → %s').format(m[2], m[1] == 'any' ? _('the whole network') : m[1],
-			{ 'vpn': 'VPN', 'direct': _('directly'), 'block': _('block') }[m[3]] || m[3]);
-	if ((m = w.match(/^geo category (.+)$/))) return _('geo category %s').format(m[1]);
-	if ((m = w.match(/^lists\/(.+)$/))) return _('stock lists «%s»').format(m[1]);
-	return w;
-}
-
-// what an import will carry over, as people will then see it on the pages
-function preview(r) {
-	const p = r.preview;
-	const cnt = function(x) {
-		const a = [];
-		if (x.dst) a.push(N_(x.dst, '%d address', '%d addresses').format(x.dst));
-		if (x.domain) a.push(N_(x.domain, '%d site', '%d sites').format(x.domain));
-		if (x.device) a.push(N_(x.device, '%d device', '%d devices').format(x.device));
-		if (x.port && x.port.length) a.push(_('ports %s').format(x.port.join(', ')));
-		return a.length ? a.join(', ') : _('nothing yet');
-	};
-	return E('div', {}, [
-		list(_('Exits'), p.exits.map(function(e) {
-			return E('span', {}, [ E('strong', {}, e.label), ' · ' + (KIND[e.kind] || e.kind), e.via ? ' · ' + _('connects through «%s»').format(e.via) : '' ]);
-		})),
-		list(_('Policies'), p.policies.map(function(x) {
-			return E('span', {}, [ E('strong', {}, x.label), ': ' + x.exits.map(function(n) { return '«' + n + '»'; }).join(' → ') + ' · ' + cnt(x) ]);
-		})),
-		list(_('Lists'), p.lists.map(function(l) {
-			return E('span', {}, [ E('strong', {}, msg.listTitle({ url: l.url, '.name': '' }) || _('own entries')),
-				' · ' + (l.direct ? _('never through a tunnel') : _('through the policy «%s»').format(l.policy)) + (l.local ? ' · ' + _('with own entries') : '') ]);
-		})),
-		list(_('Subscriptions'), p.subscriptions.map(function(s) { return E('span', {}, [ E('strong', {}, s.label), ' · ' + _('the address stays secret') ]); })),
-		(p.direct.dst + p.direct.device + p.direct.domain) ? E('div', {}, _('Always direct: %s').format(cnt(p.direct))) : '',
-		r.notify ? E('div', {}, _('Telegram notifications')) : '',
-		r.dns ? E('div', {}, _('Encrypted DNS: %s').format(r.dns)) : '',
-		r.dhcp_hosts ? E('div', {}, N_(r.dhcp_hosts, '%d DHCP reservation', '%d DHCP reservations').format(r.dhcp_hosts)) : '',
-		list(_('Not carried over'), p.skipped.map(skippedText))
-	]);
 }
 
 // the theme's own markup, so it spaces and pads these like any LuCI form: a card (title, description,
@@ -189,7 +90,7 @@ return view.extend({
 			uci.sections('detour', 'exit').map(function(s) { return E('option', { 'value': s['.name'] }, _('through %s').format(s.label || s['.name'])); })));
 		const found = E('div', { 'class': 'detour-servers' });
 		const box = resultBox();
-		let checks = [];
+		let checks = [], engs = [];
 
 		const bAdd = E('button', { 'class': 'btn cbi-button-action', 'style': 'display:none', 'click': function() {
 			const picks = [];
@@ -197,7 +98,8 @@ return view.extend({
 			if (!picks.length) { box.replaceChildren(E('div', { 'class': 'alert-message warning' }, _('Tick at least one server.'))); return; }
 			if (!/^[a-z][a-z0-9_]{0,10}$/.test(name.value.trim())) { box.replaceChildren(E('div', { 'class': 'alert-message warning' }, _('Name: Latin letters, digits and _, up to 11, starting with a letter.'))); return; }
 			busy(bAdd, true);
-			return callExitAdd(text.value, picks, name.value.trim(), via.value, '').then(function(r) {
+			const chosen = engs.map(function(s) { return s ? s.value : ''; });
+			return callExitAdd(text.value, picks, name.value.trim(), via.value, '', chosen).then(function(r) {
 				if (r && r.error) r.error = r.error.split('; ').map(errText).join('; ');
 				result(box, r, function(x) {
 					const names = (x.added || []).map(function(a) { return a.name; }).join(', ');
@@ -214,14 +116,27 @@ return view.extend({
 			box.replaceChildren();
 			return callParse(text.value).then(function(r) {
 				if (!r || r.error) { found.replaceChildren(); bAdd.style.display = 'none'; return result(box, r && r.error ? { error: errText(r.error) } : r); }
-				checks = [];
+				checks = []; engs = [];
+				const have = r.installed || {};
 				const usable = r.candidates.filter(function(c) { return !c.error; }).length;
 				found.replaceChildren.apply(found, r.candidates.map(function(c, i) {
-					if (c.error) { checks.push(null); return E('div', { 'class': 'detour-muted' }, '✕ ' + errText(c.error)); }
+					if (c.error) { checks.push(null); engs.push(null); return E('div', { 'class': 'detour-muted' }, '✕ ' + errText(c.error)); }
 					const cb = E('input', { 'type': 'checkbox', 'checked': '' });
 					checks.push(cb);
-					return E('label', { 'class': 'detour-server' }, [ cb, ' ', E('span', {}, [ E('strong', {}, c.label || (c.server + ':' + c.port)),
-						E('span', { 'class': 'detour-muted' }, ' ' + [ c.proto || KIND[c.kind], c.server + ':' + c.port, KIND[c.kind] ].filter(function(x) { return x; }).join(' · ') + (c.warp ? ' · Cloudflare WARP' : '')) ]) ]);
+					// a server both engines run: which one (the one not installed is shown, but cannot be chosen)
+					const many = (c.engines || []).length > 1;
+					const sel = many ? E('select', { 'class': 'cbi-input-select detour-engine', 'title': _('Engine') }, c.engines.map(function(e) {
+						return E('option', { 'value': e, 'selected': e == c.kind ? '' : null, 'disabled': have[e] === false ? '' : null },
+							KIND[e] + (have[e] === false ? ' - ' + _('not installed') : ''));
+					})) : null;
+					engs.push(sel);
+					const one = (c.engines || []).length == 1 && c.kind != 'wg' && c.kind != 'awg';
+					return E('div', { 'class': 'detour-server-row' }, [
+						E('label', { 'class': 'detour-server' }, [ cb, ' ', E('span', {}, [ E('strong', {}, c.label || (c.server + ':' + c.port)),
+							E('span', { 'class': 'detour-muted' }, ' ' + [ c.proto || KIND[c.kind], c.server + ':' + c.port, (many ? null : KIND[c.kind]) ].filter(function(x) { return x; }).join(' · ') + (c.warp ? ' · Cloudflare WARP' : '')) ]) ]),
+						sel ? E('label', { 'class': 'detour-engine-pick' }, [ E('span', { 'class': 'detour-muted' }, _('Engine:')), ' ', sel ]) : '',
+						(one && have[c.kind] === false) ? E('span', { 'class': 'detour-warn' }, _('%s is not installed').format(KIND[c.kind])) : ''
+					]);
 				}));
 				if (!usable) { bAdd.style.display = 'none'; box.replaceChildren(E('div', { 'class': 'alert-message warning' }, _('Nothing here can become an exit.'))); return; }
 				bAdd.style.display = '';
@@ -230,8 +145,8 @@ return view.extend({
 		} }, _('Check what is inside'));
 
 		return card(_('Exit from a link, a key or a file'),
-			_('Paste one or more links (vless, vmess, trojan, ss, hysteria2, tuic, wireguard), an Amnezia vpn:// key, a WireGuard / AmneziaWG config, a sing-box or Xray JSON or a Clash YAML - or choose such a file. Proxies run on sing-box (Xray for Xray configs), WireGuard and AmneziaWG on the router itself.'), [
-			row(_('Link, key or config'), E('div', {}, [ text, E('div', { 'class': 'detour-actions' }, [ bFile, file ]) ])),
+			_('Paste one or more links (vless, vmess, trojan, ss, hysteria2, tuic, wireguard), an Amnezia vpn:// key, a WireGuard / AmneziaWG config, a sing-box or Xray JSON or a Clash YAML - or choose such a file. Proxies run on sing-box or Xray: where both can, you choose; XHTTP only on Xray, HTTP/2, Hysteria2 and TUIC only on sing-box. WireGuard and AmneziaWG run on the router itself.'), [
+			row(_('Link, key or config'), E('div', {}, [ text, E('div', { 'class': 'detour-actions detour-field-actions' }, [ bFile, file ]) ])),
 			row(_('Name'), name, _('Latin letters, digits and _, up to 11. Several servers: name1, name2…')),
 			row(_('Connect to the server'), via,
 				_('Through another exit (for example WARP) when the server itself is blocked by the provider. If that exit fails, this one stops too - nothing goes directly. WireGuard always connects directly.')),
@@ -270,42 +185,10 @@ return view.extend({
 		return card(_('Cloudflare WARP'), _('Registers a new free WARP device at Cloudflare and adds it as an exit.'), body);
 	},
 
-	renderImport: function() {
-		const box = resultBox();
-		const applyBtn = E('button', { 'class': 'btn cbi-button-positive', 'style': 'display:none', 'click': function() {
-			busy(applyBtn, true);
-			return callImportApply().then(function(r) {
-				if (!r || r.error) return result(box, r);
-				box.replaceChildren(E('div', { 'class': 'alert-message success' }, [ _('Imported.'), list('', r.applied) ]));
-				applyBtn.style.display = 'none';
-			}).finally(function() { busy(applyBtn, false); });
-		} }, _('Import these settings'));
-		const btn = E('button', { 'class': 'btn cbi-button-action', 'click': function() {
-			return ui.uploadFile('/tmp/detour-import.tgz').then(function() {
-				busy(btn, true);
-				return callImportCheck();
-			}).then(function(r) {
-				if (!r || r.error) { applyBtn.style.display = 'none'; return result(box, r); }
-				box.replaceChildren(r.preview ? preview(r) : E('div', {}, [
-					list(_('Exits'), r.exits), list(_('Policies'), r.policies), list(_('Lists'), r.lists),
-					list(_('Subscriptions'), r.subscriptions),
-					E('div', {}, _('Always direct: %s').format(r.direct)),
-					list(_('Not carried over'), r.not_carried_over)
-				]));
-				applyBtn.style.display = '';
-			}).catch(function(e) { ui.addNotification(null, E('p', e.message || e), 'danger'); })
-			.finally(function() { busy(btn, false); });
-		} }, _('Choose the backup file…'));
-		return card(_('Import from Detour for stock firmware'),
-			_('The settings backup (.tar.gz) saved in the old Detour panel. First you see what will be carried over; nothing changes until you confirm.'), [
-			actions([ btn, applyBtn ]), box
-		]);
-	},
-
 	render: function() {
 		return E('div', {}, [
 			E('link', { 'rel': 'stylesheet', 'href': L.resource('detour/detour.css') + '?v=' + encodeURIComponent(L.env.resource_version || '') }),
-			E('h2', {}, _('Add and import')), this.renderLink(), this.renderWarp(), this.renderImport()
+			E('h2', {}, _('Add an exit')), this.renderLink(), this.renderWarp()
 		]);
 	},
 

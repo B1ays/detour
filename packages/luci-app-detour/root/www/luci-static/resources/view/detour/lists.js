@@ -47,8 +47,12 @@ function failText(m) {
 	else if ((x = m.match(/^only (\d+) entries \(minimum (\d+)\)$/))) t = _('only %d entries (minimum %d)').format(+x[1], +x[2]);
 	else if ((x = m.match(/^file missing: (.+)$/))) t = _('file missing: %s').format(x[1]);
 	else if ((x = m.match(/^unknown policy '(.+)'$/))) t = _('unknown policy %s').format(x[1]);
+	else if ((x = m.match(/^not enough memory: needs ~([0-9.]+) MB, ([0-9.]+) MB left for lists$/))) t = _('not enough memory on the router: it needs ~%s MB more, %s MB are left for lists').format(x[1], x[2]);
+	else if ((x = m.match(/^download too big for the memory: over (\d+) MB$/))) t = _('the download is bigger than the memory can take (over %d MB)').format(+x[1]);
 	return kept ? t + '; ' + _('the previous list stays in use') : t;
 }
+
+function mbs(b) { const m = Math.max(0, b / 1048576); return m < 10 ? m.toFixed(1) : String(Math.round(m)); }
 
 function policyLabel(n) {
 	if (n == 'direct') return _('never through a tunnel');
@@ -87,7 +91,7 @@ return view.extend({
 				else location.reload();
 			}).finally(function() { busy(bUpdate, false); });
 		} }, _('Update now'));
-		const bEdit = E('button', { 'class': 'btn cbi-button-edit', 'click': function() { self.edit(l); } }, _('Edit'));
+		const bEdit = E('button', { 'class': 'btn', 'click': function() { self.edit(l); } }, _('Edit'));
 		const bToggle = E('button', { 'class': 'btn', 'click': function() { uci.set('detour', name, 'enabled', enabled ? '0' : '1'); return applyUci(); } },
 			enabled ? _('Turn off') : _('Turn on'));
 		const bRemove = E('button', { 'class': 'btn cbi-button-negative', 'click': function() {
@@ -182,9 +186,12 @@ return view.extend({
 		const out = E('div', { 'class': 'detour-servers' }, E('em', {}, _('Loading…')));
 		const have = {};
 		uci.sections('detour', 'list').forEach(function(l) { arr(l.url).forEach(function(u) { have[u] = msg.listTitle(l); }); });
+		// memory: what an entry costs on this router and how much the lists may still take (lists_memory of status)
+		const mem = self.mem || null;
+		const bytes = function(e) { return e.n * (mem ? mem.per[e.kind] : (e.kind == 'cidr' ? 250 : 300)); };
 		const size = function(e) {
 			if (e.n == null) return _('size unknown until added');
-			const b = e.n * (e.kind == 'cidr' ? 100 : 70);
+			const b = bytes(e);
 			return b > 1048576 ? _('~%s MB').format((b / 1048576).toFixed(1)) : _('~%d KB').format(Math.max(1, Math.round(b / 1024)));
 		};
 		let all = [];
@@ -195,12 +202,15 @@ return view.extend({
 					(!q || e.key.indexOf(q) >= 0 || e.title.toLowerCase().indexOf(q) >= 0);
 			}).sort(function(a, b) { return (!q ? 0 : (a.key == q ? -1 : b.key == q ? 1 : 0)) || (b.n || 0) - (a.n || 0); });
 			const rows = hits.slice(0, 60).map(function(e) {
-				const big = e.n != null && e.n > 300000;
+				// does not fit: refused by the router anyway; more than half of what is left: said
+				const nofit = mem && e.n != null && bytes(e) > mem.left;
+				const big = !nofit && mem && e.n != null && bytes(e) > mem.left / 2;
 				return E('div', { 'class': 'detour-server-row' }, [
 					E('span', {}, [ E('strong', {}, e.title), E('span', { 'class': 'detour-muted' },
 						' ' + [ e.src == 'v2fly' ? 'v2fly «' + e.key + '»' : 'runetfreedom «' + e.key + '»' ].concat(e.n != null ? [ N_(e.n, '%d entry', '%d entries').format(e.n), size(e) ] : [ _('new: the number of entries is known once added') ]).join(' · ')) ]),
-					big ? E('span', { 'class': 'detour-delay bad' }, _('very big: the router may run short of memory')) : '',
-					have[e.url] ? E('span', { 'class': 'detour-muted' }, _('already added')) : E('button', { 'class': 'btn', 'click': function() {
+					nofit ? E('span', { 'class': 'detour-delay bad' }, _('does not fit: %s MB are left for lists').format(mbs(mem.left))) : '',
+					big ? E('span', { 'class': 'detour-delay bad' }, _('takes most of the %s MB left for lists').format(mbs(mem.left))) : '',
+					have[e.url] ? E('span', { 'class': 'detour-muted' }, _('already added')) : E('button', { 'class': 'btn', 'disabled': nofit ? '' : null, 'click': function() {
 						ui.hideModal();
 						self.edit(null, { url: e.url, kind: e.kind, label: e.title, name: ('l_' + e.key.replace(/[^a-z0-9_]/g, '_')).slice(0, 20) });
 					} }, _('Add'))
@@ -262,11 +272,18 @@ return view.extend({
 		const self = this;
 		const st = {};
 		((data[1] || {}).lists || []).forEach(function(l) { st[l.name] = l; });
+		this.mem = (data[1] || {}).lists_memory || null;
+		const m = this.mem;
 		const all = uci.sections('detour', 'list');
 		return E('div', {}, [
 			E('link', { 'rel': 'stylesheet', 'href': L.resource('detour/detour.css') + '?v=' + encodeURIComponent(L.env.resource_version || '') }),
 			E('h2', {}, _('Lists')),
 			E('div', { 'class': 'cbi-map-descr' }, _('Big sets of sites or addresses from the internet: everything blocked in Russia, a service (YouTube, Telegram…). Each list goes through a policy or never through a tunnel. They are updated every night; if a source does not answer, the previous list stays in use.')),
+			m ? E('div', { 'class': 'cbi-map-descr detour-mem' }, [
+				E('div', { 'class': 'detour-share', 'title': Math.round(m.used * 100 / Math.max(1, m.cap)) + '%' }, E('div', { 'style': 'width:' + Math.min(100, m.used * 100 / Math.max(1, m.cap)) + '%' })),
+				E('span', {}, _('Memory: the lists take ~%s MB; up to %s MB more can be added (the router has %s MB, %s MB of it stay free for everything else).')
+					.format(mbs(m.used), mbs(m.left), mbs(m.total), mbs(m.reserve)))
+			]) : '',
 			E('div', { 'class': 'cbi-section' }, [
 				E('div', { 'class': 'cbi-section-node detour-node' }, [
 					all.length ? E('div', { 'class': 'detour-cards' }, all.map(function(l) { return self.renderList(l, st); }))

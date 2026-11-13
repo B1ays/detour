@@ -1,0 +1,7 @@
+name=dnsproxy
+version=0.86.0-r1
+arch=aarch64_cortex-a73
+description=AdGuard dnsproxy (DoH/DoT/DoQ), the official static release binary as /usr/bin/dnsproxy, and the system user dnsproxy: Detour's direct encrypted DNS fallback, for builds whose feeds have no dnsproxy (Beam WRT)
+license=Apache-2.0
+depends=ca-bundle
+prepare=tools/fetch-dnsproxy.sh

@@ -147,6 +147,7 @@ export function api_port(engine) {
 }
 
 function read_outbound(e) {
+	if (e.given) return { o: e.given, all: [ e.given ] };   // test(): an outbound not written anywhere yet
 	const s = e.outbound ? fs.readfile(e.outbound) : null;
 	if (!s) return { error: 'outbound file missing: ' + (e.outbound ?? '(not set)') };
 	let o;
@@ -178,7 +179,8 @@ export function render(e) {
 			const hit = filter(map(all, (x, i) => [ x, i ]), (p) => server_key(p[0], names[p[1]]) == e.pick);
 			if (length(hit)) all = [ hit[0][0] ];
 		}
-		for (let i, x in all) {
+		for (let i, x0 in all) {
+			const x = links.for_singbox(x0);   // what only Xray reads (links.uc "_x") is an error to sing-box
 			x.tag = (length(all) > 1) ? sprintf('s%d', i + 1) : 'out';
 			x.routing_mark = M_UNDERLAY;
 			if (e.via_dev) x.bind_interface = e.via_dev;
@@ -229,6 +231,27 @@ export function prepare() {
 		push(lines, sprintf('%s\t%s\trun -c %s', e.name, BIN[e.type], f));
 	}
 	return { lines, errors };
+}
+
+// does the engine itself take this outbound? The config an exit would get, checked by the binary
+// ("sing-box check" / "xray run -test"); null when it does, else the engine's first complaint
+export function test(etype, outbound) {
+	if (!BIN[etype] || !fs.access(BIN[etype])) return (etype == 'xray' ? 'xray-core' : 'sing-box') + ' is not installed';
+	const r = render({ name: 'test', type: etype, idx: 499, device: 'entest0', given: json(sprintf('%J', outbound)) });
+	if (r.error) return r.error;
+	fs.mkdir(RUN); fs.mkdir(DIR);
+	const f = sprintf('%s/.test-%s.json', DIR, etype);
+	fs.writefile(f, ''); fs.chmod(f, 0600);
+	fs.writefile(f, sprintf('%J', r.config));
+	const t = run(etype == 'xray' ? sprintf("xray run -test -c '%s' 2>&1", f) : sprintf("sing-box check -c '%s' 2>&1", f));
+	fs.unlink(f);
+	if (t.code == 0) return null;
+	// the reason, without the engine's prefixes and colours
+	let why = trim(replace(t.out, /\x1b\[[0-9;]*m/g, ''));
+	const ls = filter(split(why, '\n'), (l) => match(l, /Failed to start|FATAL|ERROR|error/));
+	why = length(ls) ? ls[length(ls) - 1] : why;
+	why = replace(why, /^.*(Failed to start: main: failed to load config files: \[[^\]]*\] > |FATAL\[[0-9]+\] )/, '');
+	return substr(why, 0, 300);
 }
 
 // Xray creates its tun device down; sing-box brings its own up
