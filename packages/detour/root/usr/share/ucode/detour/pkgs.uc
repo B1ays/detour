@@ -49,11 +49,23 @@ function used_by(id) {
 	return out;
 }
 
+// the output of a command through a file: in the daemon a pipe read can be cut short by a signal (its probes'
+// processes end all the time), and a long apk answer then came back empty now and then
+let nout = 0;
+function out_of(cmd) {
+	fs.mkdir(RUN); fs.mkdir(D);
+	const f = sprintf('%s/.out%d', D, ++nout);
+	run(cmd + ' > ' + f + ' 2>/dev/null');
+	const o = fs.readfile(f) ?? '';
+	fs.unlink(f);
+	return o;
+}
+
 // "apk list a b c" -> { name: { installed, upgrade, available } } (versions; the local index only)
 function apk_state(list) {
 	const st = {};
 	for (let n in list) st[n] = { installed: null, upgrade: null, available: null };
-	const out = run('apk list ' + join(' ', map(list, shq)) + ' 2>/dev/null').out;
+	const out = out_of('apk list ' + join(' ', map(list, shq)));
 	for (let l in split(out, '\n')) {
 		for (let n in list) {
 			const m = match(l, regexp('^' + replace(n, /[.+]/g, '\\$&') + '-([0-9][^ ]*) '));
@@ -87,20 +99,75 @@ export function job() {
 	return s;
 }
 
+// "apk query" as JSON: [ { name, version, installed-size, file-size, status } ] (opts: --installed, --from
+// repositories, --recursive: what an install takes with its dependencies)
+function apk_query(opts, list) {
+	if (!length(list)) return [];
+	const o = out_of(sprintf('apk query %s --format json --fields name,version,installed-size,file-size,status %s', opts, join(' ', map(list, shq))));
+	let j = null;
+	try { j = json(o); } catch (e) { j = null; }
+	return (type(j) == 'array') ? j : [];
+}
+const is_inst = (q) => index(q.status ?? [], 'installed') >= 0;
+
+// the space where packages go (the root, or the overlay over it): { free, total } in bytes; df's numbers are
+// counted from the end of its line (a long device name may come first)
+function space() {
+	const L = filter(split(trim(out_of('df -k /usr/lib')), '\n'), (l) => match(l, /[0-9]+%/));
+	const f = split(trim(L[length(L) - 1] ?? ''), /\s+/), n = length(f);
+	if (n < 5) return null;
+	return { total: int(f[n - 5]) * 1024, free: int(f[n - 3]) * 1024 };
+}
+
+// the packages an install of a component takes: all its missing ones, or the first the index has (any)
+function install_set(c, pk) {
+	if (c.any) { const p = filter(pk, (x) => x.installed || x.available || x.upgrade)[0]; return p ? [ p.name ] : []; }
+	return map(filter(pk, (x) => !x.installed), (x) => x.name);
+}
+
 function list_now() {
 	const st = apk_state(names());
+	// the sizes: of what is installed, and of the repositories' versions (for an update)
+	const isz = {}, rsz = {};
+	for (let q in apk_query('--installed', names())) isz[q.name] = q;
+	for (let q in apk_query('--from repositories', names())) rsz[q.name] = q;
 	const out = [];
 	for (let c in COMPONENTS) {
 		const pk = map(c.pkgs, (n) => ({ name: n, ...st[n] }));
-		const inst = filter(pk, (p) => p.installed);
+		const inst_pk = (l) => filter(l, (p) => p.installed);
+		const inst = inst_pk(pk);
 		const installed = c.any ? length(inst) > 0 : length(inst) == length(pk);
 		// what an install takes: the first that the index has (any), or all of them
 		const can = c.any ? length(filter(pk, (p) => p.installed || p.available || p.upgrade)) > 0
 			: length(filter(pk, (p) => p.installed || p.available || p.upgrade)) == length(pk);
-		push(out, { id: c.id, core: !!c.core, installed, available: can, upgradable: length(filter(pk, (p) => p.upgrade)) > 0,
-			packages: pk, used: installed ? used_by(c.id) : [] });
+		const upgradable = length(filter(pk, (p) => p.upgrade)) > 0;
+		// installed: what it takes now; not yet: what an install adds (with the dependencies not installed yet) and
+		// downloads; an update: how much bigger it gets
+		let size = 0, need = null, up = null;
+		for (let p in inst) size += isz[p.name]?.['installed-size'] ?? 0;
+		if (!installed && can) {
+			const set = install_set(c, pk), rq = apk_query('--recursive', set);
+			if (length(rq)) {
+				need = { add: 0, download: 0, deps: [] };
+				for (let q in rq) {
+					if (is_inst(q)) continue;
+					need.add += q['installed-size'] ?? 0;
+					need.download += q['file-size'] ?? 0;
+					if (index(set, q.name) < 0) push(need.deps, q.name);
+				}
+			}
+		}
+		if (installed && upgradable) {
+			up = { add: 0, download: 0 };
+			for (let p in pk) if (p.upgrade && rsz[p.name] && isz[p.name]) {
+				up.add += max(0, (rsz[p.name]['installed-size'] ?? 0) - (isz[p.name]['installed-size'] ?? 0));
+				up.download += rsz[p.name]['file-size'] ?? 0;
+			}
+		}
+		push(out, { id: c.id, core: !!c.core, installed, available: can, upgradable,
+			packages: pk, used: installed ? used_by(c.id) : [], size, need, upgrade_need: up });
 	}
-	return { components: out, index_ts: index_time() };
+	return { components: out, index_ts: index_time(), space: space() };
 }
 
 export function list() {

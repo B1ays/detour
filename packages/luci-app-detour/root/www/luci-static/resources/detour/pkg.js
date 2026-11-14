@@ -21,6 +21,9 @@ const TITLES = { detour: 'Detour', singbox: 'sing-box', xray: 'Xray', awg: 'Amne
 	zlib: 'ucode-mod-zlib', qrencode: 'qrencode', tcpdump: 'tcpdump', nlbwmon: 'nlbwmon' };
 
 let cached = null;    // the last pkg_list answer of this page
+const RESERVE = 2 * 1048576;   // left free after an install: configs, logs, the next update
+
+function mb(b) { return '%1024.1mB'.format(b || 0); }
 
 const ERRORS = {
 	'unknown action': function() { return _('Unknown action'); },
@@ -38,6 +41,23 @@ return baseclass.extend({
 	list: function() { return callList().then(function(r) { cached = r; return r; }); },
 
 	title: function(id) { return TITLES[id] || id; },
+
+	size: mb,
+
+	// does what an action adds fit into the free space (with a little left)? null: unknown (no df or no sizes)
+	fits: function(add, space) {
+		if (!space || add == null) return null;
+		return add + RESERVE <= space.free;
+	},
+
+	// "takes 52 MiB" / "will take ≈ 54 MiB, download 18 MiB, with: a, b" / "+2 MiB" for an update
+	weight: function(c) {
+		if (c.installed && c.upgrade_need) return _('takes %s; the update adds %s, download %s').format(mb(c.size), mb(c.upgrade_need.add), mb(c.upgrade_need.download));
+		if (c.installed) return c.size ? _('takes %s').format(mb(c.size)) : '';
+		if (c.need) return (c.need.deps.length ? _('will take %s, download %s, together with: %s') : _('will take %s, download %s'))
+			.format(mb(c.need.add), mb(c.need.download), c.need.deps.join(', '));
+		return '';
+	},
 
 	what: function(id) {
 		return ({
@@ -116,7 +136,12 @@ return baseclass.extend({
 					: _('(the package list was never downloaded: Components → Update the list)')));
 				return;
 			}
-			dom.content(act, E('button', { 'class': 'btn cbi-button-action', 'click': function(ev) {
+			if (c.need && self.fits(c.need.add, r.space) === false) {
+				dom.content(act, E('span', { 'class': 'detour-bad' }, _('Not enough space: it needs %s, %s is free.').format(mb(c.need.add), mb(r.space.free))));
+				return;
+			}
+			if (c.need) act.appendChild(E('span', { 'class': 'detour-muted' }, '(' + self.weight(c) + ') '));
+			act.appendChild(E('button', { 'class': 'btn cbi-button-action', 'click': function(ev) {
 				ev.preventDefault();
 				return self.run('install', self.installSet(c), _('Installing %s').format(self.title(id)));
 			} }, _('Install the component %s').format(self.title(id))));

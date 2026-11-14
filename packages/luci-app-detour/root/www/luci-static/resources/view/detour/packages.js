@@ -30,20 +30,26 @@ return view.extend({
 		const v = c.packages.filter(function(p) { return p.installed; }).map(function(p) { return p.installed; })[0];
 		if (c.installed && c.upgradable) {
 			const to = c.packages.filter(function(p) { return p.upgrade; }).map(function(p) { return p.upgrade; })[0];
-			return E('span', {}, [ E('span', { 'class': 'detour-badge warn' }, _('update available')), ' ', v || '', ' → ', to || '' ]);
+			return E('div', { 'class': 'detour-pkg-state' }, [ E('span', { 'class': 'detour-badge warn' }, _('update available')), E('span', {}, (v || '') + ' → ' + (to || '')) ]);
 		}
-		if (c.installed) return E('span', {}, [ E('span', { 'class': 'detour-badge ok' }, _('installed')), ' ', v || '' ]);
-		if (c.available) return E('span', { 'class': 'detour-badge off' }, _('not installed'));
+		if (c.installed) return E('div', { 'class': 'detour-pkg-state' }, [ E('span', { 'class': 'detour-badge ok' }, _('installed')), E('span', {}, v || '') ]);
+		if (c.available) return E('div', { 'class': 'detour-pkg-state' }, E('span', { 'class': 'detour-badge off' }, _('not installed')));
 		return E('span', { 'class': 'detour-muted' }, _('not in the repositories of this firmware'));
 	},
 
-	actions: function(c) {
+	actions: function(c, space) {
 		const out = [];
 		const name = pkg.title(c.id);
-		if (!c.installed && c.available)
+		// what does not fit is not offered: a full flash breaks more than the package (configs, the next boot)
+		const noRoom = function(add) {
+			return E('div', { 'class': 'detour-bad' }, _('Not enough space: it needs %s, %s is free.').format(pkg.size(add), pkg.size(space.free)));
+		};
+		if (!c.installed && c.available && c.need && pkg.fits(c.need.add, space) === false) out.push(noRoom(c.need.add));
+		else if (!c.installed && c.available)
 			out.push(E('button', { 'class': 'btn cbi-button-action', 'click': function() {
 				return pkg.run('install', pkg.installSet(c), _('Installing %s').format(name)); } }, _('Install')));
-		if (c.installed && c.upgradable)
+		if (c.installed && c.upgradable && c.upgrade_need && pkg.fits(c.upgrade_need.add, space) === false) out.push(noRoom(c.upgrade_need.add));
+		else if (c.installed && c.upgradable)
 			out.push(E('button', { 'class': 'btn cbi-button-action', 'click': function() {
 				const p = c.packages.filter(function(x) { return x.upgrade; }).map(function(x) { return x.name; });
 				return pkg.run('upgrade', p, _('Updating %s').format(name)); } }, _('Update to the new version')));
@@ -62,26 +68,36 @@ return view.extend({
 		if (!r) return E('div', {}, [ css(), E('h2', {}, _('Components')),
 			E('div', { 'class': 'alert-message warning' }, _('The Detour service is not running.')) ]);
 		const rows = [ E('tr', { 'class': 'tr table-titles' }, [
-			E('th', { 'class': 'th' }, _('Component')), E('th', { 'class': 'th' }, _('What it gives')),
+			E('th', { 'class': 'th' }, _('Component')), E('th', { 'class': 'th' }, _('Purpose')),
 			E('th', { 'class': 'th' }, _('State')), E('th', { 'class': 'th' }, '') ]) ];
 		r.components.forEach(function(c) {
 			rows.push(E('tr', { 'class': 'tr' }, [
 				td(_('Component'), [ E('strong', {}, pkg.title(c.id)), E('br'), E('span', { 'class': 'detour-muted' }, c.packages.map(function(p) { return p.name; }).join(c.id == 'tcpdump' ? ' / ' : ', ')) ]),
-				td(_('What it gives'), [ pkg.what(c.id), c.used.length ? E('div', { 'class': 'detour-muted' }, _('In use: %s').format(usedText(c.used))) : '' ]),
-				td(_('State'), self.state(c)),
-				td('', self.actions(c))
+				td(_('Purpose'), [ pkg.what(c.id), c.used.length ? E('div', { 'class': 'detour-muted' }, _('In use: %s').format(usedText(c.used))) : '' ]),
+				td(_('State'), [ self.state(c), pkg.weight(c) ? E('div', { 'class': 'detour-pkg-weight' }, pkg.weight(c)) : '' ]),
+				td('', self.actions(c, r.space))
 			]));
 		});
 		const when = r.index_ts ? new Date(r.index_ts * 1000).toLocaleString() : _('never');
-		const head = E('div', { 'class': 'detour-actions' }, [
-			E('span', {}, _('The package list of the repositories: %s').format(when)),
+		// the space for packages: a bar, and a warning when little is left (an update of sing-box takes ~50 MiB)
+		const sp = r.space;
+		const used = sp ? (sp.total - sp.free) : 0;
+		const low = sp && sp.free < 10 * 1048576;
+		const head = E('div', { 'class': 'detour-pkg-top' }, [
+			E('div', { 'class': 'detour-space' }, [
+				sp ? E('div', {}, [ E('strong', {}, _('Free for packages:') + ' '), _('%s of %s').format(pkg.size(sp.free), pkg.size(sp.total)) ]) : '',
+				sp ? E('div', { 'class': 'detour-share' + (low ? ' low' : ''), 'title': Math.round(used * 100 / Math.max(1, sp.total)) + '%' },
+					E('div', { 'style': 'width:' + Math.min(100, used * 100 / Math.max(1, sp.total)) + '%' })) : '',
+				E('div', { 'class': 'detour-muted' }, _('The package list of the repositories: %s').format(when))
+			]),
 			E('button', { 'class': 'btn', 'click': function() { return pkg.run('update', [], _('Updating the package list')); } }, _('Update the list'))
 		]);
+		const space = low ? E('div', { 'class': 'alert-message warning' }, _('Little space is left: %s. Installing or updating a component may fail, and a full flash can stop the router from saving its settings. Remove what is not used, or move the overlay to a USB drive (extroot).').format(pkg.size(sp.free))) : '';
 		const view = E('div', {}, [
 			css(),
 			E('h2', {}, _('Components')),
 			E('div', { 'class': 'cbi-map-descr' }, _('The packages Detour uses. Only these are installed, updated or removed here - never the rest of the firmware. An update of Detour itself restarts it: the page reloads after it.')),
-			E('div', { 'class': 'cbi-section' }, [ head, E('table', { 'class': 'table' }, rows) ])
+			E('div', { 'class': 'cbi-section' }, [ head, space, E('table', { 'class': 'table' }, rows) ])
 		]);
 		// an action that is still running (the page was reloaded meanwhile): follow it
 		if (r.job && r.job.running) window.setTimeout(function() { self.follow(r.job); }, 0);

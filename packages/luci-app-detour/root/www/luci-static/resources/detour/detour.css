@@ -125,6 +125,16 @@ pre.detour-key {
 .detour-ok { color: var(--success-color-high, #2e7d32); }
 .detour-bad { color: var(--error-color-high, #c62828); }
 .detour-offer { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+/* "Components": the space for packages, the bar and the package list on one edge, the button at the right of
+   the same row; the bar is red when little is left */
+.detour-pkg-top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .75rem 1.5rem;
+	padding: 0 var(--section-inset, 1rem); margin-bottom: var(--field-gap, 1rem); }
+.detour-space { flex: 1 1 18rem; display: flex; flex-direction: column; gap: .4rem; }
+.detour-space .detour-share { width: 100%; max-width: 32rem; height: .5rem; }
+/* a component's state: the badge and the version apart, the weight under them */
+.detour-pkg-state { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .6rem; }
+.detour-pkg-weight { margin-top: .5rem; font-size: 1em; opacity: .75; }
+.detour-space .detour-share.low > div { background: var(--error-color-high, #c62828); }
 .detour-details summary {
 	cursor: pointer;
 	padding: .25rem 0;

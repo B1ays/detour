@@ -1441,6 +1441,9 @@ msgstr "установлен"
 msgid "not in the repositories of this firmware"
 msgstr "нет в репозиториях этой прошивки"
 
+msgid "Not enough space: it needs %s, %s is free."
+msgstr "Не хватит места: нужно %s, свободно %s."
+
 msgid "Installing %s"
 msgstr "Установка %s"
 
@@ -1468,14 +1471,20 @@ msgstr "Компоненты"
 msgid "Component"
 msgstr "Компонент"
 
-msgid "What it gives"
-msgstr "Что даёт"
+msgid "Purpose"
+msgstr "Назначение"
 
 msgid "In use: %s"
 msgstr "Используется: %s"
 
 msgid "never"
 msgstr "ни разу"
+
+msgid "Free for packages:"
+msgstr "Свободно для пакетов:"
+
+msgid "%s of %s"
+msgstr "%s из %s"
 
 msgid "The package list of the repositories: %s"
 msgstr "Список пакетов репозиториев: %s"
@@ -1485,6 +1494,9 @@ msgstr "Обновление списка пакетов"
 
 msgid "Update the list"
 msgstr "Обновить список"
+
+msgid "Little space is left: %s. Installing or updating a component may fail, and a full flash can stop the router from saving its settings. Remove what is not used, or move the overlay to a USB drive (extroot)."
+msgstr "Места осталось мало: %s. Установка или обновление компонента может не пройти, а на переполненной флеш-памяти роутер не сможет сохранять настройки. Удалите неиспользуемое или перенесите overlay на USB-накопитель (extroot)."
 
 msgid "The packages Detour uses. Only these are installed, updated or removed here - never the rest of the firmware. An update of Detour itself restarts it: the page reloads after it."
 msgstr "Пакеты, которые использует Detour. Здесь устанавливаются, обновляются и удаляются только они — остальная прошивка не затрагивается. Обновление самого Detour перезапускает его: после этого страница перезагрузится."
@@ -2340,6 +2352,18 @@ msgstr "Уже выполняется другое действие с паке�
 
 msgid "%s is not removed from here"
 msgstr "%s здесь не удаляется"
+
+msgid "takes %s; the update adds %s, download %s"
+msgstr "занимает %s; обновление добавит %s, загрузка %s"
+
+msgid "takes %s"
+msgstr "занимает %s"
+
+msgid "will take %s, download %s, together with: %s"
+msgstr "займёт %s, загрузка %s, вместе с: %s"
+
+msgid "will take %s, download %s"
+msgstr "займёт %s, загрузка %s"
 
 msgid "Detour itself and its web interface"
 msgstr "Сам Detour и его веб-интерфейс"
