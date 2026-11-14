@@ -6,6 +6,7 @@
 'require dom';
 'require uci';
 'require detour.msg as msg';
+'require detour.chart as chart';
 
 // Text from the router (names of exits and servers come from subscriptions and links) never becomes HTML:
 // LuCI's E() puts a string child in with innerHTML, here it always goes in as a text node.
@@ -21,7 +22,15 @@ const callRates = rpc.declare({ object: 'detour', method: 'rates' });
 
 const RATE_EVERY = 3;          // s between two readings of the counters
 const RATE_POINTS = 100;       // 100 x 3 s = 5 min
-const COLORS = [ '#1e88e5', '#8e24aa', '#f4511e', '#00897b', '#6d4c41', '#c0ca33' ];
+
+// bytes in LuCI's own units (as on the Traffic page)
+function bytes(b) { return '%1024.2mB'.format(b || 0); }
+
+// a total under a chart, and a value in its head
+function chartStat(label, value) { return E('div', { 'class': 'detour-chart-stat' }, [ E('div', { 'class': 'detour-chart-label' }, label), E('div', { 'class': 'detour-chart-value' }, value) ]); }
+function chartPill(cls, arrow, label, value) {
+	return E('span', {}, [ E('span', { 'class': 'detour-c-' + cls }, arrow + ' '), label + ' ', E('strong', {}, value) ]);
+}
 
 // a country code -> its flag (regional indicator letters); nothing for anything else
 function flag(cc) {
@@ -107,18 +116,25 @@ return view.extend({
 		return E('div', { 'id': 'detour-ip', 'class': 'detour-ip' }, rows);
 	},
 
-	// the speed of the last 5 minutes: the provider's line and each exit, download (or upload)
+	// the speed of the last 5 minutes of one source (all the traffic, or an exit): download and upload as two
+	// smooth curves (detour.chart), the speed now in the head, the totals of its counters and the window average below
 	rateBox: function() {
 		const self = this;
-		this.hist = [];       // [ { t, wan: [rx, tx], exits: { name: [rx, tx] } } ] - per-second rates
-		this.last = null;
-		this.dir = 0;         // 0 download, 1 upload
-		const sel = E('select', { 'class': 'cbi-input-select', 'change': function() { self.dir = +sel.value; self.drawRates(); } }, [
-			E('option', { 'value': '0' }, _('download')), E('option', { 'value': '1' }, _('upload')) ]);
-		this.graph = E('div', { 'class': 'detour-graph' }, E('em', {}, _('Measuring…')));
-		this.legend = E('div', { 'class': 'detour-legend' });
-		return E('div', { 'class': 'detour-node' }, [ E('div', { 'class': 'detour-actions' }, [ sel, E('span', { 'class': 'detour-muted' }, _('the last 5 minutes, every %d s').format(RATE_EVERY)) ]),
-			E('div', { 'class': 'detour-result' }, [ this.graph, this.legend ]) ]);
+		this.hist = [];       // [ { t (router uptime, ms), at (browser clock), wan: [rx, tx], exits: { name: [rx, tx] } } ] - bits per second
+		this.last = null;     // the last answer: the counters (bytes) for the totals
+		this.src = '';        // '' all the traffic (the provider's line), else an exit's name
+		this.srcSel = E('select', { 'class': 'cbi-input-select', 'change': function() { self.src = self.srcSel.value; self.drawRates(); } },
+			[ E('option', { 'value': '' }, _('All the traffic')) ]);
+		this.rateNow = E('div', { 'class': 'detour-chart-now' });
+		this.rateSub = E('div', { 'class': 'detour-chart-sub' }, _('the last 5 minutes, every %d s').format(RATE_EVERY));
+		this.rateFoot = E('div', { 'class': 'detour-chart-foot' });
+		this.chart = chart.create(function() { self.drawRates(); });
+		return E('div', { 'class': 'detour-chart-card' }, [
+			E('div', { 'class': 'detour-chart-head' }, [
+				E('div', {}, [ E('div', { 'class': 'detour-chart-title' }, _('Speed')), this.rateSub ]),
+				this.rateNow ]),
+			E('div', { 'class': 'detour-chart-bar' }, this.srcSel),
+			this.chart.el, this.rateFoot ]);
 	},
 
 	pollRates: function() {
@@ -128,39 +144,54 @@ return view.extend({
 			if (self.last && r.t > self.last.t) {
 				const dt = (r.t - self.last.t) / 1000;
 				const d = function(a, b) { return (a && b && a[0] >= b[0] && a[1] >= b[1]) ? [ (a[0] - b[0]) * 8 / dt, (a[1] - b[1]) * 8 / dt ] : null; };
-				const p = { t: r.t, wan: r.wan && self.last.wan ? d([ r.wan.rx, r.wan.tx ], [ self.last.wan.rx, self.last.wan.tx ]) : null, exits: {} };
+				const p = { t: r.t, at: Date.now(), wan: r.wan && self.last.wan ? d([ r.wan.rx, r.wan.tx ], [ self.last.wan.rx, self.last.wan.tx ]) : null, exits: {} };
 				for (const n in r.exits) { const v = d(r.exits[n], (self.last.exits || {})[n]); if (v) p.exits[n] = v; }
 				self.hist.push(p);
-				if (self.hist.length > RATE_POINTS) self.hist.shift();
-				self.drawRates();
+				if (self.hist.length > RATE_POINTS) { self.hist.shift(); if (self.chart.hover != null) self.chart.hover = Math.max(0, self.chart.hover - 1); }
 			}
 			self.last = r;
+			self.drawRates();
 		});
 	},
 
+	// the exits seen in the counters, in the select (kept as they come and go)
+	rateSources: function() {
+		const sel = this.srcSel, have = {};
+		Array.prototype.forEach.call(sel.options, function(o) { have[o.value] = o; });
+		const names = Object.keys((this.last && this.last.exits) || {}).sort();
+		names.forEach(function(n) { if (!have[n]) sel.appendChild(E('option', { 'value': n }, _('Exit «%s»').format(this.lab(n)))); }, this);
+		Array.prototype.slice.call(sel.options).forEach(function(o) { if (o.value && names.indexOf(o.value) < 0) o.remove(); });
+		this.src = sel.value;
+	},
+
 	drawRates: function() {
-		const self = this, h = this.hist, k = this.dir;
-		if (h.length < 2) return;
-		const names = [];
-		h.forEach(function(p) { for (const n in p.exits) if (names.indexOf(n) < 0) names.push(n); });
-		const series = [ { name: _('Provider line (everything)'), color: '#757575', get: function(p) { return p.wan ? p.wan[k] : null; } } ]
-			.concat(names.map(function(n, i) { return { name: self.lab(n), color: COLORS[i % COLORS.length], get: function(p) { return p.exits[n] ? p.exits[n][k] : null; } }; }));
-		let max = 1;
-		h.forEach(function(p) { series.forEach(function(s) { const v = s.get(p); if (v > max) max = v; }); });
-		const W = 600, H = 160, step = W / (RATE_POINTS - 1), x0 = W - (h.length - 1) * step;
-		const svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" class="detour-graph-svg">' +
-			[ 0.25, 0.5, 0.75 ].map(function(f) { return '<line x1="0" x2="' + W + '" y1="' + (H * f) + '" y2="' + (H * f) + '" class="detour-grid"/>'; }).join('') +
-			series.map(function(s) {
-				const pts = [];
-				h.forEach(function(p, i) { const v = s.get(p); if (v != null) pts.push((x0 + i * step).toFixed(1) + ',' + (H - v / max * (H - 4)).toFixed(1)); });
-				return pts.length > 1 ? '<polyline fill="none" stroke="' + s.color + '" stroke-width="2" vector-effect="non-scaling-stroke" points="' + pts.join(' ') + '"/>' : '';
-			}).join('') + '</svg>';
-		this.graph.innerHTML = '<div class="detour-graph-max">' + mbit(max) + '</div>' + svg;
-		const now = h[h.length - 1];
-		dom.content(this.legend, series.map(function(s) {
-			const v = s.get(now);
-			return E('span', {}, [ E('span', { 'class': 'detour-dot', 'style': 'background:' + s.color }), s.name + ': ', E('strong', {}, v == null ? '—' : mbit(v)) ]);
-		}));
+		const self = this, h = this.hist, src = this.src;
+		this.rateSources();
+		const vals = h.map(function(p) { return src ? (p.exits[src] || null) : p.wan; });
+		// the totals: the counters of the source, since its interface came up
+		const cnt = this.last ? (src ? (this.last.exits || {})[src] : (this.last.wan ? [ this.last.wan.rx, this.last.wan.tx ] : null)) : null;
+		const seen = vals.filter(function(v) { return v; });
+		const avg = function(k) { return seen.reduce(function(a, v) { return a + v[k]; }, 0) / seen.length; };
+		dom.content(this.rateFoot, [
+			chartStat(_('Received'), cnt ? bytes(cnt[0]) : '—'),
+			chartStat(_('Sent'), cnt ? bytes(cnt[1]) : '—'),
+			chartStat(_('Average for the window'), seen.length ? '↓ ' + mbit(avg(0)) + '  ↑ ' + mbit(avg(1)) : '—') ]);
+		const hv = this.chart.hover;
+		const show = hv != null ? vals[hv] : vals[vals.length - 1];
+		dom.content(this.rateNow, [ chartPill('mute', '↓', _('Downloading'), show ? mbit(show[0]) : '—'), chartPill('acc', '↑', _('Uploading'), show ? mbit(show[1]) : '—') ]);
+		let max = 0;
+		seen.forEach(function(v) { max = Math.max(max, v[0], v[1]); });
+		if (h.length > 1) this.rateSub.textContent = _('the last 5 minutes, every %d s').format(RATE_EVERY) + ' · ' + _('peak %s').format(mbit(max));
+		chart.draw(this.chart, {
+			n: h.length, slots: RATE_POINTS, minTop: 1e5, fmt: mbit,
+			series: [ { cls: 'mute', vals: vals.map(function(v) { return v ? v[0] : null; }) }, { cls: 'acc', vals: vals.map(function(v) { return v ? v[1] : null; }) } ],
+			tip: function(i) {
+				const v = vals[i];
+				return [ E('div', { 'class': 'detour-muted' }, new Date(h[i].at).toLocaleTimeString()),
+					E('div', {}, [ E('span', { 'class': 'detour-c-mute' }, '↓ '), v ? mbit(v[0]) : '—' ]),
+					E('div', {}, [ E('span', { 'class': 'detour-c-acc' }, '↑ '), v ? mbit(v[1]) : '—' ]) ];
+			}
+		});
 	},
 
 	renderPolicies: function(st) {
@@ -174,7 +205,7 @@ return view.extend({
 		(st.policies || []).forEach(function(p) {
 			if (p.block || p.action == 'direct') {
 				rows.push(E('tr', { 'class': 'tr' }, [
-					td(_('Policy'), [ self.lab(p.name), p.enabled ? '' : ' (' + _('disabled') + ')' ]),
+					td(_('Policy'), [ self.lab(p.name), p.enabled ? '' : ' (' + _('switched off') + ')' ]),
 					td(_('Active exit'), E('strong', {}, p.block ? _('blocks') : _('directly'))),
 					td(_('Exits in order'), p.block && st.blocked ? _('refused: %d').format(st.blocked) : '—'),
 					td(_('Manual choice'), '')
@@ -185,7 +216,7 @@ return view.extend({
 				p.exits.map(function(x) { return E('option', { 'value': x, 'selected': p.pinned == x ? '' : null }, self.lab(x)); })));
 			sel.addEventListener('change', ui.createHandlerFn(self, 'pinHandler', p.name, sel));
 			rows.push(E('tr', { 'class': 'tr' }, [
-				td(_('Policy'), [ self.lab(p.name), p.enabled ? '' : ' (' + _('disabled') + ')' ]),
+				td(_('Policy'), [ self.lab(p.name), p.enabled ? '' : ' (' + _('switched off') + ')' ]),
 				td(_('Active exit'), E('strong', {}, p.direct ? _('none - goes directly') : (p.active ? self.lab(p.active) : _('none - blocked')))),
 				td(_('Exits in order'), p.exits.map(function(x) { return self.lab(x); }).join(' → ')),
 				td(_('Manual choice'), sel)
@@ -207,7 +238,7 @@ return view.extend({
 			rows.push(E('tr', { 'class': 'tr' }, [
 				td(_('Exit'), self.lab(x.name)),
 				td(_('Device'), x.colo ? [ x.device, ' ', E('small', { 'title': _('Cloudflare point the WARP tunnel lands on') }, '(' + x.colo + ')') ] : x.device),
-				td(_('State'), !x.enabled ? _('disabled') : badge(x.healthy, _('working'), x.up ? _('not responding') : _('down'))),
+				td(_('State'), !x.enabled ? _('switched off') : badge(x.healthy, _('working'), x.up ? _('not responding') : _('down'))),
 				td(_('Last good probe'), x.probe ? fmtTime(x.last_ok) : _('device state only')),
 				td(_('Blocked leaks'), String(x.drops || 0))
 			]));
@@ -256,7 +287,7 @@ return view.extend({
 			css(),
 			E('h2', {}, _('Detour')),
 			E('div', { 'class': 'cbi-section' }, [ E('div', { 'class': 'detour-node' }, [ E('div', { 'class': 'detour-result detour-lines' }, [ this.vpnSwitch(on), this.renderIp(st) ]) ]) ]),
-			E('div', { 'class': 'cbi-section' }, [ E('h3', {}, _('Speed')), this.rateBox() ]),
+			E('div', { 'class': 'cbi-section' }, this.rateBox()),
 			E('div', { 'class': 'cbi-section' }, [ E('h3', {}, _('Policies')), this.renderPolicies(st) ]),
 			E('div', { 'class': 'cbi-section' }, [ E('h3', {}, _('Exits')), this.renderExits(st) ]),
 			E('div', { 'class': 'cbi-section' }, [ E('h3', {}, _('State')), this.renderInfo(st) ]),

@@ -214,7 +214,7 @@ msgstr "На роутере уже есть сетевые интерфейсы 
 msgid "The backup file is damaged or was altered - refusing it."
 msgstr "Файл копии повреждён или изменён — восстановление отклонено."
 
-msgid "none"
+msgid "nothing"
 msgstr "нет"
 
 msgid "The passwords differ."
@@ -325,7 +325,7 @@ msgstr "Сначала введите пароль копии."
 msgid "Choose the backup file…"
 msgstr "Выбрать файл резервной копии…"
 
-msgid "Restore"
+msgid "Restoring the settings"
 msgstr "Восстановление"
 
 msgid "A backup saved on this page, on this router or another one. First you see what it holds; nothing changes until you confirm. Settings of an older Detour are brought up to date."
@@ -685,7 +685,7 @@ msgstr "Пакет-имитация (I1)"
 msgid "A packet that looks like another protocol (for example QUIC) sent before the handshake. For WARP Detour makes it itself."
 msgstr "Пакет, похожий на другой протокол (например, QUIC), отправляется перед рукопожатием. Для WARP Detour создаёт его сама."
 
-msgid "off"
+msgid "switched off"
 msgstr "выключено"
 
 msgid "working"
@@ -876,9 +876,6 @@ msgstr "Адрес Cloudflare WARP. С плохой точки (DME) Detour ув
 
 msgid "Server port"
 msgstr "Порт сервера"
-
-msgid "MTU"
-msgstr "MTU"
 
 msgid "Packet size inside the tunnel. Lower it (1280) if some sites hang while others work."
 msgstr "Размер пакета в туннеле. Уменьшите (1280), если одни сайты зависают, а другие работают."
@@ -1297,20 +1294,29 @@ msgstr "Всё идёт напрямую через провайдера: без
 msgid "Cloudflare point: %s"
 msgstr "Точка Cloudflare: %s"
 
-msgid "download"
-msgstr "скачивание"
-
-msgid "upload"
-msgstr "отдача"
-
-msgid "Measuring…"
-msgstr "Измеряю…"
+msgid "All the traffic"
+msgstr "Весь трафик"
 
 msgid "the last 5 minutes, every %d s"
 msgstr "последние 5 минут, раз в %d с"
 
-msgid "Provider line (everything)"
-msgstr "Линия провайдера (весь трафик)"
+msgid "Received"
+msgstr "Получено"
+
+msgid "Sent"
+msgstr "Отправлено"
+
+msgid "Average for the window"
+msgstr "Среднее за период"
+
+msgid "Downloading"
+msgstr "Скачивание"
+
+msgid "Uploading"
+msgstr "Загрузка"
+
+msgid "peak %s"
+msgstr "пик %s"
 
 msgid "Policy"
 msgstr "Политика"
@@ -1323,9 +1329,6 @@ msgstr "Выходы по порядку"
 
 msgid "Manual choice"
 msgstr "Ручной выбор"
-
-msgid "disabled"
-msgstr "выключено"
 
 msgid "blocks"
 msgstr "блокирует"
@@ -1480,14 +1483,14 @@ msgstr "Через неё пока ничего не идёт: добавьте 
 msgid "Checked earlier"
 msgstr "Проверяется раньше"
 
-msgid "Up"
-msgstr "Выше"
+msgid "Higher priority"
+msgstr "Выше приоритет"
 
 msgid "Checked later"
 msgstr "Проверяется позже"
 
-msgid "Down"
-msgstr "Ниже"
+msgid "Lower priority"
+msgstr "Ниже приоритет"
 
 msgid "Remove the policy «%s»?"
 msgstr "Удалить политику «%s»?"
@@ -1696,7 +1699,7 @@ msgstr "Перед проверкой сохраните настройки вы
 msgid "Detour settings"
 msgstr "Настройки Detour"
 
-msgid "General"
+msgid "General settings"
 msgstr "Основное"
 
 msgid "Enabled"
@@ -1726,7 +1729,7 @@ msgstr "Сколько проверок подряд должно не прой�
 msgid "Through the tunnel: the router resolves names via the exits of the selected policy, so the provider does not see the queries. If all of its exits are down, it switches to an encrypted resolver (DoH/DoT/DoQ) directly; traffic of the policies stays blocked. Encrypted: the router always asks the encrypted resolvers directly, whatever the exits do."
 msgstr "Через туннель: роутер разрешает имена через выходы выбранной политики, и провайдер не видит запросов. Если все её выходы не работают, роутер переходит на шифрованный DNS (DoH/DoT/DoQ) напрямую; трафик политик остаётся заблокированным. Шифрованный: роутер всегда спрашивает шифрованные DNS-серверы напрямую, что бы ни происходило с выходами."
 
-msgid "Mode"
+msgid "DNS mode"
 msgstr "Режим"
 
 msgid "Not managed (provider DNS)"
@@ -1791,6 +1794,15 @@ msgstr "подписка не обновилась"
 
 msgid "a subscription ends in 3 days or 90% of its traffic is used"
 msgstr "подписка закончится через 3 дня или израсходовано 90% трафика"
+
+msgid "Language"
+msgstr "Язык"
+
+msgid "Of the messages. Automatically: the language of LuCI."
+msgstr "Язык сообщений. «Автоматически» — язык интерфейса LuCI."
+
+msgid "automatically"
+msgstr "автоматически"
 
 msgid "Own Bot API address"
 msgstr "Свой адрес Bot API"
@@ -1861,20 +1873,23 @@ msgstr "Пока ничего не посчитано: первые цифры �
 msgid "Downloaded"
 msgstr "Скачано"
 
-msgid "uploaded %s"
-msgstr "отдано %s"
+msgid "Uploaded"
+msgstr "Отдано"
 
 msgid "Through VPN"
 msgstr "Через VPN"
 
-msgid "%s: downloaded %s, through VPN %s, directly %s"
-msgstr "%s: скачано %s, через VPN %s, напрямую %s"
+msgid "by month"
+msgstr "по месяцам"
+
+msgid "by day"
+msgstr "по дням"
+
+msgid "Today is a single point: the chart starts with the 3 days period."
+msgstr "За сегодня — одна точка: график начинается с периода «3 дня»."
 
 msgid "No device traffic in this period."
 msgstr "За этот период устройства ничего не передавали."
-
-msgid "Uploaded"
-msgstr "Отдано"
 
 msgid "Share of the traffic"
 msgstr "Доля"
@@ -1899,6 +1914,9 @@ msgstr "Трафик"
 
 msgid "How much each device downloaded and uploaded, and how much of it went through the VPN. Counted every 5 minutes; kept for a year."
 msgstr "Сколько скачало и отдало каждое устройство и сколько из этого прошло через VPN. Считается раз в 5 минут, хранится год."
+
+msgid "Measuring…"
+msgstr "Измеряю…"
 
 msgid "Blocked in Russia"
 msgstr "Заблокированное в РФ"
@@ -2097,6 +2115,9 @@ msgstr "шифрованный DNS: не установлен пакет dnsprox
 
 msgid "Encryption"
 msgstr "Шифрование"
+
+msgid "not set"
+msgstr "нет"
 
 msgid "Vision is used with TCP and TLS or Reality, as the server says."
 msgstr "Vision используется с TCP и TLS или Reality — как указано на сервере."

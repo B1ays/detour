@@ -81,7 +81,7 @@ export function parse_body(body) {
 	if (j) {
 		const list = (type(j) == 'array') ? j : (j.outbounds ?? []);
 		for (let o in list) {
-			if (type(o) == 'object' && index(PROXY_TYPES, o.type) >= 0) { delete o.detour; push(names, clean_label(o.tag)); push(out, o); }
+			if (type(o) == 'object' && index(PROXY_TYPES, o.type) >= 0) { delete o.detour; push(names, clean_label(o.tag)); push(out, o); }   // .detour: sing-box's own field (dial through another outbound), not this project
 			else if (type(o) == 'object' && index([ 'direct', 'block', 'dns', 'selector', 'urltest' ], o.type) < 0) push(skipped, o.type);
 		}
 		return { outbounds: out, skipped, names };

@@ -4,6 +4,7 @@
 'require poll';
 'require dom';
 'require uci';
+'require detour.chart as chart';
 
 // Text from the router (names of exits and servers come from subscriptions and links) never becomes HTML:
 // LuCI's E() puts a string child in with innerHTML, here it always goes in as a text node.
@@ -68,30 +69,48 @@ return view.extend({
 		return out;
 	},
 
-	summary: function(r) {
-		const t = r.total, v = r.vpn, d = r.direct;
-		return E('div', { 'class': 'detour-traffic-sum' }, [
-			E('div', {}, [ E('div', { 'class': 'detour-muted' }, _('Downloaded')), E('strong', {}, size(t.rx)), E('div', { 'class': 'detour-muted' }, _('uploaded %s').format(size(t.tx))) ]),
-			E('div', {}, [ E('div', { 'class': 'detour-muted' }, [ E('span', { 'class': 'detour-dot vpn' }), _('Through VPN') ]), E('strong', {}, size(v.rx)), E('div', { 'class': 'detour-muted' }, pct(v.rx, t.rx)) ]),
-			E('div', {}, [ E('div', { 'class': 'detour-muted' }, [ E('span', { 'class': 'detour-dot direct' }), _('Directly') ]), E('strong', {}, size(d.rx)), E('div', { 'class': 'detour-muted' }, pct(d.rx, t.rx)) ])
-		]);
+	// the card: downloads by day (by month for a year) - all of it and through VPN, the totals of the period below
+	card: function() {
+		const self = this;
+		this.cNow = E('div', { 'class': 'detour-chart-now' });
+		this.cSub = E('div', { 'class': 'detour-chart-sub' });
+		this.cFoot = E('div', { 'class': 'detour-chart-foot' });
+		this.chart = chart.create(function() { if (self.data) self.drawChart(self.data); });
+		this.cardEl = E('div', { 'class': 'detour-chart-card' }, [
+			E('div', { 'class': 'detour-chart-head' }, [ E('div', {}, [ E('div', { 'class': 'detour-chart-title' }, _('Downloaded')), this.cSub ]), this.cNow ]),
+			this.chart.el, this.cFoot ]);
+		return this.cardEl;
 	},
 
-	chart: function(r) {
-		if (r.bars.length < 2) return '';
-		const max = Math.max.apply(null, r.bars.map(function(b) { return b.rx; }).concat([ 1 ]));
-		const period = this.period;
-		return E('div', { 'class': 'detour-bars' }, r.bars.map(function(b) {
-			const v = Math.min(b.vrx, b.rx);
-			const tip = _('%s: downloaded %s, through VPN %s, directly %s').format(longLabel(b.label, period), size(b.rx), size(v), size(b.rx - v));
-			return E('div', { 'class': 'detour-bar', 'title': tip }, [
-				E('div', { 'class': 'detour-bar-col' }, [
-					E('div', { 'class': 'detour-bar-direct', 'style': 'height:' + ((b.rx - v) * 100 / max) + '%' }),
-					E('div', { 'class': 'detour-bar-vpn', 'style': 'height:' + (v * 100 / max) + '%' })
-				]),
-				E('div', { 'class': 'detour-bar-label' }, barLabel(b.label, period))
-			]);
-		}));
+	drawChart: function(r) {
+		const period = this.period, bars = r.bars, t = r.total, v = r.vpn, d = r.direct;
+		const stat = function(label, value, note) {
+			return E('div', { 'class': 'detour-chart-stat' }, [ E('div', { 'class': 'detour-chart-label' }, label), E('div', { 'class': 'detour-chart-value' }, value),
+				note ? E('div', { 'class': 'detour-chart-note' }, note) : '' ]);
+		};
+		dom.content(this.cFoot, [
+			stat(_('Downloaded'), size(t.rx)),
+			stat(_('Uploaded'), size(t.tx)),
+			stat(_('Through VPN'), size(v.rx), pct(v.rx, t.rx)),
+			stat(_('Directly'), size(d.rx), pct(d.rx, t.rx)) ]);
+		this.cSub.textContent = (PERIODS.find(function(p) { return p[0] == period; }) || [ '', '' ])[1] + (bars.length > 1 ? ' · ' + (period == 'year' ? _('by month') : _('by day')) : '');
+		const all = bars.map(function(b) { return b.rx; }), vpn = bars.map(function(b) { return Math.min(b.vrx, b.rx); });
+		const hv = this.chart.hover != null ? this.chart.hover : bars.length - 1;
+		const pill = function(cls, label, value) { return E('span', {}, [ E('span', { 'class': 'detour-c-' + cls }, '● '), label + ' ', E('strong', {}, value) ]); };
+		dom.content(this.cNow, bars.length && bars.length > 1 ? [ E('span', { 'class': 'detour-muted' }, longLabel(bars[hv].label, period)),
+			pill('mute', _('All the traffic'), size(all[hv])), pill('acc', _('Through VPN'), size(vpn[hv])) ] : []);
+		chart.draw(this.chart, {
+			n: bars.length, fmt: size, minTop: 1048576, binary: true,
+			empty: _('Today is a single point: the chart starts with the 3 days period.'),
+			labels: bars.map(function(b) { return barLabel(b.label, period); }),
+			series: [ { cls: 'mute', vals: all }, { cls: 'acc', vals: vpn } ],
+			tip: function(i) {
+				return [ E('div', { 'class': 'detour-muted' }, longLabel(bars[i].label, period)),
+					E('div', {}, [ E('span', { 'class': 'detour-c-mute' }, '● '), _('All the traffic') + ': ' + size(all[i]) ]),
+					E('div', {}, [ E('span', { 'class': 'detour-c-acc' }, '● '), _('Through VPN') + ': ' + size(vpn[i]) ]),
+					E('div', {}, [ E('span', { 'class': 'detour-muted' }, '○ '), _('Directly') + ': ' + size(all[i] - vpn[i]) ]) ];
+			}
+		});
 	},
 
 	devices: function(r) {
@@ -132,8 +151,12 @@ return view.extend({
 
 	body: function(r) {
 		if (!r) return E('div', { 'class': 'alert-message warning' }, _('The Detour service is not running.'));
+		const self = this;
+		this.data = r;
+		// drawn once the card is in the page (its width sets the picture's)
+		window.requestAnimationFrame(function() { if (self.data === r) self.drawChart(r); });
 		return E('div', {}, [
-			E('div', { 'class': 'cbi-section' }, [ E('div', { 'class': 'detour-node' }, [ E('div', { 'class': 'detour-result' }, this.notes(r)), E('div', { 'class': 'detour-result' }, [ this.summary(r), this.chart(r) ]) ]) ]),
+			E('div', { 'class': 'cbi-section' }, [ this.cardEl || this.card(), E('div', { 'class': 'detour-node' }, E('div', { 'class': 'detour-result' }, this.notes(r))) ]),
 			E('div', { 'class': 'cbi-section' }, [ E('h3', {}, _('By device')), this.devices(r) ]),
 			E('div', { 'class': 'cbi-section' }, [ E('h3', {}, _('By exit')) ].concat(this.exits(r)))
 		]);
@@ -141,6 +164,7 @@ return view.extend({
 
 	show: function(period) {
 		const self = this;
+		if (period != this.period && this.chart) this.chart.hover = null;
 		this.period = period;
 		document.querySelectorAll('.detour-period .btn').forEach(function(b) { b.classList.toggle('cbi-button-action', b.getAttribute('data-period') == period); });
 		return callTraffic(period).then(function(r) { dom.content(document.getElementById('detour-traffic'), self.body(r)); });

@@ -8,6 +8,7 @@ import * as fs from 'fs';
 import * as uloop from 'uloop';
 import { cursor } from 'uci';
 import { log, RUN } from 'detour.core';
+import { _ } from 'detour.i18n';
 
 const QUEUE = RUN + '/outbox.json';
 const ND = RUN + '/notify';      // owned by the "dtnotify" user, mode 700
@@ -69,7 +70,7 @@ export function flush(paths, done_cb) {
 	busy = true;
 	const m = q[0];
 	let text = c.name + ': ' + m.text;
-	if (time() - m.t > 90) text += sprintf(' (в %s)', fmt_time(m.t));
+	if (time() - m.t > 90) text += ' ' + sprintf(_('(at %s)'), fmt_time(m.t));
 	// curl runs as the system user "dtnotify": its traffic is exempt from the policies, so the
 	// direct attempt really goes direct even when the API's address is on a VPN list
 	const user = (fs.access('/etc/passwd') && match(fs.readfile('/etc/passwd'), /(^|\n)dtnotify:/)) ? 'dtnotify' : null;
@@ -125,7 +126,7 @@ export function queued() { return length(load_q()); }
 export function test() {
 	if (!config().enabled) return false;
 	const q = load_q();
-	push(q, { t: time(), text: 'Проверочное сообщение: уведомления работают' });
+	push(q, { t: time(), text: _('Test message: notifications work') });
 	save_q(q);
 	return true;
 }

@@ -110,7 +110,7 @@ return view.extend({
 
 		return E('div', { 'class': 'detour-card' }, [
 			E('div', { 'class': 'detour-card-head' }, [ E('span', { 'class': 'detour-card-title' }, msg.listTitle(l)), ' ',
-				E('span', { 'class': 'detour-badge ' + (!enabled ? 'off' : (s && !s.ok ? 'bad' : 'ok')) }, !enabled ? _('off') : (s && !s.ok ? _('update failed') : _('on'))),
+				E('span', { 'class': 'detour-badge ' + (!enabled ? 'off' : (s && !s.ok ? 'bad' : 'ok')) }, !enabled ? _('switched off') : (s && !s.ok ? _('update failed') : _('on'))),
 				E('span', { 'class': 'detour-muted', 'title': _('Internal name: used in the configuration and the log') }, name) ]),
 			E('div', { 'class': 'detour-card-body' }, body),
 			E('div', { 'class': 'detour-actions detour-card-actions' }, [ bUpdate, bEdit, bToggle, bRemove ])

@@ -283,7 +283,7 @@ function from_json(j) {
 	const out = [];
 	const take = (o) => {
 		if (type(o) != 'object') return;
-		if (index(PROXY_TYPES, o.type) >= 0) { const x = { ...o }; delete x.tag; delete x.detour; push(out, { outbound: x, label: o.tag }); }
+		if (index(PROXY_TYPES, o.type) >= 0) { const x = { ...o }; delete x.tag; delete x.detour; push(out, { outbound: x, label: o.tag }); }   // .detour: sing-box's own field (dial through another outbound), not this project
 		else if (index(XRAY_PROTOS, o.protocol) >= 0) push(out, { xray: o, label: o.tag });
 	};
 	if (type(j) == 'array') for (let o in j) take(o);

@@ -114,6 +114,7 @@ rm -rf $W/x; mkdir -p $W/x; dec; echo "# changed" >> $W/x/detour.uci; tar -czf -
 r=$(call backup_check); echo "$r" | grep -q "checksums do not match" && ok "a file changed after the backup was made: refused" || bad "sums: $r"
 echo "not a backup" > /tmp/detour-restore.bin
 r=$(call backup_check); echo "$r" | grep -q 'not a Detour backup' && ok "a file that is no backup" || bad "plain: $r"
+
 # the router has wgx2 of its own (not an exit any more): the backup's exit wgx2 must not take it over
 uci delete detour.alt; uci commit detour
 cp /tmp/t13.bak /tmp/detour-restore.bin

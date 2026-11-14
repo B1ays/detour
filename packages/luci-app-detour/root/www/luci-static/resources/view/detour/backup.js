@@ -81,7 +81,7 @@ function row(title, field, descr) {
 }
 function pwInput() { return E('input', { 'type': 'password', 'class': 'cbi-input-password', 'autocomplete': 'new-password' }); }
 
-function names(l) { return l && l.length ? l.join(', ') : _('none'); }
+function names(l) { return l && l.length ? l.join(', ') : _('nothing'); }
 
 return view.extend({
 	load: function() { return Promise.resolve(); },
@@ -179,7 +179,7 @@ return view.extend({
 			.finally(function() { busy(bCheck, false); });
 		} }, _('Choose the backup file…'));
 
-		return card(_('Restore'),
+		return card(_('Restoring the settings'),
 			_('A backup saved on this page, on this router or another one. First you see what it holds; nothing changes until you confirm. Settings of an older Detour are brought up to date.'), [
 			row(_('Password'), pw),
 			E('div', { 'class': 'detour-actions' }, [ bCheck, bApply ]), info, box

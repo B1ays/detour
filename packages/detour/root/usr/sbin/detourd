@@ -23,6 +23,7 @@ import * as dnswatch from 'detour.dnswatch';
 import * as devices from 'detour.devices';
 import { cursor } from 'uci';
 import * as listmem from 'detour.listmem';
+import { _ } from 'detour.i18n';
 
 const t0 = time();
 let cfg, active, pins;
@@ -115,14 +116,14 @@ function evaluate() {
 				else ev(sprintf('policy %s: switch failed: %s', p.name, trim(r.out)));
 			}
 			if (!d.told && lasting)
-				d.told = tell('all_down', 'all_down:' + p.name, sprintf(open ? 'Политика %s: не работает ни один выход, её трафик пошёл напрямую (так настроено)'
-					: (length(p.exits) ? 'Политика %s: не работает ни один выход, её трафик заблокирован'
-					: 'Политика %s осталась без выходов, её трафик заблокирован'), pl(p)));
+				d.told = tell('all_down', 'all_down:' + p.name, sprintf(open ? _('Policy %s: no exit works, its traffic goes directly (as set up)')
+					: (length(p.exits) ? _('Policy %s: no exit works, its traffic is blocked')
+					: _('Policy %s has no exits left, its traffic is blocked')), pl(p)));
 			continue;
 		}
 		if (down_noted[p.name]) {
 			if (down_noted[p.name].told)
-				tell('all_down', null, sprintf(opened[p.name] ? 'Политика %s снова идёт через выходы (шла напрямую %s)' : 'Политика %s снова работает (была заблокирована %s)',
+				tell('all_down', null, sprintf(opened[p.name] ? _('Policy %s goes through the exits again (it went directly for %s)') : _('Policy %s works again (it was blocked for %s)'),
 					pl(p), watch.dur(time() - down_noted[p.name].t)));
 			delete down_noted[p.name];
 		}
@@ -140,7 +141,7 @@ function evaluate() {
 		changed = true;
 		switches++; last_switch = time();
 		ev(sprintf('policy %s: %s -> %s%s', p.name, cur ? exit_name(cur) : '-', exit_name(want), pins[p.name] ? ' (pinned ' + pins[p.name] + ')' : ''));
-		if (cur) tell('switch', 'switch:' + p.name, sprintf('Политика %s переключилась: %s → %s', pl(p), xl(cur), xl(want)));
+		if (cur) tell('switch', 'switch:' + p.name, sprintf(_('Policy %s switched: %s → %s'), pl(p), xl(cur), xl(want)));
 	}
 	if (changed) fw.save_active(active);
 	update_dns();
@@ -164,7 +165,7 @@ function probe(e) {
 			// the message about "down" waits main.alert_hold seconds (alerts()); "up" is said only after it
 			if (!now) { h.down_at = time(); h.told = false; }
 			else {
-				if (h.told) tell('exit_up', null, sprintf('Выход %s снова работает (не отвечал %s)', watch.q(e.label ?? e.name), watch.dur(time() - h.down_at)));
+				if (h.told) tell('exit_up', null, sprintf(_('Exit %s works again (it did not answer for %s)'), watch.q(e.label ?? e.name), watch.dur(time() - h.down_at)));
 				h.down_at = null; h.told = false;
 			}
 		}
@@ -606,16 +607,19 @@ function site_check(req) {
 	});
 }
 
-const VERDICT_TEXT = {
-	blocked: 'адрес сервера, похоже, заблокирован провайдером: напрямую не отвечает, а через другой выход отвечает',
-	down: 'сервер не отвечает ни напрямую, ни через другой выход',
-	silent: 'сервер не отвечает',
-	reachable: 'сервер отвечает, не работает сам протокол (ключи, настройки или фильтр провайдера по содержимому)',
-	dns: 'имя сервера не находится в DNS',
-};
+// a function: translated in the language set at the time of the message
+function verdict_text(v) {
+	return {
+		blocked: _("the server's address seems blocked by the provider: no answer directly, an answer through another exit"),
+		down: _('the server answers neither directly nor through another exit'),
+		silent: _('the server does not answer'),
+		reachable: _('the server answers, the protocol itself does not work (keys, settings or the provider filtering the content)'),
+		dns: _("the server's name is not found in DNS"),
+	}[v];
+}
 
 // exits that stopped answering and stayed so for main.alert_hold seconds: now it is worth a message
-// (here, below diag_exit and VERDICT_TEXT: ucode resolves a name not declared yet as a global - calling it
+// (here, below diag_exit and verdict_text: ucode resolves a name not declared yet as a global - calling it
 // from above crashed the daemon the first time an exit stayed down)
 function alerts() {
 	for (let e in cfg.exits) {
@@ -629,8 +633,8 @@ function alerts() {
 		diag_exit(e.name, function(d) {
 			h.diag = false;
 			if (!h.down_at || h.told) return;   // it came back meanwhile
-			const why = VERDICT_TEXT[d.verdict];
-			h.told = tell('exit_down', 'exit_down:' + e.name, sprintf('Выход %s перестал отвечать', watch.q(e.label ?? e.name)) + (why ? ': ' + why : ''));
+			const why = verdict_text(d.verdict);
+			h.told = tell('exit_down', 'exit_down:' + e.name, sprintf(_('Exit %s stopped answering'), watch.q(e.label ?? e.name)) + (why ? ': ' + why : ''));
 		});
 	}
 }
@@ -787,7 +791,7 @@ function warp_check() {
 			try { r = json(fs.readfile(sprintf('%s/warp-pick-%s.json', core.RUN, e.name))); } catch (x) { }
 			if (r?.moved) {
 				ev(sprintf('WARP %s moved to %s (colo %s, was %s)', e.name, r.endpoint, r.colo, r.from ?? '?'));
-				tell('switch', 'warp:' + e.name, sprintf('WARP %s перешёл на точку Cloudflare %s (была %s)', watch.q(e.label ?? e.name), r.colo, r.from ?? 'без ответа'));
+				tell('switch', 'warp:' + e.name, sprintf(_('WARP %s moved to the Cloudflare point %s (it was %s)'), watch.q(e.label ?? e.name), r.colo, r.from ?? _('no answer')));
 			}
 			else if (r?.note) ev(sprintf('WARP %s: %s', e.name, r.note));
 		});

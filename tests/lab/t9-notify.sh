@@ -14,6 +14,7 @@ set detour.notify.tg_token=123456:LABTOKEN_not_a_real_token_xxxxxxxxxxx
 set detour.notify.tg_chat=4242
 set detour.notify.tg_api=http://10.0.2.2:8766
 set detour.notify.throttle=5
+set detour.notify.lang=ru
 commit detour
 U
 ubus call detour reload >/dev/null
@@ -61,6 +62,21 @@ nft delete table ip labdnat
 uci set detour.sb.enabled=1; uci set detour.xr.enabled=1
 uci del_list detour.vpn.dst=198.51.100.0/24; uci set detour.notify.tg_api=http://10.0.2.2:8766; uci commit detour
 reload_config; sleep 6
+echo "== the language of the messages"
+uci set detour.notify.lang=en; uci commit detour
+n0=$(nlog 'Test message: notifications work'); ubus call detour notify_test >/dev/null
+waitge $((n0+1)) "nlog 'Test message: notifications work'" 15 && ok "lang=en: in English" || bad "no English test message: $(wget -qO- $S/log | tail -1)"
+uci -q delete detour.notify.lang; uci commit detour
+L=$(uci -q get luci.main.lang)
+uci set luci.main.lang=en; uci commit luci
+[ "$(ucode -e 'import { lang } from "detour.i18n"; print(lang())')" = en ] && ok "no lang: as LuCI (en)" || bad "as LuCI en"
+uci set luci.main.lang=ru; uci commit luci
+[ "$(ucode -e 'import { lang } from "detour.i18n"; print(lang())')" = ru ] && ok "no lang: as LuCI (ru)" || bad "as LuCI ru"
+uci set detour.notify.lang=de; uci commit detour
+[ "$(ucode -e 'import { lang } from "detour.i18n"; print(lang())')" = en ] && ok "a language without a dictionary: English" || bad "unknown language"
+uci set detour.notify.lang=ru
+[ -n "$L" ] && uci set luci.main.lang="$L" || uci -q delete luci.main.lang
+uci commit luci; uci commit detour
 echo "== disabled -> nothing sent"
 uci set detour.notify.enabled=0; uci commit detour; ubus call detour reload >/dev/null
 r=$(ubus call detour notify_test | jsonfilter -e '@.queued'); [ "$r" = false ] && ok "test refused when disabled" || bad "test: $r"

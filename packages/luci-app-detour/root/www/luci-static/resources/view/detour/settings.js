@@ -48,7 +48,7 @@ return view.extend({
 		const show = function(t) {
 			t = t || {};
 			info.replaceChildren(
-				E('div', {}, [ E('strong', {}, (_('State:') + ' ')), !t.on ? _('off') : (t.connected ? _('connected') : (t.running ? _('connecting…') : _('not running (check the connection first)'))) ]),
+				E('div', {}, [ E('strong', {}, (_('State:') + ' ')), !t.on ? _('switched off') : (t.connected ? _('connected') : (t.running ? _('connecting…') : _('not running (check the connection first)'))) ]),
 				t.target ? E('div', {}, [ E('strong', {}, (_('Leads to:') + ' ')), t.target, ' ', E('span', { 'class': 'cbi-value-description' }, (/:443$/.test(t.target) ? _('(LuCI over HTTPS: the VPS sees nothing)') : _('(LuCI over HTTP: the VPS can see the pages - enable HTTPS in uhttpd)'))) ]) : '',
 				t.pubkey ? E('div', {}, [ E('strong', {}, _('Router key - put it into ~/.ssh/authorized_keys of the user on the VPS:')), E('pre', { 'class': 'detour-key' }, t.pubkey) ]) : E('div', {}, _('No router key yet.')),
 				t.host_fp ? E('div', {}, [ E('strong', {}, (_('Server key:') + ' ')), E('code', {}, t.host_fp), E('div', { 'class': 'cbi-value-description' }, _('Compare with ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub on the VPS.')) ]) : '',
@@ -77,7 +77,7 @@ return view.extend({
 		const self = this;
 		const m = new form.Map('detour', _('Detour settings'));
 
-		let s = m.section(form.NamedSection, 'main', 'main', _('General'));
+		let s = m.section(form.NamedSection, 'main', 'main', _('General settings'));
 		let o = s.option(form.Flag, 'enabled', _('Enabled'),
 			_('Off: no policy works, all traffic goes directly through the provider.'));
 		o.default = '1';
@@ -101,7 +101,7 @@ return view.extend({
 			_('Through the tunnel: the router resolves names via the exits of the selected policy, so the provider does not see the queries. ' +
 			  'If all of its exits are down, it switches to an encrypted resolver (DoH/DoT/DoQ) directly; traffic of the policies stays blocked. ' +
 			  'Encrypted: the router always asks the encrypted resolvers directly, whatever the exits do.'));
-		o = s.option(form.ListValue, 'dns', _('Mode'));
+		o = s.option(form.ListValue, 'dns', _('DNS mode'));
 		o.value('off', _('Not managed (provider DNS)'));
 		o.value('tunnel', _('Through the tunnel'));
 		o.value('encrypted', _('Encrypted (DoH/DoT/DoQ), directly'));
@@ -144,6 +144,10 @@ return view.extend({
 		o.value('sub_fail', _('a subscription failed to update'));
 		o.value('sub_expire', _('a subscription ends in 3 days or 90% of its traffic is used'));
 		o.default = 'exit_down exit_up all_down switch boot wan list_fail sub_fail sub_expire';
+		o = s.option(form.ListValue, 'lang', _('Language'), _('Of the messages. Automatically: the language of LuCI.'));
+		o.value('', _('automatically'));
+		o.value('en', 'English');
+		o.value('ru', 'Русский');
 		o = s.option(form.Value, 'tg_api', _('Own Bot API address'), _('Only if api.telegram.org is blocked for you and you run a Bot API proxy.'));
 		o.placeholder = 'https://api.telegram.org';
 		o.datatype = 'string';

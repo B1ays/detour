@@ -197,58 +197,12 @@ textarea.detour-code {
 	border-radius: 4px;
 }
 
-/* "Traffic": period buttons, the three totals, bars by day (VPN below, directly above), a device's share */
+/* "Traffic": period buttons, a device's share (the chart: .detour-chart-*) */
 .detour-period {
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--control-gap, .5rem);
 	margin: .5rem 0 1rem;
-}
-.detour-traffic-sum {
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-	gap: var(--field-gap, 1rem);
-}
-.detour-traffic-sum strong {
-	display: block;
-	font-size: 1.5rem;
-	line-height: 1.3;
-}
-.detour-dot {
-	display: inline-block;
-	width: .7em;
-	height: .7em;
-	border-radius: 2px;
-	margin-inline-end: .35em;
-}
-.detour-dot.vpn, .detour-bar-vpn { background: #2e7d32; }
-.detour-dot.direct, .detour-bar-direct { background: #90a4ae; }
-.detour-bars {
-	display: flex;
-	align-items: stretch;
-	gap: 2px;
-	height: 9rem;
-	margin-top: var(--field-gap, 1rem);
-}
-.detour-bar {
-	flex: 1 1 0;
-	min-width: 0;
-	display: flex;
-	flex-direction: column;
-}
-.detour-bar-col {
-	flex: 1 1 auto;
-	display: flex;
-	flex-direction: column;
-	justify-content: flex-end;
-}
-.detour-bar:hover .detour-bar-col { opacity: .75; }
-.detour-bar-label {
-	text-align: center;
-	font-size: .75em;
-	opacity: .65;
-	white-space: nowrap;
-	overflow: hidden;
 }
 .detour-share {
 	width: 8rem;
@@ -321,12 +275,55 @@ textarea.detour-code {
 .detour-switch input:checked + .detour-switch-slider::after { transform: translateX(1.4rem); }
 .detour-switch input:focus-visible + .detour-switch-slider { outline: 2px solid #1e88e5; outline-offset: 2px; }
 .detour-ip { display: flex; flex-direction: column; gap: .2rem; }
-.detour-graph { position: relative; height: 10rem; border: 1px solid rgba(128, 128, 128, .3); border-radius: 4px; }
-.detour-graph em { display: block; padding: 1rem; }
-.detour-graph-svg { width: 100%; height: 100%; display: block; }
-.detour-graph-svg .detour-grid { stroke: rgba(128, 128, 128, .25); stroke-width: 1; vector-effect: non-scaling-stroke; }
-.detour-graph-max { position: absolute; top: .2rem; left: .4rem; font-size: .75em; opacity: .65; }
-.detour-legend { display: flex; flex-wrap: wrap; gap: .3rem 1.2rem; margin-top: .5rem; }
+/* The charts (detour/chart.js: Overview - the speed, Traffic - by day) in a card of their own. Colours from the
+   theme - LuCI themes (Bootstrap, Nimbus, ...) define --primary-color-high and --text-color-*; elsewhere the
+   fallbacks, and the neutral parts are currentColor with opacity, which reads on a light page and a dark one. */
+.detour-chart-card {
+	--detour-acc: var(--primary-color-high, #1e88e5);
+	--detour-mute: var(--text-color-medium, currentColor);
+	padding: var(--field-gap, 1rem) var(--section-inset, 1rem);
+}
+.detour-c-acc { color: var(--detour-acc); }
+.detour-c-mute { color: var(--detour-mute); }
+.detour-chart-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: .5rem 1.5rem; }
+.detour-chart-title { font-size: .75rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.detour-chart-sub { font-size: .8rem; opacity: .65; margin-top: .15rem; }
+.detour-chart-now { display: flex; flex-wrap: wrap; gap: .25rem 1.25rem; font-size: .8rem; }
+.detour-chart-now strong { font-size: .875rem; font-variant-numeric: tabular-nums; }
+.detour-chart-bar { display: flex; flex-wrap: wrap; gap: var(--control-gap, .5rem); margin: .5rem 0 0; }
+.detour-chart-bar select { width: auto; max-width: 100%; }
+.detour-chart { position: relative; margin-top: .5rem; }
+.detour-chart-graph { position: relative; min-height: 180px; }
+.detour-chart-graph > em { display: block; padding: 4rem 0; text-align: center; }
+.detour-chart-svg { display: block; width: 100%; overflow: visible; }
+.detour-chart-grid { stroke: currentColor; stroke-opacity: .14; stroke-dasharray: 3 4; }
+.detour-chart-base { stroke: currentColor; stroke-opacity: .3; stroke-dasharray: 1 3; }
+.detour-chart-line { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.detour-chart-line.detour-c-mute { stroke-opacity: .75; stroke-width: 1.75; }
+.detour-chart-cursor { stroke: currentColor; stroke-opacity: .35; }
+.detour-chart-dot { fill: currentColor; stroke: var(--cbi-section-background-color, var(--background-color-high, #fff)); stroke-width: 2; }
+.detour-chart-scale { position: absolute; inset: 0; pointer-events: none; font-size: .7rem; opacity: .55; font-variant-numeric: tabular-nums; }
+.detour-chart-scale span { position: absolute; left: 0; }
+.detour-chart-xlabels { position: absolute; left: 0; right: 0; bottom: 0; height: 16px; pointer-events: none; font-size: .7rem; opacity: .6; }
+.detour-chart-xlabels span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.detour-chart-xlabels span:first-child { transform: none; }
+.detour-chart-xlabels span:last-child { transform: translateX(-100%); }
+.detour-chart-tip { position: absolute; top: 0; transform: translateX(10px); padding: .35rem .55rem; font-size: .8rem; white-space: nowrap; pointer-events: none; z-index: 1;
+	border-radius: 6px; border: 1px solid var(--border-color-medium, rgba(128, 128, 128, .35));
+	background: var(--cbi-section-background-color, var(--background-color-high, #fff)); box-shadow: 0 2px 8px rgba(0, 0, 0, .18); }
+.detour-chart-tip.detour-chart-tip-left { transform: translateX(calc(-100% - 10px)); }
+.detour-chart-tip[hidden] { display: none; }
+.detour-chart-foot { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); margin-top: .75rem; padding-top: .75rem;
+	border-top: 1px solid var(--border-color-medium, rgba(128, 128, 128, .3)); }
+.detour-chart-stat { padding: 0 1rem; border-inline-start: 1px solid var(--border-color-medium, rgba(128, 128, 128, .3)); }
+.detour-chart-stat:first-child { padding-inline-start: 0; border-inline-start: 0; }
+.detour-chart-label { font-size: .7rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; opacity: .65; }
+.detour-chart-value { font-size: 1.05rem; font-weight: 600; margin-top: .2rem; font-variant-numeric: tabular-nums; white-space: pre; }
+.detour-chart-note { font-size: .8rem; opacity: .65; margin-top: .15rem; }
+@media (max-width: 600px) {
+	.detour-chart-stat { padding: .4rem 0; border-inline-start: 0; }
+}
+
 
 /* a page title right above a card: the theme leaves almost no air between them */
 [data-page^="admin-services-detour"] h2 + .cbi-section {

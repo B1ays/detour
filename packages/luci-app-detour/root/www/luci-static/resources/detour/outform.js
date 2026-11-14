@@ -56,7 +56,7 @@ return baseclass.extend({
 			rows.push(row(_('Encryption'), f.method));
 		}
 		if (t == 'vless') {
-			f.flow = select(o.flow || '', [ [ '', _('none') ], [ 'xtls-rprx-vision', 'xtls-rprx-vision' ] ]);
+			f.flow = select(o.flow || '', [ [ '', _('not set') ], [ 'xtls-rprx-vision', 'xtls-rprx-vision' ] ]);
 			rows.push(row('Flow', f.flow, _('Vision is used with TCP and TLS or Reality, as the server says.')));
 		}
 		if (t == 'vmess') { f.vsec = select(o.security || 'auto', [ 'auto', 'aes-128-gcm', 'chacha20-poly1305', 'none', 'zero' ]); rows.push(row(_('Encryption'), f.vsec)); }
@@ -74,7 +74,7 @@ return baseclass.extend({
 		const secRows = [];
 		if (!quic && t != 'shadowsocks') {
 			f.sec = select(tls.reality && tls.reality.enabled ? 'reality' : (tls.enabled ? 'tls' : 'none'),
-				[ [ 'none', _('none') ], [ 'tls', 'TLS' ], [ 'reality', 'Reality' ] ]);
+				[ [ 'none', _('not set') ], [ 'tls', 'TLS' ], [ 'reality', 'Reality' ] ]);
 			rows.push(row(_('Security'), f.sec, _('As the server is set up: Reality pretends to be another site, TLS is an ordinary certificate.')));
 		}
 		if (t != 'shadowsocks') {

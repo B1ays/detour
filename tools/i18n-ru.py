@@ -2,8 +2,9 @@
 """Russian translation of luci-app-detour -> packages/luci-app-detour/po/ru/detour.po.
 Messages come from tools/i18n-extract.py (the views and the menu); a message without a translation here
 stops the script, so a new string in the UI cannot slip into a release untranslated.
-usage: i18n-ru.py <luci-app-detour dir>"""
-import os, sys
+The messages the daemon sends to people (Telegram) -> packages/detour/root/usr/share/detour/i18n/ru.json.
+usage: i18n-ru.py <luci-app-detour dir>   (the detour package is its sibling)"""
+import json, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import importlib
 extract = importlib.import_module('i18n-extract').extract
@@ -97,7 +98,6 @@ RU = {
 	'Exits in order': 'Выходы по порядку',
 	'Manual choice': 'Ручной выбор',
 	'Automatic': 'Автоматически',
-	'disabled': 'выключено',
 	'Exit': 'Выход',
 	'Last good probe': 'Последняя удачная проверка',
 	'Blocked leaks': 'Заблокировано утечек',
@@ -124,7 +124,6 @@ RU = {
 	'Events': 'События',
 	'A policy says what goes through the tunnel: whole devices, address ranges or domains. The first working exit in its list carries the traffic; policies are checked from top to bottom.': 'Политика определяет, что идёт через туннель: устройства целиком, диапазоны адресов или домены. Трафик идёт через первый работающий выход из её списка; политики проверяются сверху вниз.',
 	'Add policy': 'Добавить политику',
-	'General': 'Основное',
 	'What goes through': 'Что пропускать',
 	'In order of preference. When the first one fails, the next working one takes over; it comes back automatically.': 'В порядке предпочтения. Если первый выход перестал работать, его заменяет следующий рабочий; возврат — автоматически.',
 	'Internal number 1-250, part of the packet mark.': 'Внутренний номер 1–250, часть метки пакетов.',
@@ -141,7 +140,6 @@ RU = {
 	('%d list', '%d lists'): ('%d список', '%d списка', '%d списков'),
 	'nothing yet': 'пока ничего',
 	'State:': 'Состояние:',
-	'off': 'выключено',
 	'connected': 'подключено',
 	'connecting…': 'подключается…',
 	'not running (check the connection first)': 'не запущено (сначала проверьте подключение)',
@@ -165,7 +163,6 @@ RU = {
 	'Check exits every (s)': 'Проверять выходы каждые (с)',
 	'Failed checks before switching': 'Неудачных проверок до переключения',
 	'Through the tunnel: the router resolves names via the exits of the selected policy, so the provider does not see the queries. If all of its exits are down, it switches to an encrypted resolver (DoH/DoT/DoQ) directly; traffic of the policies stays blocked.': 'Через туннель: роутер разрешает имена через выходы выбранной политики, и провайдер не видит запросов. Если все её выходы не работают, роутер переходит на шифрованный DNS (DoH/DoT/DoQ) напрямую; трафик политик остаётся заблокированным.',
-	'Mode': 'Режим',
 	'Not managed (provider DNS)': 'Не управляется (DNS провайдера)',
 	'Through the tunnel': 'Через туннель',
 	'Resolvers through the tunnel': 'DNS-серверы через туннель',
@@ -266,7 +263,6 @@ RU = {
 	'Server address': 'Адрес сервера',
 	'A Cloudflare WARP address. Detour moves it away from a bad point (DME) by itself.': 'Адрес Cloudflare WARP. С плохой точки (DME) Detour уводит его сама.',
 	'Server port': 'Порт сервера',
-	'MTU': 'MTU',
 	'Packet size inside the tunnel. Lower it (1280) if some sites hang while others work.': 'Размер пакета в туннеле. Уменьшите (1280), если одни сайты зависают, а другие работают.',
 	'Masking (AmneziaWG)': 'Маскировка (AmneziaWG)',
 	'Makes the tunnel look unlike WireGuard so the provider does not cut it. The values must match the server (your VPN provider gives them in the config).': 'Делает туннель непохожим на WireGuard, чтобы провайдер его не резал. Значения должны совпадать с сервером (их даёт VPN-провайдер в конфиге).',
@@ -346,9 +342,12 @@ RU = {
 	'(on the Lists page)': '(на странице «Списки»)',
 	'Nothing goes through it yet: add devices, sites, addresses, ports or lists.': 'Через неё пока ничего не идёт: добавьте устройства, сайты, адреса, порты или списки.',
 	'Checked earlier': 'Проверяется раньше',
-	'Up': 'Выше',
+	'Higher priority': 'Выше приоритет',
 	'Checked later': 'Проверяется позже',
-	'Down': 'Ниже',
+	'Lower priority': 'Ниже приоритет',
+	'Language': 'Язык',
+	'Of the messages. Automatically: the language of LuCI.': 'Язык сообщений. «Автоматически» — язык интерфейса LuCI.',
+	'automatically': 'автоматически',
 	'Remove the policy «%s»?': 'Удалить политику «%s»?',
 	'Its lists (%s) are removed too. What went through it goes directly from now on.': 'Её списки (%s) тоже будут удалены. То, что шло через неё, теперь пойдёт напрямую.',
 	'What went through it goes directly from now on.': 'То, что шло через неё, теперь пойдёт напрямую.',
@@ -547,7 +546,6 @@ RU = {
 	"The exit's settings as the engine sees them (%s). A wrong value stops the exit. Changed here, it wins over the fields above.": 'Настройки выхода в том виде, в каком их видит движок (%s). Неверное значение остановит выход. Если изменить здесь, это важнее полей выше.',
 	'Password': 'Пароль',
 	'Encryption': 'Шифрование',
-	'none': 'нет',
 	'Vision is used with TCP and TLS or Reality, as the server says.': 'Vision используется с TCP и TLS или Reality — как указано на сервере.',
 	'empty: no obfuscation': 'пусто — без обфускации',
 	'Obfuscation password (salamander)': 'Пароль обфускации (salamander)',
@@ -726,11 +724,27 @@ RU = {
 	'checking…': 'проверяю…',
 	'no answer': 'нет ответа',
 	'Cloudflare point: %s': 'Точка Cloudflare: %s',
-	'download': 'скачивание',
-	'upload': 'отдача',
 	'Measuring…': 'Измеряю…',
+	'Received': 'Получено',
+	'Sent': 'Отправлено',
+	'Average for the window': 'Среднее за период',
+	# LuCI's own catalogue has 'off', 'disabled', 'none', 'Mode', 'General', 'Restore', 'MTU' with other
+	# translations, and it wins over ours: these keys are our own
+	'switched off': 'выключено',
+	'not set': 'нет',
+	'nothing': 'нет',
+	'DNS mode': 'Режим',
+	'General settings': 'Основное',
+	'Restoring the settings': 'Восстановление',
+	# not 'Download' / 'Upload': LuCI's own catalogue has them ("Скачать" / "Загрузить") and wins over ours
+	'Downloading': 'Скачивание',
+	'Uploading': 'Загрузка',
+	'All the traffic': 'Весь трафик',
+	'by day': 'по дням',
+	'by month': 'по месяцам',
+	'Today is a single point: the chart starts with the 3 days period.': 'За сегодня — одна точка: график начинается с периода «3 дня».',
+	'peak %s': 'пик %s',
 	'the last 5 minutes, every %d s': 'последние 5 минут, раз в %d с',
-	'Provider line (everything)': 'Линия провайдера (весь трафик)',
 	'Speed': 'Скорость',
 	# stage 4: traffic
 	'Traffic': 'Трафик',
@@ -870,7 +884,6 @@ RU = {
 	('traffic history: %d month', 'traffic history: %d months'): ('история трафика: %d месяц', 'история трафика: %d месяца', 'история трафика: %d месяцев'),
 	'What is on the router now goes away - exits: %s; policies: %s; lists: %s. Device names the router already has stay.': 'Текущие настройки будут удалены — выходы: %s; политики: %s; списки: %s. Имена устройств, которые уже есть на роутере, останутся.',
 	'Enter the password of the backup first.': 'Сначала введите пароль копии.',
-	'Restore': 'Восстановление',
 	'A backup saved on this page, on this router or another one. First you see what it holds; nothing changes until you confirm. Settings of an older Detour are brought up to date.': 'Копия, сохранённая на этой странице — на этом роутере или на другом. Сначала будет показано, что в ней; ничего не меняется, пока вы не подтвердите. Настройки старой версии Detour приводятся к текущей.',
 	'Backup': 'Резервная копия',
 	'Not installed on this router: %s. The exits that need it will not work until it is installed (System → Software).': 'На этом роутере не установлено: %s. Выходы, которым это нужно, не заработают, пока пакет не установлен («Система → Программное обеспечение»).',
@@ -894,6 +907,72 @@ RU = {
 	'No free policy id: 250 policies is the limit': 'Нет свободного номера политики: не больше 250 политик',
 	'The configuration could not be read.': 'Не удалось прочитать конфигурацию.',
 }
+
+# the messages the router sends to people (detourd, watch.uc, notify.uc) -> detour/root/usr/share/detour/i18n/ru.json
+RU_NOTIFY = {
+	'Policy %s: no exit works, its traffic goes directly (as set up)': 'Политика %s: не работает ни один выход, её трафик пошёл напрямую (так настроено)',
+	'Policy %s: no exit works, its traffic is blocked': 'Политика %s: не работает ни один выход, её трафик заблокирован',
+	'Policy %s has no exits left, its traffic is blocked': 'Политика %s осталась без выходов, её трафик заблокирован',
+	'Policy %s goes through the exits again (it went directly for %s)': 'Политика %s снова идёт через выходы (шла напрямую %s)',
+	'Policy %s works again (it was blocked for %s)': 'Политика %s снова работает (была заблокирована %s)',
+	'Policy %s switched: %s → %s': 'Политика %s переключилась: %s → %s',
+	'Exit %s works again (it did not answer for %s)': 'Выход %s снова работает (не отвечал %s)',
+	"the server's address seems blocked by the provider: no answer directly, an answer through another exit": 'адрес сервера, похоже, заблокирован провайдером: напрямую не отвечает, а через другой выход отвечает',
+	'the server answers neither directly nor through another exit': 'сервер не отвечает ни напрямую, ни через другой выход',
+	'the server does not answer': 'сервер не отвечает',
+	'the server answers, the protocol itself does not work (keys, settings or the provider filtering the content)': 'сервер отвечает, не работает сам протокол (ключи, настройки или фильтр провайдера по содержимому)',
+	"the server's name is not found in DNS": 'имя сервера не находится в DNS',
+	'Exit %s stopped answering': 'Выход %s перестал отвечать',
+	'WARP %s moved to the Cloudflare point %s (it was %s)': 'WARP %s перешёл на точку Cloudflare %s (была %s)',
+	'no answer': 'без ответа',
+	'(at %s)': '(в %s)',
+	'Test message: notifications work': 'Проверочное сообщение: уведомления работают',
+	'"%s"': '«%s»',
+	'%d s': '%d с',
+	'%d min': '%d мин',
+	'%d h %d min': '%d ч %d мин',
+	'%.1f GB': '%.1f ГБ',
+	'(addresses)': '(адреса)',
+	'could not download from %s': 'не удалось скачать с %s',
+	'could not download the v2fly category %s': 'не удалось скачать категорию v2fly %s',
+	'only %s entries came (at least %s needed)': 'пришло только %s записей (нужно не меньше %s)',
+	'no file %s': 'нет файла %s',
+	'its policy %s is gone': 'его политики %s больше нет',
+	'not enough router memory: ~%s MB more needed, %s MB left for lists': 'не хватает памяти роутера: нужно ещё ~%s МБ, для списков осталось %s МБ',
+	'the download is bigger than the memory holds (over %s MB)': 'скачанное больше, чем помещается в память (больше %s МБ)',
+	'the provider did not answer': 'провайдер не ответил',
+	'no suitable servers in the answer': 'в ответе нет подходящих серверов',
+	'wrong subscription address': 'неверный адрес подписки',
+	'the subscription address points into the local network': 'адрес подписки указывает во внутреннюю сеть',
+	"The provider's internet is back (it was gone for %s)": 'Интернет у провайдера вернулся (не было %s)',
+	"The provider's internet is gone. Messages about the exits wait until it is back": 'Пропал интернет у провайдера. Сообщения о выходах подождут его возвращения',
+	'The router rebooted, Detour works: %d of %d exits work': 'Роутер перезагрузился, Detour работает: выходов работает %d из %d',
+	'Did not come up: %s': 'Не поднялись: %s',
+	'The list %s did not update: %s. %s': 'Список %s не обновился: %s. %s',
+	'The previous one works (entries: %d)': 'Работает прежний (записей: %d)',
+	'There is no previous one, the list is empty for now': 'Прежнего нет, список пока пуст',
+	'The subscription %s did not update: %s. The previous servers stay': 'Подписка %s не обновилась: %s. Остались прежние серверы',
+	'The subscription %s ends on %s': 'Подписка %s заканчивается %s',
+	'The subscription %s ended on %s': 'Подписка %s закончилась %s',
+	'The subscription %s: %d%% of the traffic used (%s of %s)': 'Подписка %s: израсходовано %d%% трафика (%s из %s)',
+}
+
+def write_notify(detour):
+	"""the daemon's dictionary; a message without a translation stops the script, as in LuCI"""
+	msgs = importlib.import_module('i18n-extract').extract_ucode(detour)
+	missing = [ m['id'] for m in msgs if m['id'] not in RU_NOTIFY ]
+	if missing:
+		sys.exit('untranslated (RU_NOTIFY):\n  ' + '\n  '.join(missing))
+	# a placeholder dropped or added in a translation would break sprintf
+	import re
+	ph = lambda s: re.findall(r'%[-0-9.]*[sdf%]', s)
+	bad = [ m['id'] for m in msgs if ph(m['id']) != ph(RU_NOTIFY[m['id']]) ]
+	if bad:
+		sys.exit('placeholders differ:\n  ' + '\n  '.join(bad))
+	d = os.path.join(detour, 'root', 'usr', 'share', 'detour', 'i18n'); os.makedirs(d, exist_ok=True)
+	out = { m['id']: RU_NOTIFY[m['id']] for m in msgs }
+	open(os.path.join(d, 'ru.json'), 'w', encoding='utf-8', newline='\n').write(json.dumps(out, ensure_ascii=False, indent='\t', sort_keys=True) + '\n')
+	print('%d messages -> %s' % (len(out), os.path.join(d, 'ru.json')))
 
 PLURAL = 'nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);'
 
@@ -925,3 +1004,4 @@ def main(root):
 
 if __name__ == '__main__':
 	main(sys.argv[1])
+	write_notify(os.path.join(os.path.dirname(os.path.abspath(sys.argv[1])), 'detour'))

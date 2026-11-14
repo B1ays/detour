@@ -51,7 +51,7 @@ function note(text, cls) { return E('div', { 'class': 'alert-message ' + (cls ||
 function fmtTime(ts) { return ts ? new Date(ts * 1000).toLocaleString() : ''; }
 
 function stateBadge(x) {
-	if (!x.enabled) return E('span', { 'class': 'detour-badge off' }, _('off'));
+	if (!x.enabled) return E('span', { 'class': 'detour-badge off' }, _('switched off'));
 	if (x.healthy) return E('span', { 'class': 'detour-badge ok' }, _('working'));
 	return E('span', { 'class': 'detour-badge bad' }, x.up ? _('not responding') : _('down'));
 }
@@ -319,7 +319,7 @@ return view.extend({
 			row(_('Name'), label, _('Shown in policies, on the overview and in notifications.')),
 			row(_('Server address'), host, x.warp ? _('A Cloudflare WARP address. Detour moves it away from a bad point (DME) by itself.') : ''),
 			row(_('Server port'), port),
-			row(_('MTU'), mtu, _('Packet size inside the tunnel. Lower it (1280) if some sites hang while others work.'))
+			row('MTU', mtu, _('Packet size inside the tunnel. Lower it (1280) if some sites hang while others work.'))
 		];
 		if (x.kind == 'amneziawg') {
 			body.push(E('h4', {}, _('Masking (AmneziaWG)')));

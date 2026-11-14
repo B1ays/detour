@@ -70,7 +70,7 @@ upd --restore
 [ -s $R/ma.data ] && [ "$(wc -l < $R/ma.data)" = 3000 ] && ok "ma restored from its snapshot with a cap of 0" || bad "restore: $(cat $R/ma.status)"
 
 echo "== the reason in words (notification)"
-grep -q "не хватает памяти роутера" /usr/share/ucode/detour/watch.uc && ok "the notification has the Russian reason" || bad "no reason text"
+grep -q "не хватает памяти роутера" /usr/share/detour/i18n/ru.json && grep -q "not enough router memory" /usr/share/ucode/detour/watch.uc && ok "the notification has the reason, translated" || bad "no reason text"
 
 echo "== cleanup"
 cleanup

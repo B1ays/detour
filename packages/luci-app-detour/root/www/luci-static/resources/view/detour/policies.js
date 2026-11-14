@@ -160,9 +160,9 @@ return view.extend({
 
 		const bEdit = E('button', { 'class': 'btn cbi-button-action', 'click': function() { self.edit(p, hints, kind); } }, _('Edit'));
 		const bUp = E('button', { 'class': 'btn', 'title': _('Checked earlier'), 'disabled': idx == 0 ? '' : null, 'click': function() {
-			uci.move('detour', name, all[idx - 1]['.name']); return applyUci(); } }, '↑ ' + _('Up'));
+			uci.move('detour', name, all[idx - 1]['.name']); return applyUci(); } }, '↑ ' + _('Higher priority'));
 		const bDown = E('button', { 'class': 'btn', 'title': _('Checked later'), 'disabled': idx == all.length - 1 ? '' : null, 'click': function() {
-			uci.move('detour', name, all[idx + 1]['.name'], true); return applyUci(); } }, '↓ ' + _('Down'));
+			uci.move('detour', name, all[idx + 1]['.name'], true); return applyUci(); } }, '↓ ' + _('Lower priority'));
 		const bToggle = E('button', { 'class': 'btn', 'click': function() { uci.set('detour', name, 'enabled', enabled ? '0' : '1'); return applyUci(); } },
 			enabled ? _('Turn off') : _('Turn on'));
 		const bRemove = E('button', { 'class': 'btn cbi-button-negative', 'click': function() { self.remove(p, lists); } }, _('Remove'));
@@ -171,7 +171,7 @@ return view.extend({
 			E('div', { 'class': 'detour-card-head' }, [ E('span', { 'class': 'detour-muted' }, String(idx + 1) + '.'),
 				E('span', { 'class': 'detour-card-title' }, label), ' ',
 				E('span', { 'class': 'detour-badge ' + (enabled ? (block ? 'bad' : 'ok') : 'off') },
-					enabled ? (block ? _('blocks') : (kind == 'direct' ? _('directly') : _('on'))) : _('off')),
+					enabled ? (block ? _('blocks') : (kind == 'direct' ? _('directly') : _('on'))) : _('switched off')),
 				E('span', { 'class': 'detour-muted', 'title': _('Internal name: used in the configuration and the log') }, name) ]),
 			E('div', { 'class': 'detour-card-body' }, body.concat(what)),
 			E('div', { 'class': 'detour-actions detour-card-actions' }, [ bEdit, bUp, bDown, bToggle, bRemove ])

@@ -28,6 +28,7 @@ set detour.notify.tg_token=123456:LABTOKEN_not_a_real_token_xxxxxxxxxxx
 set detour.notify.tg_chat=4242
 set detour.notify.tg_api=http://10.0.2.2:8766
 set detour.notify.throttle=5
+set detour.notify.lang=ru
 commit detour
 U
 # a fresh daemon: what it already told today (once a day, once per failure) is in its memory

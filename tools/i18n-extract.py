@@ -68,6 +68,20 @@ def extract(root):
             seen[(t, None)] = True; out.append({'id': t, 'plural': None, 'where': 'menu'})
     return out
 
+def extract_ucode(root):
+    """_('…') in the detour package's daemon and ucode modules (the messages sent to people)"""
+    out, seen = [], {}
+    mods = os.path.join(root, 'root/usr/share/ucode/detour')
+    files = [ os.path.join(root, 'root/usr/sbin/detourd') ] + [ os.path.join(mods, f) for f in sorted(os.listdir(mods)) if f.endswith('.uc') and f != 'i18n.uc' ]
+    for path in files:
+        src = open(path, encoding='utf-8').read()
+        for m in re.finditer(r'(?<![\w.])_\(', src):
+            s, _ = concat(src, m.end())
+            if s is None or s in seen: continue
+            seen[s] = True
+            out.append({'id': s, 'plural': None, 'where': os.path.basename(path)})
+    return out
+
 if __name__ == '__main__':
     sys.stdout.reconfigure(encoding="utf-8")
-    print(json.dumps(extract(sys.argv[1]), ensure_ascii=False, indent=1))
+    print(json.dumps(extract_ucode(sys.argv[2]) if sys.argv[1] == '--ucode' else extract(sys.argv[1]), ensure_ascii=False, indent=1))
