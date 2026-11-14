@@ -148,6 +148,8 @@ export function stop(keep_dom) {
 // leave a stock router: no table, no rules, dnsmasq back to its own upstreams
 export function purge() {
 	stop(false);
+	net.remove_all(true);      // the table names leave rt_tables too
+
 	let restart = dns.remove_conf();
 	if (dns.ensure_uci(false)) restart = true;
 	fs.unlink(DOMSAVE);

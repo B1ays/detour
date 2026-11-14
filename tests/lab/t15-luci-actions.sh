@@ -1,9 +1,9 @@
 #!/bin/sh
 # Stage 4 "everything without SSH": the LuCI actions through the same path the pages use
-# (LuCI login session -> /ubus JSON-RPC -> detourd deferred methods). Password: /tmp/lab-pw.
+# (LuCI login session -> /ubus JSON-RPC -> detourd deferred methods). Password: /tmp/lab-pw or /etc/enodia-lab/root.pw.
 FAIL=0; ok() { echo "  ok   $*"; }; bad() { echo "  FAIL $*"; FAIL=1; }
 waitfor() { i=0; while [ $i -lt ${3:-15} ]; do [ "$(eval "$2")" = "$1" ] && return 0; sleep 1; i=$((i+1)); done; return 1; }
-PW=$(cat /tmp/lab-pw)
+PW=$(cat /tmp/lab-pw 2>/dev/null || cat /etc/enodia-lab/root.pw 2>/dev/null)   # lab only; /tmp is lost on a reboot
 lab tests/lab/restart-sb.sh >/dev/null   # the shadowsocks server the link exit dials (gone after a lab reboot)
 # the lists of earlier tests may still be loading in the background: the LuCI calls
 # below answer within uhttpd's 60 s, which a busy emulated router can miss - this test is about the calls, not the load

@@ -109,7 +109,7 @@ function evaluate() {
 			if (open && lasting && !opened[p.name]) {
 				const r = nft.set_policy_direct(p.id);
 				if (r.code == 0) {
-					if (cur) core.run(sprintf('conntrack -D -m 0x%x/0xffff00', (cur << 16) | (p.id << 8)));
+					if (cur) net.flush_conntrack_policy(p.id, cur);
 					opened[p.name] = p.id;
 					ev(sprintf('policy %s: no working exit - goes directly', p.name));
 				}
@@ -134,9 +134,9 @@ function evaluate() {
 		const r = nft.set_policy_exit(p.id, want);
 		if (r.code != 0) { ev(sprintf('policy %s: switch failed: %s', p.name, trim(r.out))); continue; }
 		// the flows it opened directly (podirect: the policy mark, no exit) go through the exit from now on
-		if (was_open) core.run(sprintf('conntrack -D -m 0x%x/0xffff00', p.id << 8));
+		if (was_open) net.flush_conntrack_policy(p.id, 0);
 		// flows of this policy pinned to the old exit are dropped, the next packet re-classifies
-		if (cur) core.run(sprintf('conntrack -D -m 0x%x/0xffff00', (cur << 16) | (p.id << 8)));
+		if (cur) net.flush_conntrack_policy(p.id, cur);
 		active['' + p.id] = want;
 		changed = true;
 		switches++; last_switch = time();
@@ -199,7 +199,7 @@ function load_all(reason) {
 	active = fw.active_map(cfg);
 	// the rules were rendered with every policy on an exit: one that went directly is opened again by evaluate();
 	// its direct flows would stay direct (pinned by podirect), so they are dropped
-	for (let n, id in opened) core.run(sprintf('conntrack -D -m 0x%x/0xffff00', id << 8));
+	for (let n, id in opened) net.flush_conntrack_policy(id, 0);
 	opened = {};
 	// destinations / devices newly under a policy: their direct flows (offloaded ones would never be
 	// re-classified) are dropped so the next packets meet the new rules

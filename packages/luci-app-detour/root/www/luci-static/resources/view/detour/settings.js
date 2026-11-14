@@ -96,6 +96,17 @@ return view.extend({
 			_('How many checks in a row must fail before a policy moves to its next exit. 2 with checks every 2 s: about 4-6 s.'));
 		o.datatype = 'range(1,10)';
 		o.placeholder = '2';
+		// the two fwmark bytes (policy, exit): only when another program uses the same bits (pbr, mwan3)
+		o = s.option(form.Value, 'fw_mask', _('Packet mark bits'),
+			_('Change only when another program uses the same bits: pbr (0x00ff0000) or mwan3 (0x3f00) - a message on the Overview says so. For example 0x0ffff000.'));
+		o.placeholder = '0x00ffff00';
+		o.optional = true;
+		o.validate = function(section_id, v) {
+			if (!v) return true;
+			const n = /^(0x)?[0-9a-fA-F]{1,8}$/.test(v) ? parseInt(v.replace(/^0x/i, ''), 16) : -1;
+			for (let sh = 0; sh <= 12; sh++) if (n === 0xffff * Math.pow(2, sh)) return true;
+			return _('0xffff shifted by whole bits: 0x0000ffff ... 0x0ffff000');
+		};
 
 		s = m.section(form.NamedSection, 'main', 'main', _('Router DNS'),
 			_('Through the tunnel: the router resolves names via the exits of the selected policy, so the provider does not see the queries. ' +

@@ -4,7 +4,7 @@
 set -e
 cd "$(dirname "$0")/.."
 P=${1:-detour}
-LAB_KEY=${LAB_KEY:-../../qemu-owrt/lab_ed25519}   # the lab router's SSH key
+LAB_KEY=${LAB_KEY:-$HOME/qemu-owrt/lab_ed25519}   # the lab router's SSH key
 C=packages/$P/control
 v=$(sed -n 's/^version=//p' $C); base=${v%-r*}; r=${v##*-r}; nv="$base-r$((r+1))"
 sed -i "s/^version=.*/version=$nv/" $C

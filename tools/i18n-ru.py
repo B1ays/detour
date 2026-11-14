@@ -736,6 +736,17 @@ RU = {
 	'DNS mode': 'Режим',
 	'General settings': 'Основное',
 	'Restoring the settings': 'Восстановление',
+	'IPv6': 'IPv6',
+	'refuse all IPv6 of the network': 'отклонять весь IPv6 домашней сети',
+	'IPv6 does not go through the tunnel. Sites of the policy lose their IPv6 addresses anyway; addresses and lists do not know the IPv6 addresses of a service, so a device could reach it directly over IPv6. With this on, devices use IPv4 for everything (the policies below this one too).':
+		'IPv6 не идёт через туннель. У сайтов политики IPv6-адреса и так скрыты; адреса и списки не знают IPv6-адресов сервиса, и устройство могло бы открыть его напрямую по IPv6. Если включить, устройства используют IPv4 для всего (и для политик ниже этой).',
+	'Packet mark bits': 'Биты метки пакетов',
+	'Change only when another program uses the same bits: pbr (0x00ff0000) or mwan3 (0x3f00) - a message on the Overview says so. For example 0x0ffff000.':
+		'Меняйте, только если те же биты использует другая программа: pbr (0x00ff0000) или mwan3 (0x3f00) — об этом скажет сообщение на «Обзоре». Например, 0x0ffff000.',
+	'0xffff shifted by whole bits: 0x0000ffff ... 0x0ffff000': '0xffff, сдвинутое на целое число битов: 0x0000ffff … 0x0ffff000',
+	'the packet mark bits %s are also used by %s - set other bits in Settings → Packet mark bits':
+		'биты метки пакетов %s использует и %s — задайте другие в «Настройки → Биты метки пакетов»',
+	'wrong packet mark bits «%s» - the default ones are used': 'неверные биты метки пакетов «%s» — используются стандартные',
 	# not 'Download' / 'Upload': LuCI's own catalogue has them ("Скачать" / "Загрузить") and wins over ours
 	'Downloading': 'Скачивание',
 	'Uploading': 'Загрузка',

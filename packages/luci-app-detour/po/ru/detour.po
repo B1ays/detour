@@ -1600,6 +1600,15 @@ msgstr "Порты"
 msgid "Destination ports: 443 (TCP and UDP), udp/443, tcp/6000-6100, separated by spaces. All traffic of the network to these ports goes through the policy."
 msgstr "Порты назначения через пробел: 443 (TCP и UDP), udp/443, tcp/6000-6100. Весь трафик сети на эти порты идёт через политику."
 
+msgid "IPv6"
+msgstr "IPv6"
+
+msgid "refuse all IPv6 of the network"
+msgstr "отклонять весь IPv6 домашней сети"
+
+msgid "IPv6 does not go through the tunnel. Sites of the policy lose their IPv6 addresses anyway; addresses and lists do not know the IPv6 addresses of a service, so a device could reach it directly over IPv6. With this on, devices use IPv4 for everything (the policies below this one too)."
+msgstr "IPv6 не идёт через туннель. У сайтов политики IPv6-адреса и так скрыты; адреса и списки не знают IPv6-адресов сервиса, и устройство могло бы открыть его напрямую по IPv6. Если включить, устройства используют IPv4 для всего (и для политик ниже этой)."
+
 msgid "New blocking policy"
 msgstr "Новая политика блокировки"
 
@@ -1725,6 +1734,15 @@ msgstr "Неудачных проверок до переключения"
 
 msgid "How many checks in a row must fail before a policy moves to its next exit. 2 with checks every 2 s: about 4-6 s."
 msgstr "Сколько проверок подряд должно не пройти, чтобы политика перешла на следующий выход. 2 при проверке раз в 2 с — примерно 4–6 с."
+
+msgid "Packet mark bits"
+msgstr "Биты метки пакетов"
+
+msgid "Change only when another program uses the same bits: pbr (0x00ff0000) or mwan3 (0x3f00) - a message on the Overview says so. For example 0x0ffff000."
+msgstr "Меняйте, только если те же биты использует другая программа: pbr (0x00ff0000) или mwan3 (0x3f00) — об этом скажет сообщение на «Обзоре». Например, 0x0ffff000."
+
+msgid "0xffff shifted by whole bits: 0x0000ffff ... 0x0ffff000"
+msgstr "0xffff, сдвинутое на целое число битов: 0x0000ffff … 0x0ffff000"
 
 msgid "Through the tunnel: the router resolves names via the exits of the selected policy, so the provider does not see the queries. If all of its exits are down, it switches to an encrypted resolver (DoH/DoT/DoQ) directly; traffic of the policies stays blocked. Encrypted: the router always asks the encrypted resolvers directly, whatever the exits do."
 msgstr "Через туннель: роутер разрешает имена через выходы выбранной политики, и провайдер не видит запросов. Если все её выходы не работают, роутер переходит на шифрованный DNS (DoH/DoT/DoQ) напрямую; трафик политик остаётся заблокированным. Шифрованный: роутер всегда спрашивает шифрованные DNS-серверы напрямую, что бы ни происходило с выходами."
@@ -2106,6 +2124,12 @@ msgstr "политика %s: неверный домен «%s»"
 
 msgid "policy %s: wrong device address «%s»"
 msgstr "политика %s: неверный адрес устройства «%s»"
+
+msgid "the packet mark bits %s are also used by %s - set other bits in Settings → Packet mark bits"
+msgstr "биты метки пакетов %s использует и %s — задайте другие в «Настройки → Биты метки пакетов»"
+
+msgid "wrong packet mark bits «%s» - the default ones are used"
+msgstr "неверные биты метки пакетов «%s» — используются стандартные"
 
 msgid "DNS through the tunnel: the dnsproxy package is not installed - if the exits fail, the provider's DNS is used unencrypted"
 msgstr "DNS через туннель: не установлен пакет dnsproxy — при отказе выходов используется DNS провайдера без шифрования"

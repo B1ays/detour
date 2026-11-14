@@ -188,6 +188,7 @@ config main 'main'
 	option lists_mem_reserve '150' # memory kept free after loading lists, MB (default 15 % of RAM, at least 64)
 	option dns 'tunnel'           # router DNS: off | tunnel | encrypted
 	option dns_policy 'vpn'       # policy carrying the router's DNS (tunnel mode)
+	option fw_mask '0x00ffff00'   # packet mark bits (policy + exit); change when pbr or mwan3 uses them
 
 # WireGuard exit: the tunnel itself is in /etc/config/network (interface wg_pl)
 config exit 'pl'
@@ -224,6 +225,7 @@ config policy 'vpn'
 	list device 'aa:bb:cc:dd:ee:ff'   # all traffic of a device
 	list port 'udp/443'           # 443 = TCP and UDP; tcp/6000-6100 = a range
 	option on_down 'direct'       # when every exit is down: directly (default: block)
+	option ipv6_block '1'         # refuse all IPv6 of the network from this policy on (IPv6 is not tunnelled)
 
 config policy 'block'             # "Block"
 	option id '4'
@@ -233,7 +235,7 @@ config policy 'block'             # "Block"
 
 config list 'yt'
 	option policy 'vpn'
-	list url 'v2fly:youtube'      # a v2fly category, a URL, or several
+	list url 'v2fly:youtube'      # a v2fly category, a URL, or several (address lists: IPv4 and IPv6)
 	option label 'YouTube'
 	option min_lines '10'         # fewer entries = the update failed
 
@@ -332,11 +334,14 @@ Secrets (keys, passwords, the bot token, subscription URLs) are stored in files 
 ### Marks and tables
 
 ```
-packet mark        0x00EEPP00    EE = exit number, PP = policy number
+packet mark        0x00EEPP00    EE = exit number, PP = policy number (main.fw_mask moves them)
+ct mark            the same          a flow is classified once; PP = 0xff: "decided: directly"
 0x10000000                       the tunnels' own traffic (never classified)
-routing table      1000 + exit number
-ip rule priority   11000 + exit number
+routing table      detour_<exit>    in rt_tables, numbered after the last table in use
+ip rule priority   free ones from 11001, a rule per exit looking up its table
 ```
+
+Only Detour's own rules and tables (by the `detour_` names) are ever changed or removed.
 
 ## Building from source
 

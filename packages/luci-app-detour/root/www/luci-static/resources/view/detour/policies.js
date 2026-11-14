@@ -264,6 +264,8 @@ return view.extend({
 				onDown.value = 'block';
 		} }, [ E('option', { 'value': 'block', 'selected': p.on_down != 'direct' ? '' : null }, _('block it (nothing leaks)')),
 			E('option', { 'value': 'direct', 'selected': p.on_down == 'direct' ? '' : null }, _('let it go directly through the provider')) ]);
+		// IPv6 is not tunnelled: an address policy may refuse all IPv6 (devices then use IPv4, which it covers)
+		const v6 = E('input', { 'type': 'checkbox', 'checked': p.ipv6_block == '1' ? '' : null });
 		const body = [];
 		if (isNew) body.push(row(_('Internal name'), name, _('Latin letters, digits and _, up to 11; used in the configuration.')));
 		body.push(row(_('Name'), label, _('How the policy is shown everywhere.')));
@@ -282,6 +284,8 @@ return view.extend({
 			row(_('Addresses'), dst, _('IP addresses or ranges (CIDR), one per line.')),
 			row(_('Ports'), port, _('Destination ports: 443 (TCP and UDP), udp/443, tcp/6000-6100, separated by spaces. All traffic of the network to these ports goes through the policy.'))
 		);
+		if (vpn) body.push(row(_('IPv6'), E('label', {}, [ v6, ' ', _('refuse all IPv6 of the network') ]),
+			_('IPv6 does not go through the tunnel. Sites of the policy lose their IPv6 addresses anyway; addresses and lists do not know the IPv6 addresses of a service, so a device could reach it directly over IPv6. With this on, devices use IPv4 for everything (the policies below this one too).')));
 		const self = this;
 		modal(isNew ? (block ? _('New blocking policy') : (direct ? _('New direct policy') : _('New policy'))) : _('Policy «%s»').format(p.label || p['.name']), body, function() {
 			let n = p['.name'];
@@ -314,7 +318,7 @@ return view.extend({
 			}
 			const set = function(k, v) { if (v && (!Array.isArray(v) || v.length)) uci.set('detour', n, k, v); else uci.unset('detour', n, k); };
 			set('label', label.value.trim() || (block ? _('Block') : (direct ? _('Directly') : '')));
-			if (vpn) { set('exit', exits.get()); set('on_down', onDown.value == 'direct' ? 'direct' : null); }
+			if (vpn) { set('exit', exits.get()); set('on_down', onDown.value == 'direct' ? 'direct' : null); set('ipv6_block', v6.checked ? '1' : null); }
 			set('device', dv); set('dst', d); set('domain', o); set('port', pt);
 			return applyUci().then(function() { return true; });
 		});

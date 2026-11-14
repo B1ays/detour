@@ -152,8 +152,22 @@ reload_config; sleep 4
 expect "created" "$(nft list table inet detour | grep -cE 'chain (exit7|ks7)|set (dst4_p9|dom4_p9)')" "4"
 uci delete detour.tmpx; uci delete detour.tmpp; uci commit detour; reload_config; sleep 4
 waitfor 0 "nft list table inet detour | grep -cE 'chain (exit7|ks7)|set (dst4_p9|dom4_p9)'" 20 && ok "removed" || bad "chains/sets of the removed exit/policy still there"
-waitfor 0 "ip rule show | grep -c '^11007:'" 20 && ok "rule 11007 removed" || bad "rule 11007 still there"
+waitfor 0 "ip rule show | grep -c 'lookup detour_tmpx'" 20 && ok "its rule removed" || bad "the rule of tmpx still there"
+expect "its table name released" "$(grep -c 'detour_tmpx' /etc/iproute2/rt_tables)" "0"
 expect "no config/nft errors" "$(ubus call detour status | jsonfilter -e '@.errors[*]' | wc -l)" "0"
+
+echo "== L. the tables are named, the rules and tables of other programs are left alone"
+NX=$(uci show detour | grep -c '=exit$')
+expect "a named table per exit" "$(grep -c '[[:space:]]detour_' /etc/iproute2/rt_tables)" "$NX"
+expect "a rule per exit, looking up its table" "$(ip rule show | grep -c 'lookup detour_')" "$NX"
+# another program's rule at a priority of the old fixed range, with a mark in our bits, and its own table
+ip rule add priority 11003 fwmark 0x7f0000/0xff0000 lookup 4242
+ip route add unreachable default table 4242
+ubus call detour reload >/dev/null; sleep 4
+expect "the other rule is kept" "$(ip rule show | grep -c '^11003:.*lookup 4242')" "1"
+expect "its table is kept" "$(ip route show table 4242 | grep -c unreachable)" "1"
+expect "our rules unchanged" "$(ip rule show | grep -c 'lookup detour_')" "$NX"
+ip rule del priority 11003 lookup 4242; ip route flush table 4242
 
 echo "== K. kill-switch counters"
 expect "ks1 drops" "$(nft list chain inet detour ks1 | sed -n 's/.*packets \([0-9]*\).*/\1/p')" "0"

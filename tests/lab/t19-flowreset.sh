@@ -1,5 +1,5 @@
 #!/bin/sh
-# A destination / device that comes under a policy: its direct flows (ct mark 0) are reset, so that the next
+# A destination / device that comes under a policy: its direct flows (ct mark "decided: directly") are reset, so that the next
 # packets are classified. On the BE7000 offloaded flows (fw4 flowtable: software for Wi-Fi and the engines'
 # tun, PPE for wired ports) otherwise keep going directly - seen on the real router: a running download
 # stayed on the WAN after a policy for its address was added. In the lab nothing is offloaded; what is
@@ -13,7 +13,8 @@ mark() { conntrack -L -p icmp -s $CL -d $D 2>/dev/null | sed -n 's/.*mark=\([0-9
 cleanup() { uci -q delete detour.tfr; uci commit detour; ubus call detour reload >/dev/null; }
 cleanup; conntrack -D -d $D >/dev/null 2>&1
 cl "nohup ping -c 60 -i 0.5 $D >/dev/null 2>&1 </dev/null &"
-waitfor 0 "mark" 10 && ok "direct flow to $D, mark 0" || bad "no direct flow: '$(mark)'"
+# the decision for a flow no policy takes is cached in its ct mark (0xff00 with the default layout): classified once
+waitfor $((0xff << 8)) "mark" 10 && ok "direct flow to $D, decided once: mark 0xff00" || bad "direct flow mark: '$(mark)'"
 echo "== policy for $D through warp"
 uci -q batch <<'U'
 set detour.tfr=policy

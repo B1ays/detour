@@ -51,8 +51,9 @@ export function ensure_zone(c, iface) {
 	let zone = null;
 	c.foreach('firewall', 'zone', function(z) {
 		const nets = (type(z.network) == 'array') ? z.network : split(z.network ?? '', /\s+/);
+		// the zone the interface is in already wins and ends the search; a zone named vpn/detour is the fallback
+		if (index(nets, iface) >= 0) { zone = z['.name']; return false; }
 		if (z.name == 'vpn' || z.name == 'detour') zone = z['.name'];
-		if (index(nets, iface) >= 0) zone = z['.name'];
 	});
 	if (!zone) {
 		zone = 'detour';

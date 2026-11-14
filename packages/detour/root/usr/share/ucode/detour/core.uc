@@ -9,16 +9,73 @@ export const VERSION = '0.1.0';
 export const RUN = '/tmp/detour';
 export const PERSIST = '/etc/detour';
 
-// fwmark layout 0x00EE PP00: EE = exit id, PP = policy id
-export const M_POL = 0x0000ff00;
-export const M_EXIT = 0x00ff0000;
-export const M_BOTH = 0x00ffff00;
 // transport underlay (WG fwmark, sing-box routing_mark, Xray sockopt.mark) + zapret nfqws packets
 export const M_UNDERLAY = 0x10000000;
 export const M_SKIP = 0x50000000;
 
-export const TABLE_BASE = 1000;      // exit N -> routing table 1000+N
-export const RULE_PRIO_BASE = 11000; // exit N -> ip rule priority 11000+N
+// fwmark layout: two bytes, the policy id below the exit id - 0x00EEPP00 by default. main.fw_mask moves them
+// (any 0xffff << n up to bit 27, clear of M_SKIP): pbr (0x00ff0000) and mwan3 (0x3f00) use the default's bits.
+// Policy byte 0xff (ids end at 250) = "decided: directly" in the ct mark - a flow that matched no policy is
+// classified once, not on every packet.
+export const FW_MASK_DEFAULT = 0x00ffff00;
+export function mark_layout(mask) {
+	mask ??= FW_MASK_DEFAULT;
+	for (let s = 0; s <= 12; s++)
+		if (mask == (0xffff << s)) return { shift: s, pol: 0xff << s, exit: 0xff << (s + 8), both: mask, direct: 0xff << s };
+	return null;
+}
+let LAYOUT = null;      // of the last load(); read from UCI by whoever needs it before
+function parse_mask(v) {
+	if (v == null) return null;
+	const m = match(lc(trim('' + v)), /^(0x)?([0-9a-f]{1,8})$/);
+	if (!m) return -1;
+	let n = 0;
+	for (let ch in split(m[2], '')) n = n * 16 + index('0123456789abcdef', ch);
+	return n;
+}
+export function marks() {
+	return LAYOUT ??= (mark_layout(parse_mask(cursor().get('detour', 'main', 'fw_mask'))) ?? mark_layout());
+}
+export function pol_mark(id) { return id << marks().shift; }
+export function exit_mark(id) { return id << (marks().shift + 8); }
+
+// other users of the same fwmark bits: pbr and mwan3 (with their own masks, or their defaults)
+function mark_conflicts(L) {
+	const c = cursor(), out = [];
+	if (fs.access('/etc/config/pbr') && c.get('pbr', 'config', 'enabled') == '1') {
+		const m = parse_mask(c.get('pbr', 'config', 'fw_mask') ?? '00ff0000');
+		if (m > 0 && (m & L.both)) push(out, sprintf('pbr (fw_mask 0x%08x)', m));
+	}
+	if (fs.access('/etc/config/mwan3') && fs.access('/etc/init.d/mwan3') && system('/etc/init.d/mwan3 enabled 2>/dev/null') == 0) {
+		const m = parse_mask(c.get('mwan3', 'globals', 'mmx_mask') ?? '0x3F00');
+		if (m > 0 && (m & L.both)) push(out, sprintf('mwan3 (mmx_mask 0x%08x)', m));
+	}
+	return out;
+}
+
+// never classified or refused: local, private, multicast, link-local, CGNAT (nft and the site check share them)
+export const PRIVATE4 = [ '0.0.0.0/8', '10.0.0.0/8', '100.64.0.0/10', '127.0.0.0/8', '169.254.0.0/16', '172.16.0.0/12', '192.168.0.0/16', '224.0.0.0/3' ];
+export const PRIVATE6 = [ '::/127', '::ffff:0:0/96', 'fc00::/7', 'fe80::/10', 'ff00::/8' ];
+// the first 16 bits of an IPv6 address, or null (declared before its user: ucode does not hoist)
+function hex4(a) {
+	const m = match(a, /^([0-9a-f]{1,4}):/);
+	if (!m) return null;
+	let n = 0;
+	for (let ch in split(m[1], '')) n = n * 16 + index('0123456789abcdef', ch);
+	return n;
+}
+// an IPv6 address in PRIVATE6
+export function is_private6(a) {
+	a = lc(a ?? '');
+	if (a == '::' || a == '::1' || match(a, /^::ffff:[0-9.]+$/)) return true;
+	const h = hex4(a);
+	if (h == null) return false;
+	return (h & 0xfe00) == 0xfc00 || (h & 0xffc0) == 0xfe80 || (h & 0xff00) == 0xff00;
+}
+
+// routing tables of the exits: registered in rt_tables as detour_<exit>, numbered after the last table in use
+// (as pbr does); rules at free priorities from here on (net.uc)
+export const RULE_PRIO_BASE = 11000;
 export const UNREACH_METRIC = 4278198272;
 
 export function log(msg) {
@@ -178,6 +235,14 @@ export function load(conf) {
 	if (main.probe_timeout < 2) main.probe_timeout = 2;
 	if (main.probe_timeout > 30) main.probe_timeout = 30;
 	if (!(main.alert_hold >= 0)) main.alert_hold = 10;
+	main.marks = mark_layout(parse_mask(m.fw_mask));
+	if (!main.marks) {
+		push(errors, sprintf('main: bad fw_mask "%s" (0xffff shifted left by 0..12, like 0x00ffff00), the default is used', m.fw_mask));
+		main.marks = mark_layout();
+	}
+	LAYOUT = main.marks;
+	for (let x in mark_conflicts(main.marks))
+		push(errors, sprintf('main: fwmark bits 0x%08x are also used by %s - set main.fw_mask to other bits', main.marks.both, x));
 
 	const exits = [], by_name = {}, ids = {};
 	c.foreach(name, 'exit', function(s) {
@@ -249,6 +314,9 @@ export function load(conf) {
 			name: n, id, exits: ex, block, direct, on_down,
 			enabled: bool(s.enabled, true),
 			dst4: a.v4, dst6: a.v6, domains: doms, devices: devs, ports,
+			// IPv6 is not tunnelled: an address policy does not know the IPv6 addresses of what it covers, so it
+			// may refuse all forwarded IPv6 from where it stands in the order (devices fall back to IPv4)
+			ipv6_block: !block && !direct && bool(s.ipv6_block, false),
 			label: s.label ?? n,
 		});
 	});

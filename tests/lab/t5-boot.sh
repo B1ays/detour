@@ -17,8 +17,10 @@ after)
 	t_fw=$(logread | grep -m1 -n 'detour' | cut -d: -f1)
 	expect "no dnsmasq nftset errors" "$(logread | grep -ci 'nftset.*\(error\|fail\)')" "0"
 	expect "daemon" "$(pgrep -f /usr/sbin/detourd >/dev/null && echo up)" "up"
-	expect "ip rules" "$(ip rule show | grep -c '^1100[12]:')" "2"
-	expect "table 1001 unreachable" "$(ip route show table 1001 | grep -c unreachable)" "1"
+	expect "ip rules" "$(ip rule show | grep -c 'lookup detour_')" "$(uci show detour | grep -c '=exit$')"
+	X1=$(uci show detour | sed -n 's/^detour\.\([^.=]*\)=exit$/\1/p' | head -n1)
+	T1=$(awk -v n="detour_$X1" '$2 == n { print $1 }' /etc/iproute2/rt_tables)
+	expect "the table of $X1 unreachable" "$(ip route show table ${T1:-0} | grep -c unreachable)" "1"
 	for N in 1 2; do lab tests/lab/l2-exit.sh $N >/dev/null 2>&1; done; ifup wgx1; ifup wgx2; sleep 8
 	expect "policy traffic" "$(cl "curl -s -m 8 -o /dev/null -w '%{http_code}' https://1.1.1.1/cdn-cgi/trace")" "200"
 	echo "RESULT: $([ $FAIL = 0 ] && echo PASS || echo FAIL)"

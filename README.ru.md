@@ -188,6 +188,7 @@ config main 'main'
 	option lists_mem_reserve '150' # свободная память после загрузки списков, МБ (по умолчанию 15 % ОЗУ, не меньше 64)
 	option dns 'tunnel'           # DNS роутера: off | tunnel | encrypted
 	option dns_policy 'vpn'       # политика для DNS роутера (режим tunnel)
+	option fw_mask '0x00ffff00'   # биты метки пакетов (политика + выход); менять, если их занимает pbr или mwan3
 
 # выход WireGuard: туннель настроен в /etc/config/network (интерфейс wg_pl)
 config exit 'pl'
@@ -224,6 +225,7 @@ config policy 'vpn'
 	list device 'aa:bb:cc:dd:ee:ff'   # весь трафик устройства
 	list port 'udp/443'           # 443 = TCP и UDP; tcp/6000-6100 — диапазон
 	option on_down 'direct'       # если все выходы упали: напрямую (по умолчанию — блокировать)
+	option ipv6_block '1'         # отклонять весь IPv6 сети с места этой политики (IPv6 не туннелируется)
 
 config policy 'block'             # «Заблокировать»
 	option id '4'
@@ -233,7 +235,7 @@ config policy 'block'             # «Заблокировать»
 
 config list 'yt'
 	option policy 'vpn'
-	list url 'v2fly:youtube'      # категория v2fly, URL или несколько
+	list url 'v2fly:youtube'      # категория v2fly, URL или несколько (списки адресов: IPv4 и IPv6)
 	option label 'YouTube'
 	option min_lines '10'         # меньше записей = обновление неудачно
 
@@ -332,11 +334,14 @@ detour purge                      # убрать все следы Detour из n
 ### Метки и таблицы
 
 ```
-метка пакета       0x00EEPP00    EE = номер выхода, PP = номер политики
+метка пакета       0x00EEPP00    EE = номер выхода, PP = номер политики (main.fw_mask сдвигает их)
+метка conntrack    то же          соединение классифицируется один раз; PP = 0xff: «решено: напрямую»
 0x10000000                       собственный трафик туннелей (не классифицируется)
-таблица маршрутов  1000 + номер выхода
-приоритет ip rule  11000 + номер выхода
+таблица маршрутов  detour_<выход>  в rt_tables, номер после последней занятой таблицы
+приоритет ip rule  свободные от 11001, по правилу на выход, смотрящему в свою таблицу
 ```
+
+Detour меняет и удаляет только свои правила и таблицы (по именам `detour_`).
 
 ## Сборка из исходников
 

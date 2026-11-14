@@ -8,12 +8,11 @@
 
 import * as fs from 'fs';
 import { cursor } from 'uci';
-import { run, shq, RUN } from 'detour.core';
+import { run, shq, RUN, PRIVATE4, is_private6 } from 'detour.core';
 
 const T = 'inet detour';
 const RE_HOST = /^[A-Za-z0-9]([A-Za-z0-9-]{0,62}\.)+[A-Za-z0-9-]{2,63}$/;
 const RE_IP4 = /^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$/;
-const PRIVATE = [ '0.0.0.0/8', '10.0.0.0/8', '100.64.0.0/10', '127.0.0.0/8', '169.254.0.0/16', '172.16.0.0/12', '192.168.0.0/16', '224.0.0.0/3' ];
 
 // "https://Site.example/path" / "site.example:8443" / "1.2.3.4" -> { host, ip, port, url } or { error }
 export function target(q) {
@@ -99,7 +98,10 @@ export function explain(cfg, state, q, mac) {
 	const host = t.ip ? null : t.host;
 	const m = [];      // matches in the order nft checks them
 	const add = (o) => push(m, o);
-	for (let ip in ips) for (let c in PRIVATE) if (in_cidr(ip, c)) { add({ to: 'direct', why: 'local', ip }); break; }
+	for (let ip in ips) {
+		// local and private addresses, the same as nft bypass4 / bypass6
+		if (index(ip, ':') >= 0 ? is_private6(ip) : length(filter(PRIVATE4, (c) => in_cidr(ip, c)))) add({ to: 'direct', why: 'local', ip });
+	}
 	for (let p in cfg.policies) {
 		if (!p.enabled) continue;
 		const P = { to: 'policy', policy: p.name, label: p.label, block: p.block, direct: p.direct };

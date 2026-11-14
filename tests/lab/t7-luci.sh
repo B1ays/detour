@@ -1,8 +1,8 @@
 #!/bin/sh
 # LuCI path without a browser: form login -> session; menu has the Detour pages; ACL lets the views
-# read status/uci and pin/unpin; views and translations are served. Password: /tmp/lab-pw (lab only).
+# read status/uci and pin/unpin; views and translations are served. Password: /tmp/lab-pw or /etc/enodia-lab/root.pw (lab only).
 FAIL=0; ok() { echo "  ok   $*"; }; bad() { echo "  FAIL $*"; FAIL=1; }
-PW=$(cat /tmp/lab-pw)
+PW=$(cat /tmp/lab-pw 2>/dev/null || cat /etc/enodia-lab/root.pw 2>/dev/null)   # lab only; /tmp is lost on a reboot
 rm -f /tmp/cj
 curl -s -o /dev/null -c /tmp/cj --data-urlencode luci_username=root --data-urlencode "luci_password=$PW" http://127.0.0.1/cgi-bin/luci/
 SID=$(awk '/sysauth/{print $7}' /tmp/cj | head -n1)
