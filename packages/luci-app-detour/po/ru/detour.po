@@ -97,68 +97,86 @@ msgstr "Файл слишком большой для конфига (больш
 msgid "Choose a file…"
 msgstr "Выбрать файл…"
 
+msgid "Paste a link, a key or a config first, or choose a file."
+msgstr "Сначала вставьте ссылку, ключ или конфиг либо выберите файл."
+
+msgid "Nothing here can become an exit."
+msgstr "Здесь нет ничего, что может стать выходом."
+
+msgid "There are %d servers here. Exits are added one at a time: paste one link or one config. For a set of servers from a provider use a subscription."
+msgstr "Здесь серверов: %d. Выходы добавляются по одному: вставьте одну ссылку или один конфиг. Для набора серверов от провайдера используйте подписку."
+
+msgid "Exit %s added. Put it into a policy on the Policies page."
+msgstr "Выход %s добавлен. Включите его в политику на странице «Политики»."
+
+msgid "Import"
+msgstr "Импорт"
+
+msgid "Exit from a link, a key or a file"
+msgstr "Выход из ссылки, ключа или файла"
+
+msgid "Paste one link (vless, vmess, trojan, ss, hysteria2, tuic, wireguard), an Amnezia vpn:// key, a WireGuard / AmneziaWG config, a sing-box or Xray JSON or a Clash YAML with one server - or choose such a file. Import shows what it is before it is added. Proxies run on sing-box or Xray: where both can, you choose; XHTTP only on Xray, HTTP/2, Hysteria2 and TUIC only on sing-box. WireGuard and AmneziaWG run on the router itself."
+msgstr "Вставьте одну ссылку (vless, vmess, trojan, ss, hysteria2, tuic, wireguard), ключ Amnezia vpn://, конфиг WireGuard / AmneziaWG, JSON sing-box или Xray либо Clash YAML с одним сервером — или выберите такой файл. «Импорт» покажет, что это, до того как выход будет добавлен. Прокси работают на sing-box или Xray: где подходят оба, выбираете вы; XHTTP — только Xray, HTTP/2, Hysteria2 и TUIC — только sing-box. WireGuard и AmneziaWG работают в самом роутере."
+
+msgid "Link, key or config"
+msgstr "Ссылка, ключ или конфиг"
+
 msgid "directly"
 msgstr "напрямую"
 
 msgid "through %s"
 msgstr "через %s"
 
-msgid "Tick at least one server."
-msgstr "Отметьте хотя бы один сервер."
-
-msgid "Name: Latin letters, digits and _, up to 11, starting with a letter."
-msgstr "Имя: латинские буквы, цифры и _, до 11 символов, начинается с буквы."
-
-msgid "Exit %s added. Put it into a policy on the Policies page."
-msgid_plural "Exits %s added. Put them into a policy on the Policies page."
-msgstr[0] "Выход %s добавлен. Добавьте его в политику на странице «Политики»."
-msgstr[1] "Выходы %s добавлены. Добавьте их в политику на странице «Политики»."
-msgstr[2] "Выходы %s добавлены. Добавьте их в политику на странице «Политики»."
-
-msgid "Add the chosen"
-msgstr "Добавить отмеченные"
-
-msgid "Engine"
-msgstr "Движок"
-
 msgid "not installed"
 msgstr "не установлен"
 
-msgid "Engine:"
-msgstr "Движок:"
+msgid "Internal name: Latin letters, digits and _, up to 11, starting with a letter."
+msgstr "Внутреннее имя: латинские буквы, цифры и _, до 11 знаков, начинается с буквы."
 
-msgid "%s is not installed"
-msgstr "%s не установлен"
+msgid "Add"
+msgstr "Добавить"
 
-msgid "Nothing here can become an exit."
-msgstr "Здесь нет ничего, что может стать выходом."
+msgid "Protocol"
+msgstr "Протокол"
 
-msgid "Several servers: each ticked one becomes its own exit, named %s1, %s2…"
-msgstr "Несколько серверов: каждый отмеченный станет отдельным выходом с именами %s1, %s2…"
+msgid "Server"
+msgstr "Сервер"
 
-msgid "Check what is inside"
-msgstr "Посмотреть, что внутри"
+msgid "Runs on"
+msgstr "Работает на"
 
-msgid "Exit from a link, a key or a file"
-msgstr "Выход из ссылки, ключа или файла"
-
-msgid "Paste one or more links (vless, vmess, trojan, ss, hysteria2, tuic, wireguard), an Amnezia vpn:// key, a WireGuard / AmneziaWG config, a sing-box or Xray JSON or a Clash YAML - or choose such a file. Proxies run on sing-box or Xray: where both can, you choose; XHTTP only on Xray, HTTP/2, Hysteria2 and TUIC only on sing-box. WireGuard and AmneziaWG run on the router itself."
-msgstr "Вставьте одну или несколько ссылок (vless, vmess, trojan, ss, hysteria2, tuic, wireguard), ключ Amnezia vpn://, конфиг WireGuard / AmneziaWG, JSON sing-box или Xray, YAML Clash — или выберите такой файл. Прокси работают на sing-box или Xray: где подходят оба, движок выбираете вы; XHTTP — только на Xray, HTTP/2, Hysteria2 и TUIC — только на sing-box. WireGuard и AmneziaWG — средствами самого роутера."
-
-msgid "Link, key or config"
-msgstr "Ссылка, ключ или конфиг"
+msgid "the router itself (%s)"
+msgstr "самом роутере (%s)"
 
 msgid "Name"
 msgstr "Имя"
 
-msgid "Latin letters, digits and _, up to 11. Several servers: name1, name2…"
-msgstr "Латинские буквы, цифры и _, до 11 символов. Несколько серверов: имя1, имя2…"
+msgid "How the exit is shown everywhere."
+msgstr "Как выход называется везде."
+
+msgid "Internal name"
+msgstr "Внутреннее имя"
+
+msgid "Latin letters, digits and _, up to 11; used in the configuration."
+msgstr "Латинские буквы, цифры и _, до 11 символов; используется в конфигурации."
+
+msgid "Engine"
+msgstr "Движок"
+
+msgid "Both engines can run this server."
+msgstr "Этот сервер могут обслуживать оба движка."
 
 msgid "Connect to the server"
 msgstr "Подключаться к серверу"
 
-msgid "Through another exit (for example WARP) when the server itself is blocked by the provider. If that exit fails, this one stops too - nothing goes directly. WireGuard always connects directly."
-msgstr "Через другой выход (например, WARP), когда сам сервер заблокирован провайдером. Если тот выход упадёт, этот тоже остановится — напрямую ничего не пойдёт. WireGuard всегда подключается напрямую."
+msgid "Through another exit (for example WARP) when the server itself is blocked by the provider. If that exit fails, this one stops too - nothing goes directly."
+msgstr "Через другой выход (например, WARP), когда сам сервер заблокирован провайдером. Если тот выход упадёт, этот тоже остановится — напрямую ничего не пойдёт."
+
+msgid "Cancel"
+msgstr "Отмена"
+
+msgid "New exit «%s»"
+msgstr "Новый выход «%s»"
 
 msgid "WARP exit %s registered (address %s, server %s)."
 msgstr "Выход WARP %s зарегистрирован (адрес %s, сервер %s)."
@@ -556,9 +574,6 @@ msgstr "Имя устройства"
 msgid "Latin letters, digits and hyphens: the name is also given to the device in the local DNS (%s). Saving restarts the router's DNS for a few seconds."
 msgstr "Латинские буквы, цифры и дефисы: по этому имени устройство будет видно и в локальном DNS (%s). Сохранение на несколько секунд перезапускает DNS роутера."
 
-msgid "Cancel"
-msgstr "Отмена"
-
 msgid "Only Latin letters, digits and hyphens, up to 63."
 msgstr "Только латинские буквы, цифры и дефисы, до 63 знаков."
 
@@ -859,9 +874,6 @@ msgstr "Показывается в политиках, на обзоре и в 
 msgid "Through another exit when the provider blocks this server (for example through WARP). If that exit stops, this one stops too - nothing goes directly."
 msgstr "Через другой выход, когда провайдер блокирует этот сервер (например, через WARP). Если тот выход остановится, этот тоже — напрямую ничего не пойдёт."
 
-msgid "Server"
-msgstr "Сервер"
-
 msgid "Another server from a link"
 msgstr "Другой сервер по ссылке"
 
@@ -1012,20 +1024,11 @@ msgstr "Адрес подписки должен начинаться с http://
 msgid "New subscription"
 msgstr "Новая подписка"
 
-msgid "Internal name"
-msgstr "Внутреннее имя"
-
-msgid "Latin letters, digits and _, up to 11; used in the configuration."
-msgstr "Латинские буквы, цифры и _, до 11 символов; используется в конфигурации."
-
 msgid "Internal name: a-z, 0-9, _, starts with a letter, up to 11"
 msgstr "Внутреннее имя: a-z, 0-9, _, начинается с буквы, до 11 символов"
 
 msgid "This name is already used"
 msgstr "Это имя уже занято"
-
-msgid "Add"
-msgstr "Добавить"
 
 msgid "Exits"
 msgstr "Выходы"

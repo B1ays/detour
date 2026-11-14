@@ -1,5 +1,7 @@
 'use strict';
 'require view';
+'require ui';
+'require dom';
 'require rpc';
 'require uci';
 'require detour.pkg as pkg';
@@ -87,96 +89,123 @@ function resultBox() { return E('div', { 'class': 'detour-result' }); }
 return view.extend({
 	load: function() { return uci.load('detour'); },
 
-	// an exit from whatever a person has: one or more links, an Amnezia key, a WireGuard config, a JSON or a Clash
-	// YAML - pasted or from a file. First what was found, then the chosen ones become exits.
+	// an exit from whatever a person has: a link, an Amnezia key, a WireGuard config, a JSON or a Clash YAML -
+	// pasted or from a file. One at a time: "Import" reads it, a dialog shows what it is and adds it when agreed.
 	renderLink: function() {
-		const KIND = { 'wg': 'WireGuard', 'awg': 'AmneziaWG', 'singbox': 'sing-box', 'xray': 'Xray' };
+		const self = this;
 		const text = E('textarea', { 'class': 'cbi-input-textarea detour-code', 'rows': 5, 'spellcheck': 'false',
 			'placeholder': 'vless://… ss://… trojan://… hysteria2://… tuic://… wireguard://… vpn://…\n[Interface] …\n{ "outbounds": … }\nproxies: …' });
+		let fileName = '';
 		const file = E('input', { 'type': 'file', 'accept': '.conf,.json,.yaml,.yml,.txt,text/*', 'style': 'display:none', 'change': function() {
 			const f = file.files[0];
 			if (!f) return;
 			if (f.size > 256 * 1024) { box.replaceChildren(E('div', { 'class': 'alert-message warning' }, _('The file is too big for a config (over 256 KB).'))); return; }
 			const r = new FileReader();
-			r.onload = function() { text.value = r.result; if (!name.value) name.value = (f.name.replace(/\.[^.]*$/, '').toLowerCase().replace(/[^a-z0-9_]/g, '').replace(/^[^a-z]+/, '') || '').slice(0, 11); found.replaceChildren(); };
+			r.onload = function() { text.value = r.result; fileName = f.name.replace(/\.[^.]*$/, ''); box.replaceChildren(); };
 			r.readAsText(f);
 		} });
 		const bFile = E('button', { 'class': 'btn', 'click': function() { file.click(); } }, _('Choose a file…'));
-		const name = E('input', { 'class': 'cbi-input-text', 'placeholder': 'vless1', 'maxlength': 11 });
-		const via = E('select', { 'class': 'cbi-input-select' }, [ E('option', { 'value': '' }, _('directly')) ].concat(
-			uci.sections('detour', 'exit').map(function(s) { return E('option', { 'value': s['.name'] }, _('through %s').format(s.label || s['.name'])); })));
-		const found = E('div', { 'class': 'detour-servers' });
 		const box = resultBox();
-		let checks = [], engs = [];
 
-		const bAdd = E('button', { 'class': 'btn cbi-button-action', 'style': 'display:none', 'click': function() {
-			const picks = [];
-			checks.forEach(function(c, i) { if (c && c.checked) picks.push(i); });
-			if (!picks.length) { box.replaceChildren(E('div', { 'class': 'alert-message warning' }, _('Tick at least one server.'))); return; }
-			if (!/^[a-z][a-z0-9_]{0,10}$/.test(name.value.trim())) { box.replaceChildren(E('div', { 'class': 'alert-message warning' }, _('Name: Latin letters, digits and _, up to 11, starting with a letter.'))); return; }
-			busy(bAdd, true);
-			const chosen = engs.map(function(s) { return s ? s.value : ''; });
-			return callExitAdd(text.value, picks, name.value.trim(), via.value, '', chosen).then(function(r) {
-				const raw = [ r && r.error ].concat((r && r.notes) || []);
-				if (r && r.error) r.error = r.error.split('; ').map(errText).join('; ');
-				result(box, r, function(x) {
-					const names = (x.added || []).map(function(a) { return a.name; }).join(', ');
-					return E('div', {}, [ E('div', {}, N_((x.added || []).length, 'Exit %s added. Put it into a policy on the Policies page.', 'Exits %s added. Put them into a policy on the Policies page.').format(names)),
-						(x.notes && x.notes.length) ? E('div', { 'class': 'detour-muted' }, x.notes.map(errText).join('; ')) : '' ]);
-				});
-				offers(raw).forEach(function(o) { box.appendChild(o); });
-				if (r && !r.error) { text.value = ''; found.replaceChildren(); bAdd.style.display = 'none'; }
-			}).finally(function() { busy(bAdd, false); });
-		} }, _('Add the chosen'));
-
-		const bParse = E('button', { 'class': 'btn cbi-button-action', 'click': function() {
-			if (!text.value.trim()) return;
-			busy(bParse, true);
+		const bImport = E('button', { 'class': 'btn cbi-button-action', 'click': function() {
+			if (!text.value.trim()) { box.replaceChildren(E('div', { 'class': 'alert-message warning' }, _('Paste a link, a key or a config first, or choose a file.'))); return; }
+			busy(bImport, true);
 			box.replaceChildren();
 			return callParse(text.value).then(function(r) {
 				if (!r || r.error) {
-					found.replaceChildren(); bAdd.style.display = 'none';
 					result(box, r && r.error ? { error: errText(r.error) } : r);
 					offers([ r && r.error ]).forEach(function(o) { box.appendChild(o); });
 					return;
 				}
-				offers(r.candidates.map(function(c) { return c.error; })).forEach(function(o) { box.appendChild(o); });
-				checks = []; engs = [];
-				const have = r.installed || {};
-				const usable = r.candidates.filter(function(c) { return !c.error; }).length;
-				found.replaceChildren.apply(found, r.candidates.map(function(c, i) {
-					if (c.error) { checks.push(null); engs.push(null); return E('div', { 'class': 'detour-muted' }, '✕ ' + errText(c.error)); }
-					const cb = E('input', { 'type': 'checkbox', 'checked': '' });
-					checks.push(cb);
-					// a server both engines run: which one (the one not installed is shown, but cannot be chosen)
-					const many = (c.engines || []).length > 1;
-					const sel = many ? E('select', { 'class': 'cbi-input-select detour-engine', 'title': _('Engine') }, c.engines.map(function(e) {
-						return E('option', { 'value': e, 'selected': e == c.kind ? '' : null, 'disabled': have[e] === false ? '' : null },
-							KIND[e] + (have[e] === false ? ' - ' + _('not installed') : ''));
-					})) : null;
-					engs.push(sel);
-					const one = (c.engines || []).length == 1 && c.kind != 'wg' && c.kind != 'awg';
-					return E('div', { 'class': 'detour-server-row' }, [
-						E('label', { 'class': 'detour-server' }, [ cb, ' ', E('span', {}, [ E('strong', {}, c.label || (c.server + ':' + c.port)),
-							E('span', { 'class': 'detour-muted' }, ' ' + [ c.proto || KIND[c.kind], c.server + ':' + c.port, (many ? null : KIND[c.kind]) ].filter(function(x) { return x; }).join(' · ') + (c.warp ? ' · Cloudflare WARP' : '')) ]) ]),
-						sel ? E('label', { 'class': 'detour-engine-pick' }, [ E('span', { 'class': 'detour-muted' }, _('Engine:')), ' ', sel ]) : '',
-						(one && have[c.kind] === false) ? E('span', { 'class': 'detour-warn' }, _('%s is not installed').format(KIND[c.kind])) : ''
-					]);
-				}));
-				if (!usable) { bAdd.style.display = 'none'; box.replaceChildren(E('div', { 'class': 'alert-message warning' }, _('Nothing here can become an exit.'))); return; }
-				bAdd.style.display = '';
-				if (usable > 1) box.replaceChildren(E('div', { 'class': 'detour-muted' }, _('Several servers: each ticked one becomes its own exit, named %s1, %s2…').format(name.value || 'name', name.value || 'name')));
-			}).finally(function() { busy(bParse, false); });
-		} }, _('Check what is inside'));
+				const usable = [];
+				r.candidates.forEach(function(c, i) { if (!c.error) usable.push(i); });
+				if (!usable.length) {
+					box.replaceChildren(E('div', { 'class': 'alert-message warning' }, [ E('div', {}, _('Nothing here can become an exit.')),
+						E('div', { 'class': 'detour-muted' }, r.candidates.map(function(c) { return errText(c.error); }).join('; ')) ]));
+					offers(r.candidates.map(function(c) { return c.error; })).forEach(function(o) { box.appendChild(o); });
+					return;
+				}
+				// one exit at a time: a list of servers is a subscription's work
+				if (usable.length > 1) {
+					box.replaceChildren(E('div', { 'class': 'alert-message warning' },
+						_('There are %d servers here. Exits are added one at a time: paste one link or one config. For a set of servers from a provider use a subscription.').format(usable.length)));
+					return;
+				}
+				self.confirmExit(text.value, usable[0], r.candidates[usable[0]], r.installed || {}, fileName, function(added) {
+					result(box, added, function(x) {
+						const names = (x.added || []).map(function(a) { return a.name; }).join(', ');
+						return E('div', {}, [ E('div', {}, _('Exit %s added. Put it into a policy on the Policies page.').format(names)),
+							(x.notes && x.notes.length) ? E('div', { 'class': 'detour-muted' }, x.notes.map(errText).join('; ')) : '' ]);
+					});
+					text.value = ''; fileName = '';
+				});
+			}).finally(function() { busy(bImport, false); });
+		} }, _('Import'));
 
 		return card(_('Exit from a link, a key or a file'),
-			_('Paste one or more links (vless, vmess, trojan, ss, hysteria2, tuic, wireguard), an Amnezia vpn:// key, a WireGuard / AmneziaWG config, a sing-box or Xray JSON or a Clash YAML - or choose such a file. Proxies run on sing-box or Xray: where both can, you choose; XHTTP only on Xray, HTTP/2, Hysteria2 and TUIC only on sing-box. WireGuard and AmneziaWG run on the router itself.'), [
+			_('Paste one link (vless, vmess, trojan, ss, hysteria2, tuic, wireguard), an Amnezia vpn:// key, a WireGuard / AmneziaWG config, a sing-box or Xray JSON or a Clash YAML with one server - or choose such a file. Import shows what it is before it is added. Proxies run on sing-box or Xray: where both can, you choose; XHTTP only on Xray, HTTP/2, Hysteria2 and TUIC only on sing-box. WireGuard and AmneziaWG run on the router itself.'), [
 			row(_('Link, key or config'), E('div', {}, [ text, E('div', { 'class': 'detour-actions detour-field-actions' }, [ bFile, file ]) ])),
-			row(_('Name'), name, _('Latin letters, digits and _, up to 11. Several servers: name1, name2…')),
-			row(_('Connect to the server'), via,
-				_('Through another exit (for example WARP) when the server itself is blocked by the provider. If that exit fails, this one stops too - nothing goes directly. WireGuard always connects directly.')),
-			actions([ bParse, bAdd ]), found, box
+			actions([ bImport ]), box
 		]);
+	},
+
+	// an internal name nobody has yet: from the name the server gave, else from its protocol
+	freeName: function(c, hint) {
+		const taken = function(n) { return !!(uci.get('detour', n) || uci.get('detour', n + '_eng') || uci.get('detour', n + '_sub')); };
+		let base = String(hint || c.label || c.proto || c.kind || 'exit').toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^[^a-z]+/, '').replace(/_+$/, '').slice(0, 9);
+		if (!/^[a-z]/.test(base)) base = String(c.kind || 'exit').replace(/[^a-z]/g, '') || 'exit';
+		if (!taken(base)) return base;
+		for (let i = 2; i < 100; i++) if (!taken(base + i)) return base + i;
+		return base;
+	},
+
+	// "Import": what the exit is, its names, its engine and its way to the server; added only when agreed
+	confirmExit: function(textValue, idx, c, have, hint, done) {
+		const KIND = { 'wg': 'WireGuard', 'awg': 'AmneziaWG', 'singbox': 'sing-box', 'xray': 'Xray' };
+		const tunnel = c.kind == 'wg' || c.kind == 'awg';
+		const label = E('input', { 'class': 'cbi-input-text', 'value': c.label || '', 'placeholder': c.server });
+		const name = E('input', { 'class': 'cbi-input-text', 'value': this.freeName(c, hint), 'maxlength': 11 });
+		const via = E('select', { 'class': 'cbi-input-select' }, [ E('option', { 'value': '' }, _('directly')) ].concat(
+			uci.sections('detour', 'exit').map(function(s) { return E('option', { 'value': s['.name'] }, _('through %s').format(s.label || s['.name'])); })));
+		// a server both engines run: which one (the one not installed is shown, but cannot be chosen)
+		const engines = c.engines || [];
+		const eng = engines.length > 1 ? E('select', { 'class': 'cbi-input-select' }, engines.map(function(e) {
+			return E('option', { 'value': e, 'selected': e == c.kind ? '' : null, 'disabled': have[e] === false ? '' : null },
+				KIND[e] + (have[e] === false ? ' - ' + _('not installed') : ''));
+		})) : null;
+		const missing = !tunnel && engines.length && engines.every(function(e) { return have[e] === false; });
+		const msg = E('div');
+		const info = function(t, v) { return E('div', { 'class': 'detour-info-row' }, [ E('span', { 'class': 'detour-muted' }, t), E('strong', {}, v) ]); };
+		const bAdd = E('button', { 'class': 'btn cbi-button-action', 'disabled': missing ? '' : null, 'click': function() {
+			const n = name.value.trim();
+			if (!/^[a-z][a-z0-9_]{0,10}$/.test(n)) { dom.content(msg, E('div', { 'class': 'alert-message warning' }, _('Internal name: Latin letters, digits and _, up to 11, starting with a letter.'))); return; }
+			const chosen = []; chosen[idx] = eng ? eng.value : '';
+			busy(bAdd, true);
+			return callExitAdd(textValue, [ idx ], n, tunnel ? '' : via.value, label.value.trim(), chosen).then(function(r) {
+				if (!r || r.error || !(r.added || []).length) {
+					const raw = [ r && r.error ].concat((r && r.notes) || []);
+					dom.content(msg, E('div', { 'class': 'alert-message warning' }, r && r.error ? r.error.split('; ').map(errText).join('; ')
+						: ((r && r.notes) || []).map(errText).join('; ') || _('No answer from the router')));
+					offers(raw).forEach(function(o) { msg.appendChild(o); });
+					return;
+				}
+				ui.hideModal();
+				done(r);
+			}).finally(function() { busy(bAdd, false); });
+		} }, _('Add'));
+		const body = [
+			info(_('Protocol'), [ c.proto || KIND[c.kind], c.warp ? ' · Cloudflare WARP' : '' ].join('')),
+			info(_('Server'), c.server + ':' + c.port),
+			eng ? '' : info(_('Runs on'), tunnel ? _('the router itself (%s)').format(KIND[c.kind]) : KIND[c.kind]),
+			missing ? offers([ c.kind == 'xray' ? 'xray-core is not installed' : 'sing-box is not installed' ])[0] : '',
+			row(_('Name'), label, _('How the exit is shown everywhere.')),
+			row(_('Internal name'), name, _('Latin letters, digits and _, up to 11; used in the configuration.')),
+			eng ? row(_('Engine'), eng, _('Both engines can run this server.')) : '',
+			tunnel ? '' : row(_('Connect to the server'), via, _('Through another exit (for example WARP) when the server itself is blocked by the provider. If that exit fails, this one stops too - nothing goes directly.')),
+			msg,
+			E('div', { 'class': 'right' }, [ E('button', { 'class': 'btn', 'click': ui.hideModal }, _('Cancel')), ' ', bAdd ])
+		];
+		ui.showModal(_('New exit «%s»').format(c.label || c.server), body);
 	},
 
 	renderWarp: function() {

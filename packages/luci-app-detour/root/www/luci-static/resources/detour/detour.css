@@ -424,3 +424,7 @@ textarea.detour-code.detour-json {
 	width: 10rem;
 	flex: none;
 }
+
+/* "Add an exit": what the imported exit is, in the dialog before it is added */
+.detour-info-row { display: flex; flex-wrap: wrap; gap: .25rem .75rem; margin: 0 0 .4rem; }
+.detour-info-row > .detour-muted { min-width: 8rem; }

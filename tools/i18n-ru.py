@@ -789,6 +789,21 @@ RU = {
 	'(the package list was never downloaded: Components → Update the list)': '(список пакетов ещё не загружался: «Компоненты» → «Обновить список»)',
 	'Install the component %s': 'Установить %s',
 	'Update to the new version': 'Обновить',
+	# "Add an exit": one at a time, a dialog before it is added
+	'Paste a link, a key or a config first, or choose a file.': 'Сначала вставьте ссылку, ключ или конфиг либо выберите файл.',
+	'There are %d servers here. Exits are added one at a time: paste one link or one config. For a set of servers from a provider use a subscription.':
+		'Здесь серверов: %d. Выходы добавляются по одному: вставьте одну ссылку или один конфиг. Для набора серверов от провайдера используйте подписку.',
+	'Exit %s added. Put it into a policy on the Policies page.': 'Выход %s добавлен. Включите его в политику на странице «Политики».',
+	'Import': 'Импорт',
+	'Paste one link (vless, vmess, trojan, ss, hysteria2, tuic, wireguard), an Amnezia vpn:// key, a WireGuard / AmneziaWG config, a sing-box or Xray JSON or a Clash YAML with one server - or choose such a file. Import shows what it is before it is added. Proxies run on sing-box or Xray: where both can, you choose; XHTTP only on Xray, HTTP/2, Hysteria2 and TUIC only on sing-box. WireGuard and AmneziaWG run on the router itself.':
+		'Вставьте одну ссылку (vless, vmess, trojan, ss, hysteria2, tuic, wireguard), ключ Amnezia vpn://, конфиг WireGuard / AmneziaWG, JSON sing-box или Xray либо Clash YAML с одним сервером — или выберите такой файл. «Импорт» покажет, что это, до того как выход будет добавлен. Прокси работают на sing-box или Xray: где подходят оба, выбираете вы; XHTTP — только Xray, HTTP/2, Hysteria2 и TUIC — только sing-box. WireGuard и AmneziaWG работают в самом роутере.',
+	'Internal name: Latin letters, digits and _, up to 11, starting with a letter.': 'Внутреннее имя: латинские буквы, цифры и _, до 11 знаков, начинается с буквы.',
+	'Protocol': 'Протокол',
+	'Runs on': 'Работает на',
+	'the router itself (%s)': 'самом роутере (%s)',
+	'How the exit is shown everywhere.': 'Как выход называется везде.',
+	'Both engines can run this server.': 'Этот сервер могут обслуживать оба движка.',
+	'New exit «%s»': 'Новый выход «%s»',
 	'Not enough space: it needs %s, %s is free.': 'Не хватит места: нужно %s, свободно %s.',
 	'Free for packages:': 'Свободно для пакетов:',
 	'%s of %s': '%s из %s',
