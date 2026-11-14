@@ -5,6 +5,13 @@
 'require uci';
 'require detour.msg as msg';
 
+// Text from the router (names of exits and servers come from subscriptions and links) never becomes HTML:
+// LuCI's E() puts a string child in with innerHTML, here it always goes in as a text node.
+const E = function(tag, attr, data) {
+	if (!(attr instanceof Object) || Array.isArray(attr)) { data = attr; attr = {}; }
+	return L.dom.create(tag, attr, (typeof data == 'string' || typeof data == 'number') ? [ data ] : data);
+};
+
 // "Check a site": where an address goes and why (the rule that wins and the ones that also matched), and does it
 // open directly and through an exit. Then one click: through VPN, never through a tunnel, or blocked.
 
@@ -33,10 +40,6 @@ function listsText(ls) {
 function matchText(m) {
 	switch (m.why) {
 	case 'local': return _('a local address (%s): never through a tunnel').format(m.ip);
-	case 'direct_addr': return _('the address %s is in «Always direct»').format(m.value);
-	case 'direct_dev': return _('the device is in «Always direct»');
-	case 'direct_dom': return _('the site %s is in «Always direct»').format(m.value);
-	case 'direct_list': return _('a list that never goes through a tunnel: %s').format(listsText(m.lists));
 	case 'device': return _('the device is in the policy %s').format(plab(m.policy));
 	case 'address': return _('the address %s is in the policy %s').format(m.value, plab(m.policy));
 	case 'domain': return _('the site %s is in the policy %s').format(m.value, plab(m.policy));
@@ -50,6 +53,7 @@ function matchText(m) {
 function goesText(r) {
 	const g = r.goes;
 	if (g.to == 'block') return _('Blocked by the policy %s.').format(plab(g.policy));
+	if (g.to == 'direct' && g.policy) return _('Directly through your provider: the policy %s never sends it through a tunnel.').format(plab(g.policy));
 	if (g.to == 'direct_down') return _('Through the policy %s - but none of its exits works now, so directly (as chosen for it).').format(plab(g.policy));
 	if (g.to == 'exit') return g.exit ? _('Through the policy %s, now via the exit «%s».').format(plab(g.policy), g.exit.label || g.exit.name)
 		: _('Through the policy %s; no exit works now - blocked.').format(plab(g.policy));
@@ -84,26 +88,22 @@ return view.extend({
 		return Promise.all([ uci.load('detour'), L.resolveDefault(callLeases(), {}), L.resolveDefault(callStatus(), {}) ]);
 	},
 
-	// one click after the check: the site (or address) goes to a policy, to "Always direct", or is blocked
+	// one click after the check: the site (or address) goes to a VPN policy, to the "Directly" one, or is blocked
 	actions: function(r) {
 		const isIp = !!r.ip;
 		const key = isIp ? 'dst' : 'domain';
 		const val = r.host;
-		const pols = uci.sections('detour', 'policy').filter(function(p) { return p.action != 'block'; });
+		const pols = uci.sections('detour', 'policy').filter(function(p) { return msg.policyKind(p) == 'vpn'; });
 		const sel = E('select', { 'class': 'cbi-input-select' }, pols.map(function(p) { return E('option', { 'value': p['.name'] }, p.label || p['.name']); }));
 		const add = function(sec, k) {
-			const cur = arr(uci.get('detour', sec, k));
-			if (cur.indexOf(val) < 0) uci.set('detour', sec, k, cur.concat([ val ]));
+			msg.moveTo(uci, sec, k, val);
 			return applyUci();
 		};
 		const items = [];
 		if (pols.length) items.push(E('div', { 'class': 'detour-actions' }, [
 			E('button', { 'class': 'btn cbi-button-action', 'click': function() { return add(sel.value, key); } }, isIp ? _('Send this address through') : _('Send this site through')), sel ]));
 		items.push(E('div', { 'class': 'detour-actions' }, [
-			E('button', { 'class': 'btn', 'click': function() {
-				if (!uci.get('detour', 'direct')) uci.add('detour', 'direct', 'direct');
-				return add('direct', key);
-			} }, _('Never through a tunnel')),
+			E('button', { 'class': 'btn', 'click': function() { return add(msg.directPolicy(uci, true), key); } }, _('Never through a tunnel')),
 			E('button', { 'class': 'btn cbi-button-negative', 'click': function() { return add(msg.blockPolicy(uci, true), key); } }, _('Block'))
 		]));
 		items.push(E('div', { 'class': 'cbi-value-description' }, isIp ? _('The address %s is added to the chosen rule.').format(val)

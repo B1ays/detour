@@ -1,7 +1,7 @@
 #!/bin/sh
 # Big IP / domain lists (stock: lists-update.sh / iplist-update.sh) for OpenWrt.
 #   config list 'ru'
-#     option policy 'vpn'            # a policy name, or 'direct' (never via VPN)
+#     option policy 'vpn'            # a policy name (a VPN, "Block" or "Directly" one)
 #     list url 'https://iplist.opencck.org/?format=text&data=cidr4'
 #     option file '/etc/detour/lists/ru.txt'     # optional local part
 #     option kind 'auto'             # auto | cidr | domain
@@ -14,7 +14,7 @@
 # Data lives in RAM (/tmp/detour/lists); a snapshot goes to flash only up to MAXSNAP lines, so a
 # huge de-aggregated list cannot fill the flash. A failed or suspicious download keeps the
 # previous data (RAM, then snapshot) - the routing never empties because a source is down.
-# CIDR lists -> nft set lst4_<policy>/lst4_direct (one atomic transaction per set);
+# CIDR lists -> nft set lst4_p<id> of the policy (one atomic transaction per set);
 # domain lists -> dnsmasq nftset files in every instance's conf-dir (+ AAAA suppression for policies).
 #   lists-update [--restore] [name...]   --restore: no downloads, load from RAM/snapshots (boot)
 #   lists-update --catalog               only refresh the names of the v2fly categories (LuCI catalogue)
@@ -171,12 +171,9 @@ handle_list() {
 	config_get urls "$s" url
 	case "$minl" in ''|*[!0-9]*) minl=10 ;; esac
 	if [ "$en" != 1 ]; then rm -f "$RUN/$s.data"; status "$s" 1 0 "$kind" "-" "disabled"; return; fi
-	if [ "$pol" = direct ]; then tgt=direct
-	else
-		pid=$(uci -q get detour."$pol".id)
-		[ "$(uci -q get detour."$pol")" = policy ] && [ -n "$pid" ] || { status "$s" 0 0 "$kind" "-" "unknown policy '$pol'"; return; }
-		tgt=p$pid
-	fi
+	pid=$(uci -q get detour."$pol".id)
+	[ "$(uci -q get detour."$pol")" = policy ] && [ -n "$pid" ] || { status "$s" 0 0 "$kind" "-" "unknown policy '$pol'"; return; }
+	tgt=p$pid
 	[ "$MISSING" = 1 ] && { [ -s "$RUN/$s.data" ] || [ -s "$SNAP/$s.snap" ]; } && skip=1 || skip=0
 	if [ "$RESTORE" = 1 ] || [ "$skip" = 1 ] || { [ "$ONLY" != "  " ] && [ "${ONLY#* $s }" = "$ONLY" ]; }; then
 		# no download: keep RAM data, else take the snapshot
@@ -234,8 +231,8 @@ config_foreach handle_list list
 [ "$RESTORE" = 0 ] && [ "$MISSING" = 0 ] && [ "$ONLY" = "  " ] && v2fly_names
 
 # --- CIDR: one transaction per set (flush + add) -------------------------------------------
-nft list table $T >/dev/null 2>&1 || { logger -t detour "lists: table $T missing"; exit 1; }
-sets="lst4_direct $(nft -a list table $T | sed -n 's/^[[:space:]]*set \(lst4_p[0-9]*\) {.*/\1/p')"
+nft -t list table $T >/dev/null 2>&1 || { logger -t detour "lists: table $T missing"; exit 1; }
+sets="$(nft -t list table $T | sed -n 's/^[[:space:]]*set \(lst4_p[0-9]*\) {.*/\1/p')"
 for set in $sets; do
 	tgt=${set#lst4_}
 	f="$RUN/.$set.nft"
@@ -254,10 +251,14 @@ for d in $(uci -X show dhcp 2>/dev/null | sed -n 's/^dhcp\.\([^.=]*\)=dnsmasq$/\
 	c=$(uci -q get dhcp."$d".confdir); c=${c%%,*}
 	dirs="$dirs ${c:-/tmp/dnsmasq.$d.d}"
 done
-# "Block" policies (action block): their domain lists answer "no such name" instead of filling a set
-BLOCKP=" "
+# "Block" policies (action block): their domain lists answer "no such name" instead of filling a set;
+# "Directly" policies (action direct): only the IPv4 set, no AAAA suppression (they are not tunnelled)
+BLOCKP=" " DIRECTP=" "
 for b in $(uci -X show detour 2>/dev/null | sed -n 's/^detour\.\([^.=]*\)=policy$/\1/p'); do
-	[ "$(uci -q get detour."$b".action)" = block ] && BLOCKP="${BLOCKP}p$(uci -q get detour."$b".id) "
+	case "$(uci -q get detour."$b".action)" in
+		block) BLOCKP="${BLOCKP}p$(uci -q get detour."$b".id) " ;;
+		direct) DIRECTP="${DIRECTP}p$(uci -q get detour."$b".id) " ;;
+	esac
 done
 for dir in $dirs; do
 	mkdir -p "$dir"
@@ -266,9 +267,10 @@ for dir in $dirs; do
 		[ "$kind" = domain ] || continue
 		keep="$keep$s "
 		out="$dir/detour-list-$s.conf"
-		if [ "$tgt" = direct ]; then set4=dom_direct4; set6=""; else set4=dom4_$tgt; set6=dom6_$tgt; fi
+		drc=0; [ "${DIRECTP#* $tgt }" != "$DIRECTP" ] && drc=1
+		set4=dom4_$tgt; set6=dom6_$tgt; [ "$drc" = 1 ] && set6=""
 		blk=0; [ "${BLOCKP#* $tgt }" != "$BLOCKP" ] && blk=1
-		awk -v s4="$set4" -v s6="$set6" -v blk="$blk" -v direct="$([ "$tgt" = direct ] && echo 1 || echo 0)" '
+		awk -v s4="$set4" -v s6="$set6" -v blk="$blk" -v direct="$drc" '
 			{ d[++n] = $0 }
 			END {
 				for (i = 1; i <= n; i += 40) {

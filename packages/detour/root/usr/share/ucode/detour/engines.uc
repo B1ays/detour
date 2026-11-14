@@ -52,6 +52,7 @@ export function create_exit(name, f, via, label, dev, etype) {
 	c.foreach('detour', 'exit', (s) => { used[int(s.id)] = true; });
 	let id = 1;
 	while (id <= 250 && used[id]) id++;
+	if (id > 250) return { error: 'no free exit id: 250 exits is the limit' };
 	c.set('detour', name + '_eng', 'engine');
 	c.set('detour', name + '_eng', 'type', etype ?? 'singbox');
 	c.set('detour', name + '_eng', 'device', dev);
@@ -84,6 +85,7 @@ export function add_from_link(name, link, via) {
 	const r = links.parse(link);
 	if (r.error) return r;
 	const x = create_exit(name, write_outbound(name, r.outbound), via, r.remark ?? name);
+	if (x.error) return x;
 	return { name, exit_id: x.exit_id, device: x.device, server: r.outbound.server, type: r.outbound.type };
 }
 

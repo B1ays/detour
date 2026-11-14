@@ -15,7 +15,7 @@ for v in overview policies exits settings; do
 rpc detour status | grep -q '"policies"' && ok "rpc detour.status" || bad "rpc status: $(rpc detour status | head -c 120)"
 rpc uci get '{"config":"detour"}' | grep -q '"warp"' && ok "rpc uci get detour" || bad "uci get"
 r=$(rpc detour pin '{"policy":"vpn","exit":"alt"}'); echo "$r" | grep -q '"pinned":"alt"' && ok "rpc pin" || bad "pin: $r"
-sleep 4; ubus call detour status | jsonfilter -e '@.policies[0].active' | grep -q alt && ok "pin applied" || bad "pin not applied"
+sleep 4; ubus call detour status | jsonfilter -e "@.policies[@.name='vpn'].active" | grep -q alt && ok "pin applied" || bad "pin not applied"
 r=$(rpc detour unpin '{"policy":"vpn"}'); echo "$r" | grep -q '"policy":"vpn"' && ok "rpc unpin" || bad "unpin: $r"
 r=$(rpc file exec '{"command":"/bin/id"}'); echo "$r" | grep -q 'uid=0' && echo "  note: admin session can exec (expected for root)" 
 echo "RESULT: $([ $FAIL = 0 ] && echo PASS || echo FAIL)"

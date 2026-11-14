@@ -5,6 +5,13 @@
 'require uci';
 'require detour.msg as msg';
 
+// Text from the router (names of exits and servers come from subscriptions and links) never becomes HTML:
+// LuCI's E() puts a string child in with innerHTML, here it always goes in as a text node.
+const E = function(tag, attr, data) {
+	if (!(attr instanceof Object) || Array.isArray(attr)) { data = attr; attr = {}; }
+	return L.dom.create(tag, attr, (typeof data == 'string' || typeof data == 'number') ? [ data ] : data);
+};
+
 // Policies as cards in the order they are checked: what goes through (devices by name, addresses, domains,
 // ports, the lists attached), where (the exits in order, what happens when they fail), editing, moving up and
 // down, removal. Plain UCI (config "detour", sections "policy"), applied the standard LuCI way.
@@ -34,14 +41,44 @@ function modal(title, body, onSave) {
 			.catch(function(e) { box.replaceChildren(note(e.message || String(e), 'warning')); })
 			.finally(function() { busy(save, false); });
 	} }, _('Save'));
-	ui.showModal(title, [ E('div', { 'class': 'detour-node' }, body), box,
+	ui.showModal([ title ], [ E('div', { 'class': 'detour-node' }, body), box,
 		E('div', { 'class': 'right' }, [ E('button', { 'class': 'btn', 'click': ui.hideModal }, _('Cancel')), ' ', save ]) ]);
 }
 
 const RE_MAC = /^[0-9a-f]{2}(:[0-9a-f]{2}){5}$/i;
-const RE_IP = /^([0-9]{1,3}(\.[0-9]{1,3}){3}(\/[0-9]{1,2})?|[0-9a-f:]+:[0-9a-f:]*(\/[0-9]{1,3})?)$/i;
-const RE_DOM = /^[a-z0-9_]([a-z0-9_.-]*[a-z0-9])?\.[a-z]{2,}$/i;
-const RE_PORT = /^(tcp\/|udp\/)?\d{1,5}(-\d{1,5})?$/i;
+// the same checks as the router's (core.uc is_v4 / is_v6, the port range): what passes here is applied there
+function isV4(a) {
+	const m = /^(0|[1-9]\d{0,2})\.(0|[1-9]\d{0,2})\.(0|[1-9]\d{0,2})\.(0|[1-9]\d{0,2})(\/(0|[1-9]\d?))?$/.exec(a);
+	if (!m) return false;
+	for (let i = 1; i <= 4; i++) if (+m[i] > 255) return false;
+	return m[6] == null || +m[6] <= 32;
+}
+function isV6(a) {
+	const m = /^([0-9a-f:]+)(\/(0|[1-9]\d{0,2}))?$/i.exec(a);
+	if (!m || m[1].indexOf(':') < 0 || (m[3] != null && +m[3] > 128)) return false;
+	const halves = m[1].split('::');
+	if (halves.length > 2) return false;
+	let n = 0;
+	for (const h of halves) {
+		if (h == '') continue;
+		for (const g of h.split(':')) { if (!/^[0-9a-f]{1,4}$/i.test(g)) return false; n++; }
+	}
+	return halves.length == 2 ? n <= 7 : n == 8;
+}
+function isPort(x) {
+	const m = /^(tcp\/|udp\/)?(\d{1,5})(-(\d{1,5}))?$/i.exec(x);
+	if (!m) return false;
+	const lo = +m[2], hi = m[4] != null ? +m[4] : lo;
+	return lo >= 1 && hi <= 65535 && hi >= lo;
+}
+// a domain with a dot; the zone may be punycode (.xn--p1ai is .рф)
+// сайт.рф -> xn--80aswg.xn--p1ai (dnsmasq and the lists take the ASCII form); plain ASCII is only lower-cased
+function asciiDomain(x) {
+	x = x.toLowerCase();
+	if (!/[^\x00-\x7f]/.test(x)) return x;
+	try { return new URL('http://' + x).hostname; } catch (e) { return x; }
+}
+const RE_DOM = /^[a-z0-9_]([a-z0-9_.-]*[a-z0-9])?\.([a-z]{2,}|xn--[a-z0-9-]*[a-z0-9])$/i;
 
 return view.extend({
 	load: function() {
@@ -82,10 +119,15 @@ return view.extend({
 		const enabled = p.enabled != '0';
 
 		const body = [];
-		const block = p.action == 'block';
+		const kind = msg.policyKind(p);
+		const block = kind == 'block';
 		const direct = p.on_down == 'direct';
 		// where
-		if (block) {
+		if (kind == 'direct') {
+			body.push(E('div', {}, [ E('strong', {}, _('Never through a tunnel.')), ' ',
+				_('What matches goes directly through your provider, and the policies below this one never take it.') ]));
+		}
+		else if (block) {
 			body.push(E('div', {}, [ E('strong', {}, _('Lets nothing through.')), ' ',
 				_('Addresses, devices and ports below are refused at once, the sites get «no such name» - apps stop trying instead of waiting.') ]));
 			if (st.blocked) body.push(E('div', { 'class': 'detour-muted' }, _('Refused since the start: %d connections.').format(st.blocked)));
@@ -116,7 +158,7 @@ return view.extend({
 			' ', E('a', { 'href': L.url('admin/services/detour/lists') }, _('(on the Lists page)')) ]));
 		if (!what.length) what.push(E('em', {}, _('Nothing goes through it yet: add devices, sites, addresses, ports or lists.')));
 
-		const bEdit = E('button', { 'class': 'btn cbi-button-action', 'click': function() { self.edit(p, hints, block); } }, _('Edit'));
+		const bEdit = E('button', { 'class': 'btn cbi-button-action', 'click': function() { self.edit(p, hints, kind); } }, _('Edit'));
 		const bUp = E('button', { 'class': 'btn', 'title': _('Checked earlier'), 'disabled': idx == 0 ? '' : null, 'click': function() {
 			uci.move('detour', name, all[idx - 1]['.name']); return applyUci(); } }, '↑ ' + _('Up'));
 		const bDown = E('button', { 'class': 'btn', 'title': _('Checked later'), 'disabled': idx == all.length - 1 ? '' : null, 'click': function() {
@@ -128,7 +170,8 @@ return view.extend({
 		return E('div', { 'class': 'detour-card' }, [
 			E('div', { 'class': 'detour-card-head' }, [ E('span', { 'class': 'detour-muted' }, String(idx + 1) + '.'),
 				E('span', { 'class': 'detour-card-title' }, label), ' ',
-				E('span', { 'class': 'detour-badge ' + (enabled ? (block ? 'bad' : 'ok') : 'off') }, enabled ? (block ? _('blocks') : _('on')) : _('off')),
+				E('span', { 'class': 'detour-badge ' + (enabled ? (block ? 'bad' : 'ok') : 'off') },
+					enabled ? (block ? _('blocks') : (kind == 'direct' ? _('directly') : _('on'))) : _('off')),
 				E('span', { 'class': 'detour-muted', 'title': _('Internal name: used in the configuration and the log') }, name) ]),
 			E('div', { 'class': 'detour-card-body' }, body.concat(what)),
 			E('div', { 'class': 'detour-actions detour-card-actions' }, [ bEdit, bUp, bDown, bToggle, bRemove ])
@@ -137,9 +180,12 @@ return view.extend({
 
 	remove: function(p, lists) {
 		const label = p.label || p['.name'];
-		ui.showModal(_('Remove the policy «%s»?').format(label), [
+		ui.showModal([ _('Remove the policy «%s»?').format(label) ], [
 			E('p', {}, p.action == 'block'
 				? (lists.length ? _('Its lists (%s) are removed too. What it blocked opens again.').format(lists.map(function(l) { return msg.listTitle(l); }).join(', ')) : _('What it blocked opens again.'))
+				: p.action == 'direct'
+				? (lists.length ? _('Its lists (%s) are removed too. What it sent directly goes by the other policies from now on.').format(lists.map(function(l) { return msg.listTitle(l); }).join(', '))
+				: _('What it sent directly goes by the other policies from now on.'))
 				: (lists.length ? _('Its lists (%s) are removed too. What went through it goes directly from now on.').format(lists.map(function(l) { return msg.listTitle(l); }).join(', '))
 				: _('What went through it goes directly from now on.'))),
 			E('div', { 'class': 'right' }, [ E('button', { 'class': 'btn', 'click': ui.hideModal }, _('Cancel')), ' ',
@@ -199,11 +245,12 @@ return view.extend({
 		return wrap;
 	},
 
-	// block: the "Block" kind (no exits, nothing gets through)
-	edit: function(p, hints, block) {
+	// kind: 'vpn' (through exits), 'block' (no exits, nothing gets through) or 'direct' (no exits, never a tunnel)
+	edit: function(p, hints, kind) {
 		const isNew = !p;
 		p = p || {};
-		block = block || p.action == 'block';
+		kind = isNew ? (kind || 'vpn') : msg.policyKind(p);
+		const block = kind == 'block', direct = kind == 'direct', vpn = kind == 'vpn';
 		const name = E('input', { 'class': 'cbi-input-text', 'placeholder': 'vpn2', 'maxlength': 11 });
 		const label = E('input', { 'class': 'cbi-input-text', 'value': p.label || '', 'placeholder': _('for example: Blocked sites') });
 		const exits = this.exitPicker(arr(p.exit));
@@ -221,20 +268,22 @@ return view.extend({
 		if (isNew) body.push(row(_('Internal name'), name, _('Latin letters, digits and _, up to 11; used in the configuration.')));
 		body.push(row(_('Name'), label, _('How the policy is shown everywhere.')));
 		if (block) body.push(note(_('A blocking policy: what matches it gets no internet at all. Sites get «no such name», addresses and ports are refused at once.')));
+		else if (direct) body.push(note(_('A direct policy: what matches it never goes through a tunnel, it goes directly through your provider. Put it above the policies it should make exceptions in.')));
 		else body.push(
 			row(_('Exits'), exits, _('In order: the traffic goes through the first working exit; when it fails, through the next one, and back when it works again.')),
 			row(_('If no exit works'), onDown, _('Blocked is safer: nothing goes past the tunnel. Directly keeps things working without the VPN, but the provider sees this traffic.')));
 		body.push(
-			E('h4', {}, block ? _('What is blocked') : _('What goes through')),
+			E('h4', {}, block ? _('What is blocked') : (direct ? _('What goes directly') : _('What goes through'))),
 			E('div', { 'class': 'cbi-value-description' }, block ? _('Anything that matches one of these is blocked. Bigger sets (advertising, a service) are added as lists on the Lists page.')
+				: direct ? _('Anything that matches one of these goes directly. Bigger sets (all Russian sites, a service) are added as lists on the Lists page.')
 				: _('Anything that matches one of these goes through the policy. Bigger sets (all blocked sites, a service) are added as lists on the Lists page.')),
-			row(_('Devices'), devices, block ? _('The checked devices get no internet at all.') : _('All traffic of the checked devices goes through the policy.')),
+			row(_('Devices'), devices, block ? _('The checked devices get no internet at all.') : (direct ? _('All traffic of the checked devices goes directly.') : _('All traffic of the checked devices goes through the policy.'))),
 			row(_('Sites'), dom, _('One per line. A site includes its subdomains (example.com covers www.example.com). Devices must use the router\'s DNS (they do by default).')),
 			row(_('Addresses'), dst, _('IP addresses or ranges (CIDR), one per line.')),
 			row(_('Ports'), port, _('Destination ports: 443 (TCP and UDP), udp/443, tcp/6000-6100, separated by spaces. All traffic of the network to these ports goes through the policy.'))
 		);
 		const self = this;
-		modal(isNew ? (block ? _('New blocking policy') : _('New policy')) : _('Policy «%s»').format(p.label || p['.name']), body, function() {
+		modal(isNew ? (block ? _('New blocking policy') : (direct ? _('New direct policy') : _('New policy'))) : _('Policy «%s»').format(p.label || p['.name']), body, function() {
 			let n = p['.name'];
 			if (isNew) {
 				n = name.value.trim();
@@ -242,28 +291,30 @@ return view.extend({
 				if (uci.get('detour', n)) throw new Error(_('This name is already used'));
 			}
 			const bad = [];
-			const d = lines(dst.value), o = lines(dom.value).map(function(x) { return x.toLowerCase(); }), pt = lines(port.value), dv = devices.get();
-			d.forEach(function(x) { if (!RE_IP.test(x)) bad.push(x); });
+			const d = lines(dst.value), o = lines(dom.value).map(asciiDomain), pt = lines(port.value), dv = devices.get();
+			d.forEach(function(x) { if (!isV4(x) && !isV6(x)) bad.push(x); });
 			o.forEach(function(x) { if (!RE_DOM.test(x)) bad.push(x); });
-			pt.forEach(function(x) { if (!RE_PORT.test(x)) bad.push(x); });
+			pt.forEach(function(x) { if (!isPort(x)) bad.push(x); });
 			dv.forEach(function(x) { if (!RE_MAC.test(x)) bad.push(x); });
 			if (bad.length) throw new Error(_('Not understood: %s').format(bad.join(', ')));
 			if (isNew) {
 				uci.add('detour', 'policy', n);
 				const used = {};
 				uci.sections('detour', 'policy').forEach(function(s) { used[+s.id] = true; });
-				let id = 1; while (used[id] && id < 250) id++;
+				let id = 1; while (used[id] && id <= 250) id++;
+				if (id > 250) throw new Error(_('No free policy id: 250 policies is the limit'));
 				uci.set('detour', n, 'id', String(id));
-				// a blocking policy goes first: what it blocks must not be taken by another policy before it
-				if (block) {
-					uci.set('detour', n, 'action', 'block');
+				// a blocking or direct policy goes first: what it covers must not be taken by another policy before it
+				// (a direct one can then be moved below the policies it should not make exceptions in)
+				if (!vpn) {
+					uci.set('detour', n, 'action', kind);
 					const first = uci.sections('detour', 'policy')[0];
 					if (first && first['.name'] != n) uci.move('detour', n, first['.name']);
 				}
 			}
 			const set = function(k, v) { if (v && (!Array.isArray(v) || v.length)) uci.set('detour', n, k, v); else uci.unset('detour', n, k); };
-			set('label', label.value.trim() || (block ? _('Block') : ''));
-			if (!block) { set('exit', exits.get()); set('on_down', onDown.value == 'direct' ? 'direct' : null); }
+			set('label', label.value.trim() || (block ? _('Block') : (direct ? _('Directly') : '')));
+			if (vpn) { set('exit', exits.get()); set('on_down', onDown.value == 'direct' ? 'direct' : null); }
 			set('device', dv); set('dst', d); set('domain', o); set('port', pt);
 			return applyUci().then(function() { return true; });
 		});
@@ -277,13 +328,14 @@ return view.extend({
 		return E('div', {}, [
 			E('link', { 'rel': 'stylesheet', 'href': L.resource('detour/detour.css') + '?v=' + encodeURIComponent(L.env.resource_version || '') }),
 			E('h2', {}, _('Policies')),
-			E('div', { 'class': 'cbi-map-descr' }, _('A policy says what goes through which exits: devices, sites, addresses, ports, lists. Policies are checked from top to bottom, the first that matches takes the traffic; what matches none goes directly through your provider. «Always direct» in Settings is checked before all of them.')),
+			E('div', { 'class': 'cbi-map-descr' }, _('A policy says where devices, sites, addresses, ports and lists go: through VPN exits, directly (never through a tunnel) or nowhere (blocked). Policies are checked from top to bottom, the first that matches takes the traffic; what matches none goes directly through your provider.')),
 			E('div', { 'class': 'cbi-section' }, [
 				E('div', { 'class': 'cbi-section-node detour-node' }, [
 					all.length ? E('div', { 'class': 'detour-cards' }, all.map(function(p, i) { return self.renderPolicy(p, i, all, st, hints); }))
 						: E('div', { 'class': 'detour-result' }, E('em', {}, _('No policies yet: everything goes directly.'))),
 					E('div', { 'class': 'detour-actions' }, [ E('button', { 'class': 'btn cbi-button-add', 'click': function() { self.edit(null, hints); } }, _('Add policy')),
-						E('button', { 'class': 'btn', 'click': function() { self.edit(null, hints, true); } }, _('Add blocking')) ])
+						E('button', { 'class': 'btn', 'click': function() { self.edit(null, hints, 'direct'); } }, _('Add direct')),
+						E('button', { 'class': 'btn', 'click': function() { self.edit(null, hints, 'block'); } }, _('Add blocking')) ])
 				])
 			])
 		]);

@@ -26,6 +26,14 @@ export function log(msg) {
 }
 
 // single-quote for /bin/sh
+// a name that came from outside (a server's remark in a link, a subscription, a Clash or JSON config): no markup
+// characters, no control characters, at most 64 characters - it is shown on pages and in messages
+export function clean_label(s) {
+	if (s == null) return null;
+	s = trim(replace('' + s, /[<>&"[:cntrl:]]/g, ''));
+	return length(s) ? substr(s, 0, 64) : null;
+}
+
 export function shq(s) {
 	return "'" + replace('' + s, "'", "'\\''") + "'";
 }
@@ -46,6 +54,27 @@ export function hex(n) {
 function as_list(v) {
 	if (v == null) return [];
 	return type(v) == 'array' ? v : [ v ];
+}
+
+// an option or a list, its words
+function words(v) { return (v == null) ? [] : filter((type(v) == 'array') ? v : split('' + v, /\s+/), (x) => length(x)); }
+
+// the firewall zones of the home network: those holding an interface on a LAN device (main.lan_dev, default
+// br-lan), not a zone that happens to be named "lan"; [ 'lan' ] when nothing matches (a stock config)
+export function lan_zones() {
+	const c = cursor();
+	const devs = words(c.get('detour', 'main', 'lan_dev') ?? 'br-lan');
+	const ifs = [];
+	c.foreach('network', 'interface', function(s) {
+		const d = s.device ?? s.ifname;
+		if (d && index(devs, d) >= 0) push(ifs, s['.name']);
+	});
+	const out = [];
+	c.foreach('firewall', 'zone', function(z) {
+		const nets = words(z.network ?? (z.name == 'lan' ? 'lan' : null));
+		if (z.name && length(filter(nets, (n) => index(ifs, n) >= 0)) && index(out, z.name) < 0) push(out, z.name);
+	});
+	return length(out) ? out : [ 'lan' ];
 }
 
 function bool(v, dflt) {
@@ -98,7 +127,7 @@ function split_addrs(list, errors, where) {
 }
 
 // Read and validate /etc/config/detour (or another config name for tests).
-// Returns { main, exits[], policies[], direct4[], direct6[], errors[] }.
+// Returns { main, exits[], policies[], errors[], by_name }.
 // Invalid items are dropped and reported; the rest still applies. A policy left without a valid exit is
 // kept and blocks its traffic (exits: []).
 export function load(conf) {
@@ -111,6 +140,8 @@ export function load(conf) {
 		enabled: bool(m.enabled, true),
 		lan: as_list(m.lan_dev ?? 'br-lan'),
 		probe_period: int(m.probe_period ?? 2) || 2,
+		// a working exit with no traffic is probed this often (its counters say the rest, see detourd probe_due)
+		probe_idle: int(m.probe_idle ?? 30) || 30,
 		fails: int(m.fails ?? 2) || 2,
 		// an HTTPS probe through a chained proxy takes 2-4 s when all is well (measured on the BE7000): the limit
 		// must be well above that, or a slow handshake counts as a failure
@@ -141,6 +172,8 @@ export function load(conf) {
 	main.dns_servers = filter(main.dns_servers, (s) => is_v4(s) && index(s, '/') < 0);
 	if (!length(main.dns_servers)) main.dns_servers = [ '1.1.1.1', '1.0.0.1' ];
 	if (main.probe_period < 1) main.probe_period = 2;
+	if (main.probe_idle < main.probe_period) main.probe_idle = main.probe_period;
+	if (main.probe_idle > 600) main.probe_idle = 600;
 	if (main.fails < 1) main.fails = 2;
 	if (main.probe_timeout < 2) main.probe_timeout = 2;
 	if (main.probe_timeout > 30) main.probe_timeout = 30;
@@ -174,18 +207,21 @@ export function load(conf) {
 		if (pids[id]) { push(errors, sprintf('policy %s: id %d already used by %s', n, id, pids[id])); return; }
 		// action 'block': what the policy covers gets no internet at all (rejected at once; its domains get "no such
 		// name" from dnsmasq) - the target "Block" for sites, addresses, lists and devices. It has no exits.
+		// action 'direct': what it covers never goes through a tunnel (the provider's line, no mark) - "Always
+		// direct" when it is first, an exception for what the policies below it would take otherwise. No exits.
 		const block = s.action == 'block';
+		const direct = s.action == 'direct';
 		const ex = [];
-		if (!block) for (let e in as_list(s.exit)) {
+		if (!block && !direct) for (let e in as_list(s.exit)) {
 			if (by_name[e]) push(ex, e);
 			else push(errors, sprintf('policy %s: unknown exit "%s"', n, e));
 		}
 		// a policy without an exit stays: its traffic is blocked (nft: pol2exit -> drop). Dropping the policy
 		// would send what it covers directly - the opposite of what removing its last exit should do.
 		// (the text is matched by LuCI's msg.js: "policy … has no exit - its traffic is blocked")
-		if (!block && !length(ex)) push(errors, sprintf('policy %s: no valid exit', n));
+		if (!block && !direct && !length(ex)) push(errors, sprintf('policy %s: no valid exit', n));
 		// when every exit is down: 'block' (default, fail-closed) or 'direct' (the owner chose to let it through)
-		const on_down = (s.on_down == 'direct' && !block) ? 'direct' : 'block';
+		const on_down = (s.on_down == 'direct' && !block && !direct) ? 'direct' : 'block';
 		const a = split_addrs(as_list(s.dst), errors, 'policy ' + n);
 		const doms = [];
 		for (let d in as_list(s.domain)) {
@@ -210,36 +246,22 @@ export function load(conf) {
 		}
 		pids[id] = n;
 		push(policies, {
-			name: n, id, exits: ex, block, on_down,
+			name: n, id, exits: ex, block, direct, on_down,
 			enabled: bool(s.enabled, true),
 			dst4: a.v4, dst6: a.v6, domains: doms, devices: devs, ports,
 			label: s.label ?? n,
 		});
 	});
 
-	const d = c.get_all(name, 'direct') ?? {};
-	const da = split_addrs(as_list(d.dst), errors, 'direct');
-	const ddev = [], ddom = [];
-	for (let x in as_list(d.device)) {
-		if (match(x, RE_MAC)) push(ddev, lc(x));
-		else push(errors, sprintf('direct: bad device MAC "%s"', x));
-	}
-	for (let x in as_list(d.domain)) {
-		x = lc(trim(x));
-		if (match(x, RE_DOMAIN)) push(ddom, x);
-		else push(errors, sprintf('direct: bad domain "%s"', x));
-	}
-
 	if (main.dns == 'tunnel') {
 		let ok = false;
-		for (let p in policies) if (p.name == main.dns_policy && !p.block) ok = true;
+		for (let p in policies) if (p.name == main.dns_policy && !p.block && !p.direct) ok = true;
 		if (!ok) { push(errors, sprintf('main: dns_policy "%s" is not a valid policy, DNS stays as is', main.dns_policy)); main.dns = 'off'; }
 	}
 
 	if (main.force_dns == null) {
 		main.force_dns = false;
 		for (let p in policies) if (p.enabled && length(p.domains)) main.force_dns = true;
-		if (length(ddom)) main.force_dns = true;
 	}
 	else main.force_dns = bool(main.force_dns, true);
 
@@ -248,11 +270,11 @@ export function load(conf) {
 	if (main.ipv6_block == null) {
 		main.ipv6_block = false;
 		for (let p in policies)
-			if (p.enabled) for (let a in p.dst4) if (match(a, /\/0$/)) main.ipv6_block = true;
+			if (p.enabled && !p.direct) for (let a in p.dst4) if (match(a, /\/0$/)) main.ipv6_block = true;
 	}
 	else main.ipv6_block = bool(main.ipv6_block, false);
 
-	return { main, exits, policies, direct4: da.v4, direct6: da.v6, direct_dev: ddev, direct_dom: ddom, errors, by_name };
+	return { main, exits, policies, errors, by_name };
 }
 
 export function exit_by_id(cfg, id) {

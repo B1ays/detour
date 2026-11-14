@@ -6,6 +6,13 @@
 'require dom';
 'require detour.outform as outform';
 
+// Text from the router (names of exits and servers come from subscriptions and links) never becomes HTML:
+// LuCI's E() puts a string child in with innerHTML, here it always goes in as a text node.
+const E = function(tag, attr, data) {
+	if (!(attr instanceof Object) || Array.isArray(attr)) { data = attr; attr = {}; }
+	return L.dom.create(tag, attr, (typeof data == 'string' || typeof data == 'number') ? [ data ] : data);
+};
+
 // Exits and subscriptions as cards: what each exit is (protocol, server, the exit it rides), its state,
 // a real check, editing of what belongs to it, removal with everything it owns. The daemon describes the
 // exits (exits_info, no secrets); edits of names and of WireGuard/AmneziaWG settings are plain UCI.
@@ -73,7 +80,7 @@ function modal(title, body, onSave, saveText) {
 			.catch(function(e) { box.replaceChildren(note(e.message || String(e), 'warning')); })
 			.finally(function() { busy(save, false); });
 	} }, saveText || _('Save'));
-	ui.showModal(title, [ E('div', { 'class': 'detour-node' }, body), box,
+	ui.showModal([ title ], [ E('div', { 'class': 'detour-node' }, body), box,
 		E('div', { 'class': 'right' }, [ E('button', { 'class': 'btn', 'click': ui.hideModal }, _('Cancel')), ' ', save ]) ]);
 }
 
@@ -173,7 +180,7 @@ return view.extend({
 	// the exit as a link or a .conf, with a QR code: to set it up on a phone or a computer
 	exportExit: function(x) {
 		const body = E('div', {}, E('em', {}, _('Loading…')));
-		ui.showModal(_('Share «%s»').format(x.label), [ body,
+		ui.showModal([ _('Share «%s»').format(x.label) ], [ body,
 			E('div', { 'class': 'right' }, [ E('button', { 'class': 'btn', 'click': ui.hideModal }, _('Close')) ]) ]);
 		callExport(x.name).then(function(r) {
 			if (!r || r.error) return body.replaceChildren(note((r && r.error) || _('No answer from the router'), 'warning'));
@@ -206,7 +213,7 @@ return view.extend({
 
 	removeExit: function(x) {
 		const sub = x.kind == 'subscription';
-		ui.showModal(_('Remove «%s»?').format(x.label), [
+		ui.showModal([ _('Remove «%s»?').format(x.label) ], [
 			E('p', {}, sub ? _('The subscription, its servers and the exit are removed. Policies that use only this exit are left without an exit - their traffic is blocked until you choose another one.')
 				: _('The exit and everything it owns are removed (its tunnel settings, its configuration). Policies that use only this exit are left without an exit - their traffic is blocked until you choose another one.')),
 			E('div', { 'class': 'right' }, [
@@ -253,8 +260,15 @@ return view.extend({
 		const fieldsBox = E('div', {}, E('em', {}, _('Loading…')));
 		let cfgOrig = null, form = null, fieldsOrig = null;
 		callCfgGet(x.name).then(function(r) {
-			cfgOrig = (r && r.config) || '';
-			cfg.value = (r && r.error) ? r.error : cfgOrig;
+			if (!r || r.error) {
+				// not read: the error is shown, never sent back as the configuration (the name and "through" still save)
+				cfg.value = (r && r.error) || _('No answer from the router');
+				cfg.readOnly = true;
+				fieldsBox.replaceChildren(E('em', {}, _('The configuration could not be read.')));
+				return;
+			}
+			cfgOrig = r.config || '';
+			cfg.value = cfgOrig;
 			let o = null;
 			try { o = JSON.parse(cfgOrig); } catch (e) { }
 			if (o && outform.supported(o)) {

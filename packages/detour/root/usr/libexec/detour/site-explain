@@ -1,0 +1,13 @@
+#!/usr/bin/ucode
+// "Check a site", the rules part (sitecheck.explain): run by detourd as a child process, so its nslookup and the
+// many "nft get element" never stop the daemon's probes. Args: <state.json> <target> [mac]; prints the JSON.
+'use strict';
+
+import * as fs from 'fs';
+import * as core from 'detour.core';
+import * as sitecheck from 'detour.sitecheck';
+
+let state = {};
+try { state = json(fs.readfile(ARGV[0]) ?? '{}') ?? {}; } catch (e) { }
+fs.unlink(ARGV[0]);
+printf('%J\n', sitecheck.explain(core.load(), state, ARGV[1], ARGV[2] ?? ''));

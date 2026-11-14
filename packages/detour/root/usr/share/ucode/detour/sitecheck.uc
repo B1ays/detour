@@ -100,15 +100,9 @@ export function explain(cfg, state, q, mac) {
 	const m = [];      // matches in the order nft checks them
 	const add = (o) => push(m, o);
 	for (let ip in ips) for (let c in PRIVATE) if (in_cidr(ip, c)) { add({ to: 'direct', why: 'local', ip }); break; }
-	for (let ip in ips) for (let c in cfg.direct4) if (in_cidr(ip, c)) { add({ to: 'direct', why: 'direct_addr', value: c, ip }); break; }
-	if (mac && index(cfg.direct_dev, mac) >= 0) add({ to: 'direct', why: 'direct_dev', value: mac });
-	const dd = dom_hit(cfg.direct_dom, host);
-	if (dd) add({ to: 'direct', why: 'direct_dom', value: dd });
-	for (let ip in ips) if (in_set('lst4_direct', ip)) { add({ to: 'direct', why: 'direct_list', lists: lists_of('direct', 'cidr', null, ip), ip }); break; }
-	if (host) { const l = lists_of('direct', 'domain', host); if (length(l)) add({ to: 'direct', why: 'direct_list', lists: l }); }
 	for (let p in cfg.policies) {
 		if (!p.enabled) continue;
-		const P = { to: 'policy', policy: p.name, label: p.label, block: p.block };
+		const P = { to: 'policy', policy: p.name, label: p.label, block: p.block, direct: p.direct };
 		if (mac && index(p.devices, mac) >= 0) add({ ...P, why: 'device', value: mac });
 		for (let ip in ips) { let hit = null; for (let c in p.dst4) if (in_cidr(ip, c)) hit = c; if (hit) { add({ ...P, why: 'address', value: hit, ip }); break; } }
 		const ph = dom_hit(p.domains, host);
@@ -131,6 +125,7 @@ export function explain(cfg, state, q, mac) {
 	const win = length(m) ? m[0] : null;
 	let goes;
 	if (!win || win.to == 'direct') goes = { to: 'direct' };
+	else if (win.direct) goes = { to: 'direct', policy: win.policy, label: win.label };   // a "Directly" policy
 	else if (win.block) goes = { to: 'block', policy: win.policy, label: win.label };
 	else if (state.direct?.[win.policy]) goes = { to: 'direct_down', policy: win.policy, label: win.label };
 	else goes = { to: 'exit', policy: win.policy, label: win.label, exit: state.active?.[win.policy] };

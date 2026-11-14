@@ -337,18 +337,6 @@ msgstr "Резервная копия"
 msgid "a local address (%s): never through a tunnel"
 msgstr "локальный адрес (%s): никогда через туннель"
 
-msgid "the address %s is in «Always direct»"
-msgstr "адрес %s в «Всегда напрямую»"
-
-msgid "the device is in «Always direct»"
-msgstr "устройство в «Всегда напрямую»"
-
-msgid "the site %s is in «Always direct»"
-msgstr "сайт %s в «Всегда напрямую»"
-
-msgid "a list that never goes through a tunnel: %s"
-msgstr "список, который никогда не идёт через туннель: %s"
-
 msgid "the device is in the policy %s"
 msgstr "устройство в политике %s"
 
@@ -369,6 +357,9 @@ msgstr "порт %s в политике %s"
 
 msgid "Blocked by the policy %s."
 msgstr "Заблокирован политикой %s."
+
+msgid "Directly through your provider: the policy %s never sends it through a tunnel."
+msgstr "Напрямую через провайдера: политика %s никогда не отправляет это через туннель."
 
 msgid "Through the policy %s - but none of its exits works now, so directly (as chosen for it)."
 msgstr "Через политику %s — но сейчас ни один её выход не работает, поэтому напрямую (так для неё выбрано)."
@@ -841,6 +832,9 @@ msgstr "Будет удалён выход и всё, что к нему отн�
 msgid "through «%s»"
 msgstr "через «%s»"
 
+msgid "The configuration could not be read."
+msgstr "Не удалось прочитать конфигурацию."
+
 msgid "This exit runs on Xray: its settings are edited as JSON below, or replaced by a link (it stays on Xray when Xray runs that link, else moves to sing-box)."
 msgstr "Этот выход работает на Xray: его настройки правятся в JSON ниже или заменяются ссылкой (выход остаётся на Xray, если Xray эту ссылку поддерживает, иначе переходит на sing-box)."
 
@@ -1075,14 +1069,14 @@ msgstr "скачанное больше, чем помещается в памя
 msgid "the previous list stays in use"
 msgstr "используется прежний список"
 
-msgid "never through a tunnel"
-msgstr "никогда через туннель"
-
 msgid "nowhere: its policy «%s» no longer exists - choose another in «Edit»"
 msgstr "никуда: его политики «%s» больше нет — выберите другую в «Изменить»"
 
 msgid "blocked (the policy «%s»)"
 msgstr "блокируется (политика «%s»)"
+
+msgid "never through a tunnel (the policy «%s»)"
+msgstr "никогда через туннель (политика «%s»)"
 
 msgid "through the policy «%s»"
 msgstr "через политику «%s»"
@@ -1128,6 +1122,9 @@ msgstr "включено"
 
 msgid "block (the policy «%s»)"
 msgstr "заблокировать (политика «%s»)"
+
+msgid "never through a tunnel"
+msgstr "никогда через туннель"
 
 msgid "— own sources (below) —"
 msgstr "— свои источники (ниже) —"
@@ -1414,6 +1411,12 @@ msgstr "Политики"
 msgid "Events"
 msgstr "События"
 
+msgid "Never through a tunnel."
+msgstr "Никогда через туннель."
+
+msgid "What matches goes directly through your provider, and the policies below this one never take it."
+msgstr "Подходящее идёт напрямую через провайдера, и политики ниже этой его не забирают."
+
 msgid "Lets nothing through."
 msgstr "Ничего не пропускает."
 
@@ -1495,6 +1498,12 @@ msgstr "Её списки (%s) тоже удаляются. То, что она 
 msgid "What it blocked opens again."
 msgstr "То, что она блокировала, снова откроется."
 
+msgid "Its lists (%s) are removed too. What it sent directly goes by the other policies from now on."
+msgstr "Её списки (%s) тоже удаляются. То, что она отправляла напрямую, теперь пойдёт по остальным политикам."
+
+msgid "What it sent directly goes by the other policies from now on."
+msgstr "То, что она отправляла напрямую, теперь пойдёт по остальным политикам."
+
 msgid "Its lists (%s) are removed too. What went through it goes directly from now on."
 msgstr "Её списки (%s) тоже будут удалены. То, что шло через неё, теперь пойдёт напрямую."
 
@@ -1531,6 +1540,9 @@ msgstr "Как политика называется везде."
 msgid "A blocking policy: what matches it gets no internet at all. Sites get «no such name», addresses and ports are refused at once."
 msgstr "Политика блокировки: то, что под неё попадает, вообще не получает интернет. Сайты получают «нет такого имени», адреса и порты отклоняются сразу."
 
+msgid "A direct policy: what matches it never goes through a tunnel, it goes directly through your provider. Put it above the policies it should make exceptions in."
+msgstr "Политика «напрямую»: то, что под неё подходит, никогда не идёт через туннель, только напрямую через провайдера. Поставьте её выше политик, в которых она должна делать исключения."
+
 msgid "In order: the traffic goes through the first working exit; when it fails, through the next one, and back when it works again."
 msgstr "По порядку: трафик идёт через первый работающий выход; если он отказал — через следующий, а когда заработает — обратно."
 
@@ -1543,17 +1555,26 @@ msgstr "Блокировать надёжнее: мимо туннеля нич�
 msgid "What is blocked"
 msgstr "Что блокировать"
 
+msgid "What goes directly"
+msgstr "Что идёт напрямую"
+
 msgid "What goes through"
 msgstr "Что пропускать"
 
 msgid "Anything that matches one of these is blocked. Bigger sets (advertising, a service) are added as lists on the Lists page."
 msgstr "Всё, что подходит под одно из этого, блокируется. Большие наборы (реклама, сервис) добавляются списками на странице «Списки»."
 
+msgid "Anything that matches one of these goes directly. Bigger sets (all Russian sites, a service) are added as lists on the Lists page."
+msgstr "Всё, что подходит под одно из этого, идёт напрямую. Большие наборы (все российские сайты, сервис целиком) добавляются списками на странице «Списки»."
+
 msgid "Anything that matches one of these goes through the policy. Bigger sets (all blocked sites, a service) are added as lists on the Lists page."
 msgstr "Всё, что подходит хотя бы под одно из условий, идёт через политику. Большие наборы (все заблокированные сайты, сервис целиком) добавляются списками на странице «Списки»."
 
 msgid "The checked devices get no internet at all."
 msgstr "Отмеченные устройства не получают интернет вообще."
+
+msgid "All traffic of the checked devices goes directly."
+msgstr "Весь трафик отмеченных устройств идёт напрямую."
 
 msgid "All traffic of the checked devices goes through the policy."
 msgstr "Весь трафик отмеченных устройств идёт через политику."
@@ -1579,6 +1600,9 @@ msgstr "Порты назначения через пробел: 443 (TCP и UDP
 msgid "New blocking policy"
 msgstr "Новая политика блокировки"
 
+msgid "New direct policy"
+msgstr "Новая политика «напрямую»"
+
 msgid "New policy"
 msgstr "Новая политика"
 
@@ -1588,14 +1612,23 @@ msgstr "Политика «%s»"
 msgid "Not understood: %s"
 msgstr "Не удалось разобрать: %s"
 
-msgid "A policy says what goes through which exits: devices, sites, addresses, ports, lists. Policies are checked from top to bottom, the first that matches takes the traffic; what matches none goes directly through your provider. «Always direct» in Settings is checked before all of them."
-msgstr "Политика определяет, что через какие выходы идёт: устройства, сайты, адреса, порты, списки. Политики проверяются сверху вниз, трафик забирает первая подходящая; то, что не подошло ни под одну, идёт напрямую через провайдера. «Всегда напрямую» в настройках проверяется раньше всех политик."
+msgid "No free policy id: 250 policies is the limit"
+msgstr "Нет свободного номера политики: не больше 250 политик"
+
+msgid "Directly"
+msgstr "Напрямую"
+
+msgid "A policy says where devices, sites, addresses, ports and lists go: through VPN exits, directly (never through a tunnel) or nowhere (blocked). Policies are checked from top to bottom, the first that matches takes the traffic; what matches none goes directly through your provider."
+msgstr "Политика определяет, куда идут устройства, сайты, адреса, порты и списки: через выходы VPN, напрямую (никогда через туннель) или никуда (блокировка). Политики проверяются сверху вниз, трафик забирает первая подходящая; то, что не подошло ни под одну, идёт напрямую через провайдера."
 
 msgid "No policies yet: everything goes directly."
 msgstr "Политик пока нет: всё идёт напрямую."
 
 msgid "Add policy"
 msgstr "Добавить политику"
+
+msgid "Add direct"
+msgstr "Добавить «напрямую»"
 
 msgid "Add blocking"
 msgstr "Добавить блокировку"
@@ -1675,8 +1708,14 @@ msgstr "Выключено — ни одна политика не работа�
 msgid "Check exits every (s)"
 msgstr "Проверять выходы каждые (с)"
 
-msgid "How often each exit is checked with a real request. Shorter: a failure is noticed sooner, a little more traffic."
-msgstr "Как часто каждый выход проверяется настоящим запросом. Чаще — сбой замечается быстрее, чуть больше трафика."
+msgid "How often an exit is checked with a real request while it fails, has just started, or sends without getting answers. Shorter: a failure is noticed sooner."
+msgstr "Как часто выход проверяется настоящим запросом, пока он не работает, только что запущен или отправляет, не получая ответов. Чаще — сбой замечается быстрее."
+
+msgid "Check a working idle exit every (s)"
+msgstr "Работающий выход без трафика проверять каждые (с)"
+
+msgid "An exit that works and carries nothing is checked this often; one that carries traffic and gets answers, once a minute. Each check is about 5 KB of traffic."
+msgstr "Так часто проверяется работающий выход, через который ничего не идёт; выход с трафиком и ответами — раз в минуту. Каждая проверка — около 5 КБ трафика."
 
 msgid "Failed checks before switching"
 msgstr "Неудачных проверок до переключения"
@@ -1762,18 +1801,6 @@ msgstr "Только если api.telegram.org у вас заблокирова�
 msgid "http(s) address"
 msgstr "адрес http(s)"
 
-msgid "Always direct"
-msgstr "Всегда напрямую"
-
-msgid "Addresses that never go through a tunnel, whatever the policies say."
-msgstr "Адреса, которые никогда не идут через туннель, что бы ни говорили политики."
-
-msgid "MAC addresses of devices that never use a tunnel."
-msgstr "MAC-адреса устройств, которые никогда не используют туннель."
-
-msgid "Domains"
-msgstr "Домены"
-
 msgid "The panel through your own VPS (SSH)"
 msgstr "Панель через свой VPS (SSH)"
 
@@ -1839,9 +1866,6 @@ msgstr "отдано %s"
 
 msgid "Through VPN"
 msgstr "Через VPN"
-
-msgid "Directly"
-msgstr "Напрямую"
 
 msgid "%s: downloaded %s, through VPN %s, directly %s"
 msgstr "%s: скачано %s, через VPN %s, напрямую %s"

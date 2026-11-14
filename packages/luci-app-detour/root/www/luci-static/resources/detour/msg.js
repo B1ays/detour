@@ -1,6 +1,13 @@
 'use strict';
 'require baseclass';
 
+// Text from the router (names of exits and servers come from subscriptions and links) never becomes HTML:
+// LuCI's E() puts a string child in with innerHTML, here it always goes in as a text node.
+const E = function(tag, attr, data) {
+	if (!(attr instanceof Object) || Array.isArray(attr)) { data = attr; attr = {}; }
+	return L.dom.create(tag, attr, (typeof data == 'string' || typeof data == 'number') ? [ data ] : data);
+};
+
 // Shared by the Detour pages: the daemon's events and configuration errors (English, they also go to the
 // log) shown translated with the names people gave to exits and policies; readable names of big lists from
 // their sources; a few ready-made categories to add a list in one click.
@@ -58,7 +65,8 @@ return baseclass.extend({
 		for (let i = 2; uci.get('detour', n); i++) n = 'block' + i;
 		const used = {};
 		uci.sections('detour', 'policy').forEach(function(s) { used[+s.id] = true; });
-		let id = 1; while (used[id] && id < 250) id++;
+		let id = 1; while (used[id] && id <= 250) id++;
+		if (id > 250) throw new Error(_('No free policy id: 250 policies is the limit'));
 		const first = uci.sections('detour', 'policy')[0];
 		uci.add('detour', 'policy', n);
 		uci.set('detour', n, 'id', String(id));
@@ -67,6 +75,43 @@ return baseclass.extend({
 		if (first) uci.move('detour', n, first['.name']);
 		return n;
 	},
+
+	// the "Directly" policy (action direct: never through a tunnel): its name, made (first in order, so it acts
+	// before every other policy, label "Directly") when there is none yet. The caller saves and applies.
+	directPolicy: function(uci, make) {
+		const have = uci.sections('detour', 'policy').filter(function(p) { return p.action == 'direct'; })[0];
+		if (have || !make) return have ? have['.name'] : null;
+		let n = 'direct';
+		for (let i = 2; uci.get('detour', n); i++) n = 'direct' + i;
+		const used = {};
+		uci.sections('detour', 'policy').forEach(function(s) { used[+s.id] = true; });
+		let id = 1; while (used[id] && id <= 250) id++;
+		if (id > 250) throw new Error(_('No free policy id: 250 policies is the limit'));
+		const first = uci.sections('detour', 'policy')[0];
+		uci.add('detour', 'policy', n);
+		uci.set('detour', n, 'id', String(id));
+		uci.set('detour', n, 'action', 'direct');
+		uci.set('detour', n, 'label', _('Directly'));
+		if (first) uci.move('detour', n, first['.name']);
+		return n;
+	},
+
+	// the kind of a policy section: 'block', 'direct' or 'vpn' (through exits)
+	// a site or an address goes to one policy: taken out of the others first, or the one above would keep it
+	// (only the same entry: a parent domain or a wider network in a policy above still wins)
+	moveTo: function(uci, sec, key, val) {
+		const as = function(v) { return v == null ? [] : (Array.isArray(v) ? v : String(v).split(/\s+/).filter(function(x) { return x; })); };
+		uci.sections('detour', 'policy').forEach(function(p) {
+			if (p['.name'] == sec) return;
+			const cur = as(p[key]);
+			if (cur.indexOf(val) < 0) return;
+			const rest = cur.filter(function(x) { return x != val; });
+			if (rest.length) uci.set('detour', p['.name'], key, rest); else uci.unset('detour', p['.name'], key);
+		});
+		const cur = as(uci.get('detour', sec, key));
+		if (cur.indexOf(val) < 0) uci.set('detour', sec, key, cur.concat([ val ]));
+	},
+	policyKind: function(p) { return (p && (p.action == 'block' || p.action == 'direct')) ? p.action : 'vpn'; },
 
 	// a list's name for people: its own label, else what its first source is
 	listTitle: function(s) {

@@ -32,7 +32,7 @@ let dns_mode = null;      // 'tunnel' | 'fallback'
 let events = [];
 let switches = 0, last_switch = null, auth_state = 'ok';
 let down_noted = {};
-let opened = {};          // policies with on_down 'direct' that go directly now (all their exits down)
+let opened = {};          // policies with on_down 'direct' that go directly now (all their exits down): name -> id
 let lists_busy = false, subs_busy = false;
 let apply_errors = [];    // the last apply's errors and warnings (config + nft + setup), shown in LuCI
 let pol_keys = null;      // what put flows under a policy at the last load (dst / device), see load_all
@@ -95,7 +95,7 @@ function evaluate() {
 	if (off || !ready()) return;
 	let changed = false;
 	for (let p in cfg.policies) {
-		if (!p.enabled || p.block) continue;   // "Block" has no exits to choose
+		if (!p.enabled || p.block || p.direct) continue;   // "Block" and "Directly" have no exits to choose
 		const want = choose(p);
 		const cur = active['' + p.id];
 		if (want == null) {
@@ -109,7 +109,7 @@ function evaluate() {
 				const r = nft.set_policy_direct(p.id);
 				if (r.code == 0) {
 					if (cur) core.run(sprintf('conntrack -D -m 0x%x/0xffff00', (cur << 16) | (p.id << 8)));
-					opened[p.name] = true;
+					opened[p.name] = p.id;
 					ev(sprintf('policy %s: no working exit - goes directly', p.name));
 				}
 				else ev(sprintf('policy %s: switch failed: %s', p.name, trim(r.out)));
@@ -128,9 +128,12 @@ function evaluate() {
 		}
 		// back from "directly": the exit is set again even when it is the same one
 		if (want == cur && !opened[p.name]) continue;
-		if (opened[p.name]) { delete opened[p.name]; ev(sprintf('policy %s: an exit works again - through it', p.name)); }
+		const was_open = !!opened[p.name];
+		if (was_open) { delete opened[p.name]; ev(sprintf('policy %s: an exit works again - through it', p.name)); }
 		const r = nft.set_policy_exit(p.id, want);
 		if (r.code != 0) { ev(sprintf('policy %s: switch failed: %s', p.name, trim(r.out))); continue; }
+		// the flows it opened directly (podirect: the policy mark, no exit) go through the exit from now on
+		if (was_open) core.run(sprintf('conntrack -D -m 0x%x/0xffff00', p.id << 8));
 		// flows of this policy pinned to the old exit are dropped, the next packet re-classifies
 		if (cur) core.run(sprintf('conntrack -D -m 0x%x/0xffff00', (cur << 16) | (p.id << 8)));
 		active['' + p.id] = want;
@@ -193,13 +196,15 @@ function load_all(reason) {
 		if (!length(filter(cfg.policies, (x) => x.name == p))) delete pins[p];
 	const res = fw.apply(cfg, active ? fw.active_map(cfg) : null);
 	active = fw.active_map(cfg);
-	// the rules were rendered with every policy on an exit: one that went directly is opened again by evaluate()
+	// the rules were rendered with every policy on an exit: one that went directly is opened again by evaluate();
+	// its direct flows would stay direct (pinned by podirect), so they are dropped
+	for (let n, id in opened) core.run(sprintf('conntrack -D -m 0x%x/0xffff00', id << 8));
 	opened = {};
 	// destinations / devices newly under a policy: their direct flows (offloaded ones would never be
 	// re-classified) are dropped so the next packets meet the new rules
 	const keys = {}, nd = [], nm = [], np = [];
 	for (let p in cfg.policies) {
-		if (!p.enabled) continue;
+		if (!p.enabled || p.direct) continue;   // under "Directly" the flows already go direct
 		for (let d in p.dst4) keys['d ' + d] = true;
 		for (let m in p.devices) keys['m ' + m] = true;
 		for (let pr in [ 'tcp', 'udp' ]) for (let x in p.ports?.[pr] ?? []) keys['p ' + pr + '/' + x] = true;
@@ -256,7 +261,7 @@ function status() {
 	for (let p in cfg.policies)
 		push(pol, { name: p.name, id: p.id, enabled: p.enabled, exits: p.exits,
 			active: active['' + p.id] ? exit_name(active['' + p.id]) : null, pinned: pins[p.name],
-			block: p.block, on_down: p.on_down, direct: !!opened[p.name] });
+			block: p.block, action: p.block ? 'block' : (p.direct ? 'direct' : 'vpn'), on_down: p.on_down, direct: !!opened[p.name] });
 	return { version: core.VERSION, uptime: time() - t0, exits: ex, policies: pol, blocked: nft.counter_blocked(), dns: dns_mode ?? cfg.main.dns,
 		switches, last_switch, engines: engines.list(), lists: lists_status(), lists_memory: listmem.budget(), subscriptions: lists_status('subs'), auth: auth.status(), notify_queued: notify.queued(), wan: watch.wan_down() ? 'down' : 'up', notify_quiet: watch.quiet(), errors: apply_errors, events, extip };
 }
@@ -290,8 +295,13 @@ const RESTORE_IN = '/tmp/detour-restore.bin';
 let job_busy = false;
 
 function cli_job(req, argv, reload_after) {
-	if (job_busy) return { error: 'another action is running, try again in a moment' };
-	for (let a in argv) if (type(a) != 'string' || !length(a)) return { error: 'missing argument' };
+	// refused: the files secret_arg wrote (a link, a config with keys) are removed here, the CLI never reads them
+	const refuse = (msg) => {
+		for (let a in argv) if (type(a) == 'string' && index(a, '@' + core.RUN + '/in-') == 0) fs.unlink(substr(a, 1));
+		return { error: msg };
+	};
+	if (job_busy) return refuse('another action is running, try again in a moment');
+	for (let a in argv) if (type(a) != 'string' || !length(a)) return refuse('missing argument');
 	job_busy = true;
 	req.defer();
 	const out = core.RUN + '/job.out';
@@ -538,13 +548,39 @@ function catalog_refresh(req) {
 }
 
 // "Check a site": where it goes (rules) and does it open directly and through an exit
+// It asks dnsmasq and nft a lot (the DNS log asks it for up to 150 names): run in a child process, two at a time,
+// the rest wait in a queue, so the probes never stop meanwhile.
+let explain_q = [], explain_run = 0, explain_seq = 0;
+function explain_next() {
+	while (explain_run < 2 && length(explain_q)) {
+		const j = shift(explain_q);
+		explain_run++;
+		const f = sprintf('%s/explain-%d', core.RUN, ++explain_seq);
+		fs.writefile(f + '.json', sprintf('%J', j.st));
+		const cmd = sprintf('/usr/libexec/detour/site-explain %s %s %s > %s 2>/dev/null', core.shq(f + '.json'),
+			core.shq(j.target), core.shq(j.mac), core.shq(f + '.out'));
+		uloop.process('/bin/sh', [ '-c', cmd ], {}, function(code) {
+			explain_run--;
+			let r = null;
+			try { r = json(fs.readfile(f + '.out') ?? 'null'); } catch (e) { }
+			fs.unlink(f + '.out'); fs.unlink(f + '.json');
+			j.req.reply((type(r) == 'object') ? r : { error: 'the check failed' });
+			explain_next();
+		});
+	}
+}
 function site_explain(req) {
+	const t = sitecheck.target(req.args.target);
+	if (t.error) return t;
+	if (length(explain_q) >= 200) return { error: 'too many checks at once, try again in a moment' };
 	const st = { active: {}, direct: opened };
 	for (let p in cfg.policies) {
 		const id = active['' + p.id];
 		if (id) { const e = core.exit_by_id(cfg, id); st.active[p.name] = { name: e?.name, label: e?.label ?? e?.name }; }
 	}
-	return sitecheck.explain(cfg, st, req.args.target, req.args.mac);
+	req.defer();
+	push(explain_q, { req, st, target: req.args.target, mac: req.args.mac ?? '' });
+	explain_next();
 }
 
 let site_busy = false;
@@ -630,7 +666,7 @@ function ip_watch() {
 	for (let p in cfg.policies) {
 		const id = active['' + p.id];
 		const e = id ? core.exit_by_id(cfg, id) : null;
-		if (!p.enabled || p.block || !e || !healthy(e)) continue;
+		if (!p.enabled || p.block || p.direct || !e || !healthy(e)) continue;
 		const x = extip.exits[e.name];
 		if (x && now - x.ts < 600) continue;
 		ip_probe(e.device, false, function(r) { extip.exits[e.name] = r ?? { ts: time(), error: true }; });
@@ -759,6 +795,29 @@ function warp_check() {
 	}
 }
 
+// A probe costs traffic (an HTTPS request through the exit, about 5 KB: every 2 s that is ~200 MB a day per exit),
+// so a working exit is not probed every probe_period - its device counters already tell. Something came back
+// (rx grew): it works, a real probe once a minute. Only sent, nothing back (tx grew, rx did not): probed now, so
+// a failure under load is noticed as fast as before. Idle: every main.probe_idle seconds. A failing or not yet
+// known exit is probed every probe_period.
+const probe_st = {};
+function probe_due(e) {
+	const now = time();
+	const st = (probe_st[e.name] ??= { at: 0, rx: null, tx: null });
+	const ctr = (k) => int(fs.readfile(sprintf('/sys/class/net/%s/statistics/%s_bytes', e.device, k)) ?? -1);
+	const rx = ctr('rx'), tx = ctr('tx');
+	const grew_rx = st.rx != null && rx > st.rx, grew_tx = st.tx != null && tx > st.tx;
+	st.rx = rx; st.tx = tx;
+	const h = health[e.name];
+	let due;
+	if (!h?.seen || h.fails > 0 || !healthy(e)) due = true;
+	else if (grew_rx) due = now - st.at >= 60;
+	else if (grew_tx) due = true;
+	else due = now - st.at >= cfg.main.probe_idle;
+	if (due) st.at = now;
+	return due;
+}
+
 let tick;
 let n = 0;
 tick = uloop.timer(500, function() {
@@ -769,7 +828,7 @@ tick = uloop.timer(500, function() {
 	}
 	for (let e in cfg.exits) {
 		if (!e.probe) health[e.name] ??= { seen: true, ok: true, fails: 0 };
-		probe(e);
+		if (probe_due(e)) probe(e);
 		// devices can appear late (tun of a proxy engine): keep the route in place
 		if (e.enabled && net.dev_up(e.device)) net.ensure_route(e);
 	}

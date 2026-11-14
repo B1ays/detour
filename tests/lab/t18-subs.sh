@@ -55,6 +55,13 @@ curl -s --data-binary @/tmp/j.json $S/set/json >/dev/null
 uci set detour.prov2=subscription; uci set detour.prov2.url=$S/sub/T2/json; uci set detour.prov2.allow_private=1; uci set detour.prov2.user_agent=sing-box; uci commit detour
 R=$(detour sub-update prov2); echo "$R" | grep -q '"servers": 1' && ok "1 proxy outbound taken from a sing-box config (direct/selector dropped)" || bad "json: $R"
 
+echo "== redirects: followed by Detour itself, hop by hop"
+uci set detour.prov2.url=$S/redir/sub/T2/json; uci commit detour
+R=$(detour sub-update prov2); echo "$R" | grep -q '"servers": 1' && ok "a redirect is followed" || bad "redirect: $R"
+uci set detour.prov2.url=$S/redir/redir/redir/redir/redir/redir/sub/T2/json; uci commit detour
+R=$(detour sub-update prov2); echo "$R" | grep -q 'download failed' && ok "more than 5 redirects: refused" || bad "redirect loop: $R"
+uci set detour.prov2.url=$S/sub/T2/json; uci set detour.prov2.allow_private=1; uci commit detour
+
 echo "== a private URL is refused unless allowed"
 uci delete detour.prov2.allow_private; uci commit detour
 R=$(detour sub-update prov2); echo "$R" | grep -q 'private network' && ok "refused" || bad "private: $R"

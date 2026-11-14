@@ -5,6 +5,13 @@
 'require uci';
 'require detour.msg as msg';
 
+// Text from the router (names of exits and servers come from subscriptions and links) never becomes HTML:
+// LuCI's E() puts a string child in with innerHTML, here it always goes in as a text node.
+const E = function(tag, attr, data) {
+	if (!(attr instanceof Object) || Array.isArray(attr)) { data = attr; attr = {}; }
+	return L.dom.create(tag, attr, (typeof data == 'string' || typeof data == 'number') ? [ data ] : data);
+};
+
 // Big lists as cards: a readable name (its label, else what its source is), where it goes (the policy by its
 // name, or never through a tunnel), its sources, its state; Update now / Edit / Turn off / Remove in one row.
 // Adding: a ready-made category in one click, or own sources.
@@ -34,7 +41,7 @@ function modal(title, body, onSave, saveText) {
 			.catch(function(e) { box.replaceChildren(note(e.message || String(e), 'warning')); })
 			.finally(function() { busy(save, false); });
 	} }, saveText || _('Save'));
-	ui.showModal(title, [ E('div', { 'class': 'detour-node' }, body), box,
+	ui.showModal([ title ], [ E('div', { 'class': 'detour-node' }, body), box,
 		E('div', { 'class': 'right' }, [ E('button', { 'class': 'btn', 'click': ui.hideModal }, _('Cancel')), ' ', save ]) ]);
 }
 
@@ -55,9 +62,9 @@ function failText(m) {
 function mbs(b) { const m = Math.max(0, b / 1048576); return m < 10 ? m.toFixed(1) : String(Math.round(m)); }
 
 function policyLabel(n) {
-	if (n == 'direct') return _('never through a tunnel');
 	if (uci.get('detour', n, '.type') != 'policy') return _('nowhere: its policy «%s» no longer exists - choose another in «Edit»').format(n);
 	if (uci.get('detour', n, 'action') == 'block') return _('blocked (the policy «%s»)').format(uci.get('detour', n, 'label') || n);
+	if (uci.get('detour', n, 'action') == 'direct') return _('never through a tunnel (the policy «%s»)').format(uci.get('detour', n, 'label') || n);
 	return _('through the policy «%s»').format(uci.get('detour', n, 'label') || n);
 }
 
@@ -95,7 +102,7 @@ return view.extend({
 		const bToggle = E('button', { 'class': 'btn', 'click': function() { uci.set('detour', name, 'enabled', enabled ? '0' : '1'); return applyUci(); } },
 			enabled ? _('Turn off') : _('Turn on'));
 		const bRemove = E('button', { 'class': 'btn cbi-button-negative', 'click': function() {
-			ui.showModal(_('Remove the list «%s»?').format(msg.listTitle(l)), [
+			ui.showModal([ _('Remove the list «%s»?').format(msg.listTitle(l)) ], [
 				E('p', {}, _('What came only from this list goes directly from now on.')),
 				E('div', { 'class': 'right' }, [ E('button', { 'class': 'btn', 'click': ui.hideModal }, _('Cancel')), ' ',
 					E('button', { 'class': 'btn cbi-button-negative', 'click': function() { uci.remove('detour', name); ui.hideModal(); return applyUci(); } }, _('Remove')) ]) ]);
@@ -111,11 +118,13 @@ return view.extend({
 	},
 
 	policySelect: function(cur) {
-		// "block": the blocking policy, made on save when there is none yet
+		// "never through a tunnel" / "block": the direct / blocking policy, made on save when there is none yet
 		const opts = uci.sections('detour', 'policy').map(function(p) {
+			const k = msg.policyKind(p), l = p.label || p['.name'];
 			return E('option', { 'value': p['.name'], 'selected': cur == p['.name'] ? '' : null },
-				p.action == 'block' ? _('block (the policy «%s»)').format(p.label || p['.name']) : _('through the policy «%s»').format(p.label || p['.name']));
-		}).concat([ E('option', { 'value': 'direct', 'selected': cur == 'direct' ? '' : null }, _('never through a tunnel')) ]);
+				k == 'block' ? _('block (the policy «%s»)').format(l) : (k == 'direct' ? _('never through a tunnel (the policy «%s»)').format(l) : _('through the policy «%s»').format(l)));
+		});
+		if (!msg.directPolicy(uci)) opts.push(E('option', { 'value': '__direct' }, _('never through a tunnel')));
 		if (!msg.blockPolicy(uci)) opts.push(E('option', { 'value': '__block' }, _('block')));
 		return E('select', { 'class': 'cbi-input-select' }, opts);
 	},
@@ -167,7 +176,7 @@ return view.extend({
 			if (isNew) uci.add('detour', 'list', n);
 			const set = function(k, v) { if (v && (!Array.isArray(v) || v.length)) uci.set('detour', n, k, v); else uci.unset('detour', n, k); };
 			set('label', label.value.trim());
-			set('policy', policy.value == '__block' ? msg.blockPolicy(uci, true) : policy.value);
+			set('policy', policy.value == '__block' ? msg.blockPolicy(uci, true) : (policy.value == '__direct' ? msg.directPolicy(uci, true) : policy.value));
 			set('url', urls);
 			set('file', file.value.trim());
 			set('kind', kind.value == 'auto' ? '' : kind.value);

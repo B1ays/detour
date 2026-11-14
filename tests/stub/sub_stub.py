@@ -45,6 +45,13 @@ class H(BaseHTTPRequestHandler):
             self._send(200, json.dumps(LOG).encode(), 'application/json')
             return
         LOG.append({'path': self.path, 'ua': self.headers.get('User-Agent'), 'hwid': self.headers.get('x-hwid')})
+        if self.path.startswith('/redir/'):
+            # a redirect to the rest of the path on this stub: Detour follows it itself, checking every hop
+            self.send_response(302)
+            self.send_header('Location', 'http://' + self.headers.get('Host') + self.path[len('/redir'):])
+            self.send_header('Content-Length', '0')
+            self.end_headers()
+            return
         if self.path.endswith('/b64'):
             self._send(200, base64.b64encode(DATA['links']))
         elif self.path.endswith('/json'):

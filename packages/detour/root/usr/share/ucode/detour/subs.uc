@@ -11,7 +11,7 @@
 
 import * as fs from 'fs';
 import { cursor } from 'uci';
-import { run, shq, log, RUN } from 'detour.core';
+import { run, shq, log, RUN, clean_label } from 'detour.core';
 import * as links from 'detour.links';
 import * as engines from 'detour.engines';
 
@@ -50,20 +50,27 @@ export function parse_headers(text) {
 	return info;
 }
 
-// the stock SSRF guard: the URL must not point into the router's own networks (unless allowed - lab)
-function private_host(url) {
-	const m = match(url, /^https?:\/\/(\[[^\]]+\]|[^\/:?#]+)/);
-	if (!m) return true;
-	let h = replace(m[1], /^\[|\]$/g, '');
+// the stock SSRF guard: the URL must not point into the router's own networks (unless allowed - lab).
+// -> { private, host, port, addr }: addr is the address that was checked, curl is then pinned to it (--resolve),
+// so a name cannot answer a public address here and a private one to curl
+function url_target(url) {
+	const m = match(url, /^(https?):\/\/(\[[^\]]+\]|[^\/:?#@]+)(:([0-9]{1,5}))?([\/?#]|$)/);
+	if (!m) return { private: true };
+	const host = replace(m[2], /^\[|\]$/g, '');
+	const port = m[4] ? int(m[4]) : (m[1] == 'http' ? 80 : 443);
+	let h = host, addr = null;
 	if (!match(h, /^[0-9.]+$/) && index(h, ':') < 0) {
 		const r = run(sprintf('nslookup %s 127.0.0.1 2>/dev/null', shq(h)));
 		for (let l in split(r.out, '\n')) {
 			const a = match(l, /^Address:? ([0-9.]+)\s*$/);
-			if (a && a[1] != '127.0.0.1') h = a[1];
+			if (a && a[1] != '127.0.0.1' && !addr) addr = a[1];
 		}
+		if (!addr) return { private: false, host, port };   // no IPv4: curl finds none either (or IPv6 only)
+		h = addr;
 	}
-	return !!match(h, /^(127\.|10\.|192\.168\.|169\.254\.|0\.|172\.(1[6-9]|2[0-9]|3[01])\.)/) || h == 'localhost' ||
-		!!match(lc(h), /^(::1?|fe[89ab].*|f[cd].*)$/);
+	const priv = !!match(h, /^(127\.|10\.|192\.168\.|169\.254\.|0\.|100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.|172\.(1[6-9]|2[0-9]|3[01])\.)/) ||
+		h == 'localhost' || !!match(lc(h), /^(::1?|::ffff:.*|fe[89ab].*|f[cd].*)$/);
+	return { private: priv, host, port, addr };
 }
 
 export function parse_body(body) {
@@ -74,7 +81,7 @@ export function parse_body(body) {
 	if (j) {
 		const list = (type(j) == 'array') ? j : (j.outbounds ?? []);
 		for (let o in list) {
-			if (type(o) == 'object' && index(PROXY_TYPES, o.type) >= 0) { delete o.detour; push(names, o.tag ?? null); push(out, o); }
+			if (type(o) == 'object' && index(PROXY_TYPES, o.type) >= 0) { delete o.detour; push(names, clean_label(o.tag)); push(out, o); }
 			else if (type(o) == 'object' && index([ 'direct', 'block', 'dns', 'selector', 'urltest' ], o.type) < 0) push(skipped, o.type);
 		}
 		return { outbounds: out, skipped, names };
@@ -93,7 +100,7 @@ export function parse_body(body) {
 		// a subscription runs on sing-box: a server only Xray runs (XHTTP, VLESS encryption) is left out, saying why
 		const why = links.singbox_why(r.outbound);
 		if (why) { push(skipped, sprintf('%s: %s, needs Xray', r.remark ?? r.outbound.server, why)); continue; }
-		push(names, r.remark ?? null);
+		push(names, clean_label(r.remark));
 		push(out, links.for_singbox(r.outbound));
 	}
 	return { outbounds: out, skipped, names };
@@ -119,21 +126,38 @@ function update_locked(name) {
 	if (ne) return { error: ne };
 	const url = s.url ?? '';
 	if (!match(url, /^https?:\/\/\S+$/)) { status(name, false, 0, 'bad URL', 'bad_url'); return { error: 'bad URL' }; }
-	if (s.allow_private != '1' && private_host(url)) { status(name, false, 0, 'the URL points into a private network', 'private'); return { error: 'the URL points into a private network' }; }
 	if (s.via && c.get('detour', s.via) != 'exit') return { error: 'via: "' + s.via + '" is not an exit' };
 
 	fs.mkdir(RUN); fs.mkdir(SDIR);
 	const k = sprintf('%s/%s.curl', SDIR, name);
-	fs.writefile(k, ''); fs.chmod(k, 0600);
-	let cfg = sprintf('url = "%s"\nuser-agent = "%s"\n', replace(url, '"', '%22'), replace(s.user_agent ?? 'v2rayNG/1.10.0', '"', ''));
-	if (s.hwid) cfg += sprintf('header = "x-hwid: %s"\n', replace(s.hwid, '"', ''));
-	fs.writefile(k, cfg);
 	const body_f = sprintf('%s/%s.body', SDIR, name);
 	const head_f = sprintf('%s/%s.head', SDIR, name);
-	const r = run(sprintf('curl -fsSL --compressed -m 40 -K %s -D %s -o %s', k, head_f, body_f));
-	fs.unlink(k);
+	// redirects are followed here, not by curl: every hop is checked (a public URL must not redirect into the
+	// router's networks) and pinned to the address that was checked
+	let cur = url, r = null;
+	for (let hop = 0; ; hop++) {
+		const t = url_target(cur);
+		if (s.allow_private != '1' && t.private) {
+			status(name, false, 0, 'the URL points into a private network', 'private');
+			return { error: 'the URL points into a private network' };
+		}
+		fs.writefile(k, ''); fs.chmod(k, 0600);
+		let cfg = sprintf('url = "%s"\nuser-agent = "%s"\n', replace(cur, '"', '%22'), replace(s.user_agent ?? 'v2rayNG/1.10.0', '"', ''));
+		if (s.hwid) cfg += sprintf('header = "x-hwid: %s"\n', replace(s.hwid, '"', ''));
+		if (t.addr) cfg += sprintf('resolve = "%s:%d:%s"\n', t.host, t.port, t.addr);
+		fs.writefile(k, cfg);
+		r = run(sprintf("curl -fsS --compressed -m 40 -K %s -D %s -o %s -w '%%{http_code} %%{redirect_url}'", k, head_f, body_f));
+		fs.unlink(k);
+		const w = match(trim(r.out ?? ''), /^([0-9]{3}) ?(.*)$/);
+		if (r.code == 0 && w && match(w[1], /^30[12378]$/) && match(w[2], /^https?:\/\/\S+$/)) {
+			if (hop >= 5) { r = { code: 1 }; break; }
+			cur = w[2];
+			continue;
+		}
+		break;
+	}
 	const body = fs.readfile(body_f);
-	// after redirects every hop's headers are in the file: the last block counts
+	// the headers of the last hop (redirects are followed above, one request each)
 	const heads = split(fs.readfile(head_f) ?? '', /\r?\n\r?\n/);
 	let info = null;
 	for (let h in heads) if (length(trim(h))) info = parse_headers(h);
@@ -155,7 +179,8 @@ function update_locked(name) {
 	let created = false;
 	if (c.get('detour', xn) != 'exit') {
 		if (c.get('network', xn)) return { error: xn + ' is already used by another interface' };
-		engines.create_exit(xn, f, s.via, s.label ?? name, name + 'tun');
+		const e = engines.create_exit(xn, f, s.via, s.label ?? name, name + 'tun');
+		if (e.error) return e;
 		created = true;
 	}
 	else if ((c.get('detour', xn + '_eng', 'via') ?? '') != (s.via ?? '')) {

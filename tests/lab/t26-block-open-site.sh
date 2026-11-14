@@ -11,8 +11,7 @@ pst() { ubus call detour status | jsonfilter -e "@.policies[@.name='$1'].$2"; }
 txb() { cat /sys/class/net/$1/statistics/tx_bytes 2>/dev/null || echo 0; }
 lab tests/lab/restart-sb.sh >/dev/null
 cleanup() {
-	for s in zblock zopen zclosed zl_dom zl_ip; do uci -q delete detour.$s; done
-	uci -q del_list detour.direct.dst=4.4.4.4
+	for s in zblock zopen zclosed zdirect zl_dom zl_ip; do uci -q delete detour.$s; done
 	uci -q delete detour.main.alert_hold
 	uci commit detour; ubus call detour reload >/dev/null
 	rm -f /tmp/t26-*.list
@@ -51,7 +50,10 @@ set detour.zclosed.id=11
 add_list detour.zclosed.exit=alt
 add_list detour.zclosed.dst=8.8.8.8
 add_list detour.zclosed.dst=8.8.4.4
-add_list detour.direct.dst=4.4.4.4
+set detour.zdirect=policy
+set detour.zdirect.id=12
+set detour.zdirect.action=direct
+add_list detour.zdirect.dst=4.4.4.4
 commit detour
 U
 R=$(ubus call detour reload); echo "$R" | grep -q '"ok": true' || bad "reload: $R"
@@ -77,11 +79,14 @@ t=$(txb wgx2); r=$(cl "curl -s -m 8 -o /dev/null -w '%{http_code}' https://8.8.4
 ifdown wgx2
 waitfor true "pst zopen direct" 30 && ok "alt down: zopen goes directly" || bad "zopen not direct: $(ubus call detour status | jsonfilter -e "@.policies[@.name='zopen']")"
 r=$(cl "curl -s -m 8 -o /dev/null -w '%{http_code}' https://8.8.4.4/"); [ "$r" != 000 ] && ok "zopen traffic goes directly ($r)" || bad "zopen direct: $r"
+ctn() { conntrack -L -m 0xa00/0xffff00 2>/dev/null | grep -c .; }
+[ "$(ctn)" -gt 0 ] && ok "its direct flows are pinned (ct mark: the policy, no exit)" || bad "no pinned direct flow"
 r=$(cl "curl -s -m 6 -o /dev/null -w '%{http_code}' https://8.8.8.8/"); [ "$r" = 000 ] && ok "zclosed stays blocked" || bad "zclosed leaked: $r"
-nft list map inet detour pol2exit | grep -q '0x00000a00 : accept' && ok "pol2exit: zopen -> accept" || bad "map: $(nft list map inet detour pol2exit)"
+nft list map inet detour pol2exit | grep -q '0x00000a00 : jump podirect' && ok "pol2exit: zopen -> podirect (direct, flows pinned)" || bad "map: $(nft list map inet detour pol2exit)"
 logread | grep -q 'policy zopen: no working exit - goes directly' && ok "event logged" || bad "no event"
 ifup wgx2
 waitfor false "pst zopen direct" 60 && ok "alt back: zopen through its exit again" || bad "zopen still direct"
+[ "$(ctn)" = 0 ] && ok "the flows it opened directly were dropped" || bad "direct flows left: $(ctn)"
 sleep 2; t=$(txb wgx2); r=$(cl "curl -s -m 8 -o /dev/null -w '%{http_code}' https://8.8.4.4/"); [ $(($(txb wgx2) - t)) -gt 0 ] && ok "zopen traffic through alt again" || bad "zopen not via alt: $r"
 ubus call detour reload >/dev/null
 [ "$(pst zopen direct)" = false ] && ok "a reload keeps it on the exit (alt works)" || bad "after reload"
@@ -92,7 +97,7 @@ R=$(ex 9.9.9.9); [ "$(echo "$R" | jsonfilter -e '@.goes.to')" = block ] && ok "9
 R=$(ex https://8.8.4.4/x); [ "$(echo "$R" | jsonfilter -e '@.goes.to')" = exit ] && [ "$(echo "$R" | jsonfilter -e '@.goes.policy')" = zopen ] \
 	&& [ "$(echo "$R" | jsonfilter -e '@.goes.exit.name')" = alt ] && [ "$(echo "$R" | jsonfilter -e '@.matches[1].policy')" = zclosed ] \
 	&& ok "8.8.4.4 -> zopen via alt; zclosed also matched and lost" || bad "8.8.4.4: $R"
-R=$(ex 4.4.4.4); [ "$(echo "$R" | jsonfilter -e '@.matches[0].why')" = direct_addr ] && [ "$(echo "$R" | jsonfilter -e '@.goes.to')" = direct ] && ok "4.4.4.4 -> never via VPN" || bad "4.4.4.4: $R"
+R=$(ex 4.4.4.4); [ "$(echo "$R" | jsonfilter -e '@.matches[0].policy')" = zdirect ] && [ "$(echo "$R" | jsonfilter -e '@.goes.to')" = direct ] && [ "$(echo "$R" | jsonfilter -e '@.goes.policy')" = zdirect ] && ok "4.4.4.4 -> directly, by the direct policy" || bad "4.4.4.4: $R"
 R=$(ex 192.168.1.10); [ "$(echo "$R" | jsonfilter -e '@.matches[0].why')" = local ] && ok "a LAN address: local" || bad "local: $R"
 R=$(ex example.net); [ "$(echo "$R" | jsonfilter -e '@.goes.to')" = block ] && [ "$(echo "$R" | jsonfilter -e '@.matches[0].lists[0].list')" = zl_dom ] && ok "example.net -> Block, by the list zl_dom" || bad "example.net: $R"
 R=$(ex 9.9.8.7); [ "$(echo "$R" | jsonfilter -e '@.matches[0].why')" = address_list ] && [ "$(echo "$R" | jsonfilter -e '@.matches[0].lists[0].list')" = zl_ip ] && ok "9.9.8.7 -> by the address list zl_ip" || bad "9.9.8.7: $R"

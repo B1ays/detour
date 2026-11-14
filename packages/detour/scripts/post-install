@@ -6,7 +6,6 @@ user_exists dtnotify || { g=$(group_add_next dtnotify); user_add dtnotify "$g" "
 # system user of the panel tunnel to a VPS (sshtun): also exempt, the tunnel always goes directly
 user_exists dtssh || { g=$(group_add_next dtssh); user_add dtssh "$g" "$g" detour-sshtun /etc/detour/sshtun/home /bin/false; }
 [ -d /etc/detour/sshtun ] && chown -R dtssh /etc/detour/sshtun
-[ -f /etc/uci-defaults/90-detour ] && ( . /etc/uci-defaults/90-detour ) && rm -f /etc/uci-defaults/90-detour
 # cron: watchdog (hung daemon) and the nightly update of big lists - one managed block
 mkdir -p /etc/crontabs
 sed -i '\#/usr/libexec/detour/#d' /etc/crontabs/root 2>/dev/null

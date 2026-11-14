@@ -1,6 +1,6 @@
 {
 	"luci-app-detour": {
-		"description": "Grant access to Detour",
+		"description": "Grant access to Detour's state (read-only: no settings, no secrets)",
 		"read": {
 			"ubus": {
 				"detour": [
@@ -8,9 +8,7 @@
 					"sshtun_status",
 					"exits_info",
 					"sub_state",
-					"site_explain",
 					"traffic",
-					"dns_log",
 					"devices",
 					"catalog_names",
 					"rates"
@@ -24,6 +22,20 @@
 				]
 			},
 			"uci": [
+				"dhcp"
+			]
+		}
+	},
+	"luci-app-detour-admin": {
+		"description": "Grant full access to Detour: its settings (with keys, the Telegram token, subscription addresses), the DNS log, backups, every action",
+		"read": {
+			"ubus": {
+				"detour": [
+					"site_explain",
+					"dns_log"
+				]
+			},
+			"uci": [
 				"detour",
 				"network",
 				"dhcp"
@@ -32,7 +44,7 @@
 				"/tmp/detour-backup.bin": [
 					"read"
 				],
-				"/tmp/detour-before-restore.bin": [
+				"/etc/detour/before-restore.bin": [
 					"read"
 				]
 			}

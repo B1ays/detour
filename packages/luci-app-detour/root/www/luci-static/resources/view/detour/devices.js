@@ -7,6 +7,13 @@
 'require dom';
 'require detour.msg as msg';
 
+// Text from the router (names of exits and servers come from subscriptions and links) never becomes HTML:
+// LuCI's E() puts a string child in with innerHTML, here it always goes in as a text node.
+const E = function(tag, attr, data) {
+	if (!(attr instanceof Object) || Array.isArray(attr)) { data = attr; attr = {}; }
+	return L.dom.create(tag, attr, (typeof data == 'string' || typeof data == 'number') ? [ data ] : data);
+};
+
 // "Devices": the home network's devices, online or not, Wi-Fi or wired, today's traffic, where each one goes
 // (as configured / all through a policy / always directly / no internet), its name, and what it asks for (DNS).
 
@@ -25,14 +32,17 @@ function size(b) { return '%1024.2mB'.format(b || 0); }
 function applyUci() { return uci.save().then(function() { return ui.changes.apply(); }); }
 function lcl(v) { return arr(v).map(function(x) { return x.toLowerCase(); }); }
 function plab(n) { return uci.get('detour', n, 'label') || n; }
-function pols() { return uci.sections('detour', 'policy').filter(function(p) { return p.action != 'block'; }); }
+function pols() { return uci.sections('detour', 'policy').filter(function(p) { return msg.policyKind(p) == 'vpn'; }); }
 
-// where the device goes now: block / direct / pol:<name> / default
+// where the device goes now: block / direct / pol:<name> / default - the first policy that has it, in the
+// order the router checks them
 function modeOf(mac) {
 	const ps = uci.sections('detour', 'policy');
-	for (let i = 0; i < ps.length; i++) if (ps[i].action == 'block' && lcl(ps[i].device).indexOf(mac) >= 0) return 'block';
-	if (lcl(uci.get('detour', 'direct', 'device')).indexOf(mac) >= 0) return 'direct';
-	for (let i = 0; i < ps.length; i++) if (ps[i].action != 'block' && lcl(ps[i].device).indexOf(mac) >= 0) return 'pol:' + ps[i]['.name'];
+	for (let i = 0; i < ps.length; i++) {
+		if (lcl(ps[i].device).indexOf(mac) < 0) continue;
+		const k = msg.policyKind(ps[i]);
+		return k == 'vpn' ? 'pol:' + ps[i]['.name'] : k;
+	}
 	return 'default';
 }
 
@@ -43,9 +53,8 @@ function setMode(mac, mode) {
 		if (left.length != cur.length) uci.set('detour', sec, 'device', left.length ? left : null);
 	};
 	uci.sections('detour', 'policy').forEach(function(p) { drop(p['.name']); });
-	if (uci.get('detour', 'direct')) drop('direct');
 	let sec = null;
-	if (mode == 'direct') { if (!uci.get('detour', 'direct')) uci.add('detour', 'direct', 'direct'); sec = 'direct'; }
+	if (mode == 'direct') sec = msg.directPolicy(uci, true);
 	else if (mode == 'block') sec = msg.blockPolicy(uci, true);
 	else if (mode.indexOf('pol:') == 0) sec = mode.substr(4);
 	if (sec) uci.set('detour', sec, 'device', arr(uci.get('detour', sec, 'device')).concat([ mac ]));
@@ -120,18 +129,21 @@ return view.extend({
 		const where = {};      // name -> explain result (asked once each)
 		let open = true, timer = null;
 		const close = function() { open = false; if (timer) clearTimeout(timer); callWatchStop(); ui.hideModal(); };
+		const acts = {};       // name -> its controls, kept across redraws so a chosen policy is not reset
 		const actions = function(name) {
+			return acts[name] || (acts[name] = actions0(name));
+		};
+		const actions0 = function(name) {
 			const sel = E('select', { 'class': 'cbi-input-select' }, pols().map(function(p) { return E('option', { 'value': p['.name'] }, p.label || p['.name']); }));
 			const add = function(sec) {
-				const cur = arr(uci.get('detour', sec, 'domain'));
-				if (cur.indexOf(name) < 0) uci.set('detour', sec, 'domain', cur.concat([ name ]));
+				msg.moveTo(uci, sec, 'domain', name);
 				// applied at once, without leaving the page (the dialog keeps watching); "Goes" is asked again after
 				// the daemon reloaded
 				return uci.save().then(function() { return uci.apply(); }).then(function() { return uci.load('detour'); })
 					.then(function() { setTimeout(function() { delete where[name]; }, 2000); });
 			};
 			return E('span', { 'class': 'detour-dnslog-act' }, (pols().length ? [ E('button', { 'class': 'btn', 'click': function() { return add(sel.value); } }, _('through')), sel ] : []).concat([
-				E('button', { 'class': 'btn', 'click': function() { if (!uci.get('detour', 'direct')) uci.add('detour', 'direct', 'direct'); return add('direct'); } }, _('directly')),
+				E('button', { 'class': 'btn', 'click': function() { return add(msg.directPolicy(uci, true)); } }, _('directly')),
 				E('button', { 'class': 'btn cbi-button-negative', 'click': function() { return add(msg.blockPolicy(uci, true)); } }, _('block'))
 			]));
 		};
@@ -147,7 +159,7 @@ return view.extend({
 				const cell = E('td', { 'class': 'td', 'data-title': _('Goes') }, goesText(where[q.name]));
 				if (!(q.name in where)) {
 					where[q.name] = null;
-					callExplain(q.name, d.mac).then(function(x) { where[q.name] = x || { error: true }; dom.content(cell, goesText(where[q.name])); }, function() { where[q.name] = { error: true }; });
+					callExplain(q.name, d.mac).then(function(x) { where[q.name] = x || { error: true }; dom.content(cell, [ goesText(where[q.name]) ]); }, function() { where[q.name] = { error: true }; });
 				}
 				rows.push(E('tr', { 'class': 'tr' }, [
 					E('td', { 'class': 'td', 'data-title': _('Site') }, [ q.name, ' ', E('span', { 'class': 'detour-muted' }, q.types.join(' ')) ]),
@@ -166,7 +178,7 @@ return view.extend({
 				if (r.running) timer = setTimeout(tick, 3000);
 			});
 		};
-		ui.showModal(_('DNS log: «%s»').format(d.title), [
+		ui.showModal([ _('DNS log: «%s»').format(d.title) ], [
 			head,
 			E('p', { 'class': 'detour-muted' }, _('The names the device looks up in DNS for %d s: which sites and services it reaches. A change applies to every device.').format(WATCH_S)),
 			body,

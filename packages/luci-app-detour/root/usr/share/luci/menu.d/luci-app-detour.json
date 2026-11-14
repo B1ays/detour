@@ -28,6 +28,11 @@
 		"action": {
 			"type": "view",
 			"path": "detour/policies"
+		},
+		"depends": {
+			"acl": [
+				"luci-app-detour-admin"
+			]
 		}
 	},
 	"admin/services/detour/exits": {
@@ -36,6 +41,11 @@
 		"action": {
 			"type": "view",
 			"path": "detour/exits"
+		},
+		"depends": {
+			"acl": [
+				"luci-app-detour-admin"
+			]
 		}
 	},
 	"admin/services/detour/settings": {
@@ -44,6 +54,11 @@
 		"action": {
 			"type": "view",
 			"path": "detour/settings"
+		},
+		"depends": {
+			"acl": [
+				"luci-app-detour-admin"
+			]
 		}
 	},
 	"admin/services/detour/lists": {
@@ -52,6 +67,11 @@
 		"action": {
 			"type": "view",
 			"path": "detour/lists"
+		},
+		"depends": {
+			"acl": [
+				"luci-app-detour-admin"
+			]
 		}
 	},
 	"admin/services/detour/add": {
@@ -60,6 +80,11 @@
 		"action": {
 			"type": "view",
 			"path": "detour/add"
+		},
+		"depends": {
+			"acl": [
+				"luci-app-detour-admin"
+			]
 		}
 	},
 	"admin/services/detour/check": {
@@ -68,6 +93,11 @@
 		"action": {
 			"type": "view",
 			"path": "detour/check"
+		},
+		"depends": {
+			"acl": [
+				"luci-app-detour-admin"
+			]
 		}
 	},
 	"admin/services/detour/traffic": {
@@ -76,6 +106,11 @@
 		"action": {
 			"type": "view",
 			"path": "detour/traffic"
+		},
+		"depends": {
+			"acl": [
+				"luci-app-detour-admin"
+			]
 		}
 	},
 	"admin/services/detour/devices": {
@@ -84,6 +119,11 @@
 		"action": {
 			"type": "view",
 			"path": "detour/devices"
+		},
+		"depends": {
+			"acl": [
+				"luci-app-detour-admin"
+			]
 		}
 	},
 	"admin/services/detour/backup": {
@@ -92,6 +132,11 @@
 		"action": {
 			"type": "view",
 			"path": "detour/backup"
+		},
+		"depends": {
+			"acl": [
+				"luci-app-detour-admin"
+			]
 		}
 	}
 }

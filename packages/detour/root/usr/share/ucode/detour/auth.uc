@@ -6,7 +6,7 @@
 
 import * as fs from 'fs';
 import { cursor } from 'uci';
-import { run, log, PERSIST } from 'detour.core';
+import { run, log, PERSIST, lan_zones } from 'detour.core';
 
 export const ACL = '/usr/share/rpcd/acl.d/unauthenticated.json';
 const BACKUP = PERSIST + '/unauthenticated.json.orig';
@@ -65,17 +65,19 @@ export function restore() {
 // --- A-9: with 2FA on, SSH password login only from LAN networks; elsewhere keys only.
 // Specific and wildcard listeners on one port do not mix (whoever binds second gets EADDRINUSE,
 // including the v6 address of the LAN), so every instance is bound to a network: password ones
-// for the networks of the "lan" zone, keys-only ones for all other networks; the stock wildcard
+// for the networks of the home zones (core.lan_zones), keys-only ones for all other networks; the stock wildcard
 // instances are disabled meanwhile. Everything is undone when 2FA is off.
 const PW_PREFIX = 'detour_pw_', KEY_PREFIX = 'detour_key_';
 
 function lan_networks() {
 	const c = cursor();
+	const zones = lan_zones();
 	let nets = [];
 	c.foreach('firewall', 'zone', function(z) {
-		if (z.name == 'lan') {
+		if (index(zones, z.name) >= 0) {
 			const n = z.network;
-			nets = (type(n) == 'array') ? n : split(n ?? 'lan', /\s+/);
+			for (let x in ((type(n) == 'array') ? n : split(n ?? (z.name == 'lan' ? 'lan' : ''), /\s+/)))
+				if (index(nets, x) < 0) push(nets, x);
 		}
 	});
 	return filter(nets, (x) => length(x));

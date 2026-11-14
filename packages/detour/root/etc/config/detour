@@ -6,5 +6,4 @@ config main 'main'
 	option fails '2'
 	# router DNS: 'off' = untouched; 'tunnel' = via dns_policy, direct encrypted fallback when all its exits are down
 	option dns 'off'
-
-config direct 'direct'
+	option schema '1'

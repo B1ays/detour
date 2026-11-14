@@ -19,8 +19,8 @@ others() {
 }
 # the network config; peers without a name are numbered by their order, which means nothing to netifd
 net() { uci show network | sed 's/^\(network\.@[a-z]*_[a-z0-9_]*\)\[[0-9]*\]/\1[*]/' | sort; }
-fsum() { ( cd /etc/detour && find . -type f ! -name ruleset.good ! -name dom.save ! -name v2fly-names.txt ! -path './traffic/*' | sort | while read -r f; do md5sum "$f"; done ); }
-rm -f /tmp/detour-backup.bin /tmp/detour-restore.bin /tmp/detour-before-restore.bin
+fsum() { ( cd /etc/detour && find . -type f ! -name ruleset.good ! -name dom.save ! -name v2fly-names.txt ! -name before-restore.bin ! -path './traffic/*' | sort | while read -r f; do md5sum "$f"; done ); }
+rm -f /tmp/detour-backup.bin /tmp/detour-restore.bin /etc/detour/before-restore.bin
 # the lab servers of the exits (gone after a lab reboot): this test must not depend on running after others
 for N in 1 2; do ip netns list | grep -q "^ex$N " || lab tests/lab/l2-exit.sh $N >/dev/null 2>&1; done
 lab tests/lab/restart-sb.sh >/dev/null
@@ -90,10 +90,10 @@ same /tmp/t13.files /tmp/t13.n4 && ok "files of /etc/detour are as they were" ||
 [ "$(ls -l /etc/detour/sshtun/id_ed25519 2>/dev/null | awk '{print $3}')" = dtssh ] && ok "the panel tunnel key belongs to dtssh" || bad "sshtun owner: $(ls -l /etc/detour/sshtun)"
 [ -n "$H0" ] || bad "no exit was healthy before the test"
 waitfor x "covers" 120 && ok "the exits work again: $H0" || bad "healthy: $(healthy), before: $H0"
-[ -s /tmp/detour-before-restore.bin ] && ok "the previous settings were saved" || bad "no before-restore file"
+[ -s /etc/detour/before-restore.bin ] && ok "the previous settings were saved" || bad "no before-restore file"
 
 echo "== undo: the saved previous settings restore the changed state"
-cp /tmp/detour-before-restore.bin /tmp/detour-restore.bin
+cp /etc/detour/before-restore.bin /tmp/detour-restore.bin
 r=$(call backup_restore)
 [ "$(uci -q get detour.main.probe_period)" = 7 ] && [ "$(uci -q get detour.jnk)" = exit ] && [ -z "$(uci -q get detour.alt)" ] && ok "back to the changed state" || bad "undo: $r"
 cp /tmp/t13.bak /tmp/detour-restore.bin; call backup_restore >/dev/null
@@ -103,13 +103,15 @@ echo "== refused"
 W=/tmp/t13w; rm -rf $W; mkdir -p $W/x
 pf=$W/pw; echo -n "$PW" > $pf
 dec() { openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass file:$pf -in /tmp/t13.bak | tar -xzf - -C $W/x; }
-enc() { tar -czf - -C $W/x . | openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -pass file:$pf -out /tmp/detour-restore.bin; }
+enc() { ( cd $W/x && rm -f sums.sha256 && find . -type f ! -name sums.sha256 | sort | xargs sha256sum > sums.sha256 ); tar -czf - -C $W/x . | openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -pass file:$pf -out /tmp/detour-restore.bin; }
 dec; ln -s /etc/shadow $W/x/files/evil; enc
 r=$(call backup_check); echo "$r" | grep -q 'links or special' && ok "a link in the archive" || bad "link: $r"
-rm -rf $W/x; mkdir -p $W/x; dec; sed -i 's/"schema": 1/"schema": 99/' $W/x/manifest.json; enc
+rm -rf $W/x; mkdir -p $W/x; dec; sed -i 's/"schema": [0-9]*/"schema": 99/' $W/x/manifest.json; enc
 r=$(call backup_check); echo "$r" | grep -q 'newer Detour' && ok "a backup of a newer Detour" || bad "schema: $r"
 rm -rf $W/x; mkdir -p $W/x; dec; sed -i 's/"name": "wgx1"/"name": "lan"/' $W/x/network.json; enc
 r=$(call backup_check); echo "$r" | grep -q "not an exit's" && ok "a network section that is no exit's (lan)" || bad "lan: $r"
+rm -rf $W/x; mkdir -p $W/x; dec; echo "# changed" >> $W/x/detour.uci; tar -czf - -C $W/x . | openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -pass file:$pf -out /tmp/detour-restore.bin
+r=$(call backup_check); echo "$r" | grep -q "checksums do not match" && ok "a file changed after the backup was made: refused" || bad "sums: $r"
 echo "not a backup" > /tmp/detour-restore.bin
 r=$(call backup_check); echo "$r" | grep -q 'not a Detour backup' && ok "a file that is no backup" || bad "plain: $r"
 # the router has wgx2 of its own (not an exit any more): the backup's exit wgx2 must not take it over
@@ -148,5 +150,5 @@ for f in /etc/detour/traffic/$M.json /tmp/detour/traffic/$M.json; do [ -e $f ] &
 /etc/init.d/detour start
 for s in $(uci show network | sed -n "s/^network\.\(@wireguard_wgx2\[[0-9]*\]\)\.description='t13anon'/\1/p" | sort -r); do uci delete network.$s; done
 uci commit network; /etc/init.d/network reload
-rm -rf $W /tmp/t13.* /tmp/detour-backup.bin /tmp/detour-restore.bin /tmp/detour-before-restore.bin
+rm -rf $W /tmp/t13.* /tmp/detour-backup.bin /tmp/detour-restore.bin /etc/detour/before-restore.bin
 echo "RESULT: $([ $FAIL = 0 ] && echo PASS || echo FAIL)"

@@ -7,7 +7,7 @@
 
 import * as fs from 'fs';
 import { cursor } from 'uci';
-import { run, shq, log, load, PERSIST, RUN, M_UNDERLAY } from 'detour.core';
+import { run, shq, log, load, PERSIST, RUN, M_UNDERLAY, lan_zones } from 'detour.core';
 import { dev_up } from 'detour.net';
 
 export const API = 'https://api.cloudflareclient.com/v0a2158';
@@ -64,7 +64,7 @@ export function ensure_zone(c, iface) {
 		c.set('firewall', zone, 'masq', '1');
 		c.set('firewall', zone, 'mtu_fix', '1');
 		c.set('firewall', 'detour_fwd', 'forwarding');
-		c.set('firewall', 'detour_fwd', 'src', 'lan');
+		c.set('firewall', 'detour_fwd', 'src', lan_zones()[0]);
 		c.set('firewall', 'detour_fwd', 'dest', 'detour');
 	}
 	const nets = c.get('firewall', zone, 'network');
@@ -172,6 +172,7 @@ export function register(opts) {
 	ensure_zone(c, name);
 
 	const id = free_id(c);
+	if (id == null) return { error: 'no free exit id: 250 exits is the limit' };   // nothing committed yet
 	c.set('detour', name, 'exit');
 	c.set('detour', name, 'id', '' + id);
 	c.set('detour', name, 'iface', name);

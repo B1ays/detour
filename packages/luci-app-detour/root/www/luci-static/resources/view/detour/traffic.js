@@ -5,6 +5,13 @@
 'require dom';
 'require uci';
 
+// Text from the router (names of exits and servers come from subscriptions and links) never becomes HTML:
+// LuCI's E() puts a string child in with innerHTML, here it always goes in as a text node.
+const E = function(tag, attr, data) {
+	if (!(attr instanceof Object) || Array.isArray(attr)) { data = attr; attr = {}; }
+	return L.dom.create(tag, attr, (typeof data == 'string' || typeof data == 'number') ? [ data ] : data);
+};
+
 // "Traffic": how much each device and each exit moved today, this week, month, year.
 // Devices: nlbwmon (counts accelerated flows too). Exits: their tunnels' counters. Directly = devices minus VPN.
 

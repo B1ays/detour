@@ -6,7 +6,6 @@ user_exists dtnotify || { g=$(group_add_next dtnotify); user_add dtnotify "$g" "
 # system user of the panel tunnel to a VPS (sshtun): also exempt, the tunnel always goes directly
 user_exists dtssh || { g=$(group_add_next dtssh); user_add dtssh "$g" "$g" detour-sshtun /etc/detour/sshtun/home /bin/false; }
 [ -d /etc/detour/sshtun ] && chown -R dtssh /etc/detour/sshtun
-[ -f /etc/uci-defaults/90-detour ] && ( . /etc/uci-defaults/90-detour ) && rm -f /etc/uci-defaults/90-detour
 # notifications chosen before the five new kinds existed: those are switched on once (they can be unticked)
 if [ -n "$(uci -q get detour.notify.event)" ] && [ "$(uci -q get detour.notify.ev_rev)" != 2 ]; then
 	for e in boot wan list_fail sub_fail sub_expire; do uci -q del_list detour.notify.event=$e; uci add_list detour.notify.event=$e; done

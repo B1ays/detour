@@ -1,6 +1,13 @@
 'use strict';
 'require baseclass';
 
+// Text from the router (names of exits and servers come from subscriptions and links) never becomes HTML:
+// LuCI's E() puts a string child in with innerHTML, here it always goes in as a text node.
+const E = function(tag, attr, data) {
+	if (!(attr instanceof Object) || Array.isArray(attr)) { data = attr; attr = {}; }
+	return L.dom.create(tag, attr, (typeof data == 'string' || typeof data == 'number') ? [ data ] : data);
+};
+
 // The settings of a sing-box proxy outbound as form fields: server, keys, security (TLS / Reality), transport.
 // read() returns the outbound with the fields written back into a copy of the original, so anything the form
 // does not show (multiplex, padding, …) stays as it was.

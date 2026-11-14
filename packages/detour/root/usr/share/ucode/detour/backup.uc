@@ -20,11 +20,14 @@ import { ensure_zone } from 'detour.warp';
 
 export const FORMAT = 'detour-backup';
 export const FORMAT_V = 1;
-export const SCHEMA = 1;                            // detour.main.schema this version writes (uci-defaults/90-detour)
-export const BEFORE = '/tmp/detour-before-restore.bin';
+export const SCHEMA = 1;                            // detour.main.schema this version writes (etc/config/detour)
+// the settings before a restore: on flash, so it survives a reboot (a restore that broke the network is often
+// followed by one); never part of a backup itself
+export const BEFORE = PERSIST + '/before-restore.bin';
 const WORK = '/tmp/detour/backup';
 // files of /etc/detour that are not settings: derived from the live ruleset, this router's 2FA state, a cache
-const SKIP_FILES = [ 'ruleset.good', 'dom.save', 'unauthenticated.json.orig', 'v2fly-names.txt' ];
+const SKIP_FILES = [ 'ruleset.good', 'dom.save', 'unauthenticated.json.orig', 'v2fly-names.txt', 'before-restore.bin' ];
+const SUMS = 'sums.sha256';                         // the checksum of every file inside
 const MAX_UNPACKED = 64 * 1024 * 1024;
 const RE_NAME = /^[A-Za-z0-9_]{1,15}$/;
 const DHCP_OPTS = [ 'mac', 'ip', 'name', 'leasetime', 'duid', 'hostid', 'dns', 'tag' ];
@@ -96,6 +99,8 @@ export function create(out, pwfile) {
 	for (let t in [ 'exit', 'policy', 'list', 'subscription' ]) { count[t] = 0; c.foreach('detour', t, () => { count[t]++; }); }
 	const man = { format: FORMAT, format_v: FORMAT_V, version: VERSION, schema: int(m.schema ?? 0), created: time(), host, count };
 	fs.writefile(d + '/manifest.json', sprintf('%.J\n', man));
+	const s = run(sprintf('cd %s && find . -type f ! -name %s | sort | xargs sha256sum > %s', shq(d), SUMS, SUMS));
+	if (s.code != 0) { run('rm -rf ' + shq(d)); return { error: 'cannot checksum: ' + s.out }; }
 	const t = run(sprintf('tar -czf %s/new.tgz -C %s .', WORK, shq(d)));
 	run('rm -rf ' + shq(d));
 	if (t.code != 0) return { error: 'cannot pack: ' + t.out };
@@ -138,6 +143,13 @@ export function open(path, pwfile) {
 	fs.unlink(tgz);
 	if (r.code != 0) return { error: 'cannot unpack: ' + r.out };
 	if (trim(run(sprintf('find %s ! -type f ! -type d | head -n1', x)).out) != '') return { error: 'the archive contains links or special files - refusing' };
+	// every file as it was written (a damaged file can still decrypt and unpack); older backups have no sums
+	if (fs.access(x + '/' + SUMS)) {
+		const listed = length(filter(split(trim(fs.readfile(x + '/' + SUMS) ?? ''), '\n'), (l) => length(l)));
+		const have = int(trim(run(sprintf('cd %s && find . -type f ! -name %s | wc -l', x, SUMS)).out));
+		if (run(sprintf('cd %s && sha256sum -c -s %s', x, SUMS)).code != 0 || listed != have)
+			return { error: 'damaged backup: the checksums do not match' };
+	}
 	const man = read_json_file(x + '/manifest.json');
 	if (man?.format != FORMAT) return { error: 'not a Detour backup' };
 	if (int(man.format_v) > FORMAT_V || int(man.schema) > SCHEMA)
@@ -239,8 +251,7 @@ export function preview(o) {
 }
 
 function migrate(c) {
-	// what uci-defaults/90-detour and post-upgrade do for an older config
-	if (!c.get('detour', 'direct')) c.set('detour', 'direct', 'direct');
+	// what post-upgrade does for an older config
 	if (int(c.get('detour', 'main', 'schema') ?? 0) < SCHEMA) c.set('detour', 'main', 'schema', '' + SCHEMA);
 	const ev = c.get('detour', 'notify', 'event');
 	if (ev && c.get('detour', 'notify', 'ev_rev') != '2') {

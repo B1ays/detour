@@ -7,7 +7,7 @@
 
 import * as fs from 'fs';
 import { cursor } from 'uci';
-import { run, PERSIST } from 'detour.core';
+import { run, PERSIST, clean_label } from 'detour.core';
 import * as links from 'detour.links';
 import * as engines from 'detour.engines';
 import * as wgconf from 'detour.wgconf';
@@ -62,11 +62,13 @@ function flow(s, pos) {
 			while (pos < n) {
 				ws();
 				if (substr(s, pos, 1) == '}') { pos++; break; }
+				const p0 = pos;
 				const k = scal(':}');
 				if (substr(s, pos, 1) == ':') pos++;
 				o[k] = val();
 				ws();
 				if (substr(s, pos, 1) == ',') pos++;
+				if (pos == p0) break;   // broken text (a stray ']'): stop instead of looping forever
 			}
 			return o;
 		}
@@ -76,9 +78,11 @@ function flow(s, pos) {
 			while (pos < n) {
 				ws();
 				if (substr(s, pos, 1) == ']') { pos++; break; }
+				const p0 = pos;
 				push(a, val());
 				ws();
 				if (substr(s, pos, 1) == ',') pos++;
+				if (pos == p0) break;   // broken text (a stray '}'): stop instead of looping forever
 			}
 			return a;
 		}
@@ -288,7 +292,7 @@ function from_json(j) {
 	return out;
 }
 
-function from_text(text) {
+function from_text0(text) {
 	text = trim(replace(text ?? '', '\r', ''));
 	if (!length(text)) return { error: 'empty' };
 	if (match(text, /^vpn:\/\//)) return amnezia(text);
@@ -335,6 +339,13 @@ function from_text(text) {
 		}
 	}
 	return length(l) ? { list: l } : { error: 'nothing recognised: a link, a key, a WireGuard config, JSON or Clash YAML is expected' };
+}
+
+// the names inside (remarks, Clash names, JSON tags) come from whoever made the text: cleaned for the pages
+function from_text(text) {
+	const r = from_text0(text);
+	for (let x in r.list ?? []) if (x.label != null) x.label = clean_label(x.label);
+	return r;
 }
 
 // --- which engine runs a proxy ----------------------------------------------------------------------------------
@@ -393,9 +404,10 @@ function used_name(c, n) { return !!(c.get('detour', n) || c.get('detour', n + '
 
 function make_wg(n, w, label) {
 	const c = cursor();
+	const id = free_id(c);
+	if (id > 250) return null;   // 250 exits is the limit
 	wgconf.write(c, n, w);
 	ensure_zone(c, n);
-	const id = free_id(c);
 	c.set('detour', n, 'exit');
 	c.set('detour', n, 'id', '' + id);
 	c.set('detour', n, 'iface', n);
@@ -424,9 +436,10 @@ export function add(text, picks, name, via, label, engs) {
 		const x = r.list[int(i)];
 		const n = (length(idx) == 1) ? name : substr(name, 0, 9) + (k + 1);
 		if (used_name(c, n)) { push(notes, n + ' is already used, skipped'); continue; }
-		const lab = (length(idx) == 1 && label) ? label : (x.label ?? n);
+		const lab = clean_label((length(idx) == 1 && label) ? label : x.label) ?? n;
 		if (x.wg) {
 			const id = make_wg(n, x.wg, lab);
+			if (id == null) { push(notes, n + ': no free exit id (250 exits is the limit)'); continue; }
 			if (via) push(notes, n + ': a WireGuard exit always connects directly');
 			push(out, { name: n, id, kind: x.wg.kind });
 			continue;
@@ -442,6 +455,7 @@ export function add(text, picks, name, via, label, engs) {
 		if (bad) { push(notes, n + ': ' + (et == 'xray' ? 'Xray' : 'sing-box') + ' refused the configuration: ' + bad); continue; }
 		const f = engines.write_outbound(n, ob);
 		const e = engines.create_exit(n, f, via, lab, null, et);
+		if (e.error) { push(notes, n + ': ' + e.error); continue; }
 		push(out, { name: n, id: e.exit_id, kind: et });
 	}
 	if (!length(out)) return { error: join('; ', notes) || 'nothing was added' };

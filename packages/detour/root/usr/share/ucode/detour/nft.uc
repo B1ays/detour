@@ -22,8 +22,8 @@ export function exit_mark(id) { return id << 16; }
 
 // names of sets/chains/maps this config needs
 function wanted(cfg) {
-	const sets = { direct4: 1, direct6: 1, lan_ifs: 1, bypass4: 1, exit_devs: 1, direct_dev: 1, dom_direct4: 1, lst4_direct: 1 };
-	const chains = { classify: 1, prerouting: 1, output: 1, killswitch: 1, v6block: 1, dnsredir: 1, dotblock: 1, blockrej: 1 };
+	const sets = { lan_ifs: 1, bypass4: 1, exit_devs: 1 };
+	const chains = { classify: 1, prerouting: 1, output: 1, killswitch: 1, v6block: 1, dnsredir: 1, dotblock: 1, blockrej: 1, podirect: 1 };
 	for (let p in cfg.policies) {
 		for (let k in [ 'dev', 'dst4', 'dst6', 'dom4', 'dom6', 'lst4' ]) sets[sprintf('%s_p%d', k, p.id)] = 1;
 	}
@@ -68,13 +68,8 @@ export function render(cfg, active, opts) {
 	add('\tset lan_ifs { type ifname; }');
 	add('\tset exit_devs { type ifname; }');
 	add(sprintf('\tset bypass4 { type ipv4_addr; flags interval; elements = { %s }; }', BYPASS4));
-	add('\tset direct4 { type ipv4_addr; flags interval; auto-merge; }');
-	add('\tset direct6 { type ipv6_addr; flags interval; auto-merge; }');
-	add('\tset direct_dev { type ether_addr; }');
-	add(sprintf('\tset dom_direct4 { type ipv4_addr; flags timeout; timeout %s; }', to));
-	// big downloaded lists: filled by lists-update, never flushed by a rules reload
-	add('\tset lst4_direct { type ipv4_addr; flags interval; auto-merge; }');
 	for (let p in cfg.policies) {
+		// big downloaded lists: filled by lists-update, never flushed by a rules reload
 		add(sprintf('\tset lst4_p%d { type ipv4_addr; flags interval; auto-merge; }', p.id));
 		add(sprintf('\tset dev_p%d { type ether_addr; }', p.id));
 		add(sprintf('\tset dst4_p%d { type ipv4_addr; flags interval; auto-merge; }', p.id));
@@ -89,6 +84,7 @@ export function render(cfg, active, opts) {
 	}
 	add('\tchain classify { }');
 	add('\tchain blockrej { }');
+	add('\tchain podirect { }');
 	add('\tchain prerouting { type filter hook prerouting priority mangle - 5; policy accept; }');
 	add('\tchain output { type route hook output priority mangle - 5; policy accept; }');
 	add('\tchain killswitch { type filter hook postrouting priority srcnat - 10; policy accept; }');
@@ -98,11 +94,11 @@ export function render(cfg, active, opts) {
 	add('}');
 
 	// 2. flush rules and static data (dom* sets are left alone)
-	const chains = [ 'classify', 'prerouting', 'output', 'killswitch', 'v6block', 'dnsredir', 'dotblock', 'blockrej' ];
+	const chains = [ 'classify', 'prerouting', 'output', 'killswitch', 'v6block', 'dnsredir', 'dotblock', 'blockrej', 'podirect' ];
 	for (let e in cfg.exits) { push(chains, sprintf('exit%d', e.id)); push(chains, sprintf('ks%d', e.id)); }
 	for (let ch in chains) add(sprintf('flush chain %s %s', T, ch));
 	add(sprintf('flush map %s pol2exit', T));
-	for (let s in [ 'lan_ifs', 'exit_devs', 'direct4', 'direct6', 'direct_dev' ]) add(sprintf('flush set %s %s', T, s));
+	for (let s in [ 'lan_ifs', 'exit_devs' ]) add(sprintf('flush set %s %s', T, s));
 	for (let p in cfg.policies)
 		for (let k in [ 'dev', 'dst4', 'dst6' ]) add(sprintf('flush set %s %s_p%d', T, k, p.id));
 
@@ -118,9 +114,6 @@ export function render(cfg, active, opts) {
 		for (let e in cfg.exits) if (index(devs, e.device) < 0) push(devs, e.device);
 		add(sprintf('add element %s exit_devs { %s }', T, elems(devs, true)));
 	}
-	if (length(cfg.direct4)) add(sprintf('add element %s direct4 { %s }', T, elems(cfg.direct4)));
-	if (length(cfg.direct6)) add(sprintf('add element %s direct6 { %s }', T, elems(cfg.direct6)));
-	if (length(cfg.direct_dev)) add(sprintf('add element %s direct_dev { %s }', T, elems(cfg.direct_dev)));
 	for (let p in cfg.policies) {
 		if (!p.enabled) continue;
 		if (length(p.devices)) add(sprintf('add element %s dev_p%d { %s }', T, p.id, elems(p.devices)));
@@ -134,7 +127,7 @@ export function render(cfg, active, opts) {
 
 	// 6. policy -> exit (atomic switch = replace one element)
 	for (let p in cfg.policies) {
-		if (!p.enabled) continue;
+		if (!p.enabled || p.direct) continue;   // "Directly": no mark, never reaches pol2exit
 		const eid = active?.[p.id];
 		// "Block": refused at once, so apps do not wait for a timeout
 		if (p.block) add(sprintf('add element %s pol2exit { %s : jump blockrej }', T, hex(pol_mark(p.id))));
@@ -146,24 +139,24 @@ export function render(cfg, active, opts) {
 	// the "Block" target: TCP gets a reset, the rest "administratively prohibited"
 	add(sprintf('add rule %s blockrej counter meta l4proto tcp reject with tcp reset', T));
 	add(sprintf('add rule %s blockrej reject with icmpx type admin-prohibited', T));
+	// on_down 'direct' (set_policy_direct): the flow is pinned with the policy mark alone (no exit), so it stays
+	// direct while it lasts and the daemon can drop exactly these flows when an exit is back
+	add(sprintf('add rule %s podirect ct mark set meta mark & %s accept', T, hex(M_BOTH)));
 
 	// 7. classify: first match wins, policies in config order
 	add(sprintf('add rule %s classify ip daddr @bypass4 return', T));
-	add(sprintf('add rule %s classify ip daddr @direct4 return', T));
-	add(sprintf('add rule %s classify ip6 daddr @direct6 return', T));
-	add(sprintf('add rule %s classify ether saddr @direct_dev return comment "device never via VPN"', T));
-	add(sprintf('add rule %s classify ip daddr @dom_direct4 return comment "domain never via VPN"', T));
-	add(sprintf('add rule %s classify ip daddr @lst4_direct return comment "list: never via VPN"', T));
 	const setp = (id) => sprintf('meta mark set meta mark & %s | %s return', hex(~M_POL & 0xffffffff), hex(pol_mark(id)));
 	for (let p in cfg.policies) {
 		if (!p.enabled) continue;
-		add(sprintf('add rule %s classify ether saddr @dev_p%d %s', T, p.id, setp(p.id)));
-		add(sprintf('add rule %s classify ip daddr @dst4_p%d %s', T, p.id, setp(p.id)));
-		add(sprintf('add rule %s classify ip daddr @dom4_p%d %s', T, p.id, setp(p.id)));
-		add(sprintf('add rule %s classify ip daddr @lst4_p%d %s', T, p.id, setp(p.id)));
+		// "Directly": what matches leaves unmarked - the policies below it never see it
+		const v = p.direct ? sprintf('return comment "%s: directly"', p.name) : setp(p.id);
+		add(sprintf('add rule %s classify ether saddr @dev_p%d %s', T, p.id, v));
+		add(sprintf('add rule %s classify ip daddr @dst4_p%d %s', T, p.id, v));
+		add(sprintf('add rule %s classify ip daddr @dom4_p%d %s', T, p.id, v));
+		add(sprintf('add rule %s classify ip daddr @lst4_p%d %s', T, p.id, v));
 		for (let pr in [ 'tcp', 'udp' ])
 			if (length(p.ports?.[pr]))
-				add(sprintf('add rule %s classify meta l4proto %s th dport { %s } %s', T, pr, join(', ', p.ports[pr]), setp(p.id)));
+				add(sprintf('add rule %s classify meta l4proto %s th dport { %s } %s', T, pr, join(', ', p.ports[pr]), v));
 	}
 
 	// 8. LAN ingress: established flows keep their decision (ct mark pins policy+exit)
@@ -198,10 +191,23 @@ export function render(cfg, active, opts) {
 	add(sprintf('add rule %s killswitch counter drop comment "unknown exit id"', T));
 
 	// 11. IPv6 (first version: no tunnelling) - reject v6 from devices / to addresses under a policy
-	if (cfg.main.ipv6_block)
-		add(sprintf('add rule %s v6block iifname @lan_ifs meta nfproto ipv6 counter reject comment "full tunnel: no IPv6 past it"', T));
+	// "full tunnel" refuses all IPv6 where the policy taking all IPv4 stands: a "Directly" policy above it keeps
+	// its IPv6 (its returns come first); set by hand with no such policy, at the end, after every policy
+	let full = cfg.main.ipv6_block;
+	const full_rule = sprintf('add rule %s v6block iifname @lan_ifs meta nfproto ipv6 counter reject comment "full tunnel: no IPv6 past it"', T);
 	for (let p in cfg.policies) {
 		if (!p.enabled) continue;
+		if (full && !p.direct && length(filter(p.dst4, (a) => match(a, /\/0$/)))) { add(full_rule); full = false; }
+		// "Directly" is not tunnelled: its IPv6 goes as it is, and a policy below it must not refuse it (the same
+		// order as classify)
+		if (p.direct) {
+			add(sprintf('add rule %s v6block iifname @lan_ifs meta nfproto ipv6 ether saddr @dev_p%d return', T, p.id));
+			add(sprintf('add rule %s v6block iifname @lan_ifs ip6 daddr @dst6_p%d return', T, p.id));
+			for (let pr in [ 'tcp', 'udp' ])
+				if (length(p.ports?.[pr]))
+					add(sprintf('add rule %s v6block iifname @lan_ifs meta nfproto ipv6 meta l4proto %s th dport { %s } return', T, pr, join(', ', p.ports[pr])));
+			continue;
+		}
 		add(sprintf('add rule %s v6block iifname @lan_ifs meta nfproto ipv6 ether saddr @dev_p%d counter reject', T, p.id));
 		add(sprintf('add rule %s v6block iifname @lan_ifs ip6 daddr @dst6_p%d counter reject', T, p.id));
 		add(sprintf('add rule %s v6block iifname @lan_ifs ip6 daddr @dom6_p%d counter reject', T, p.id));
@@ -209,6 +215,7 @@ export function render(cfg, active, opts) {
 			if (length(p.ports?.[pr]))
 				add(sprintf('add rule %s v6block iifname @lan_ifs meta nfproto ipv6 meta l4proto %s th dport { %s } counter reject', T, pr, join(', ', p.ports[pr])));
 	}
+	if (full) add(full_rule);
 
 	// 12. DNS of LAN devices goes to the router (domain policies need it): redirect :53, block DoT/DoQ :853
 	if (cfg.main.force_dns) {
@@ -241,14 +248,15 @@ export function set_policy_exit(pid, eid) {
 }
 
 // a policy whose exits are all down and which may then go directly (on_down 'direct'): its packets keep their
-// policy mark (so they are known as its traffic) but take no exit - the main table, the provider's line
+// policy mark (so they are known as its traffic) but take no exit - the main table, the provider's line.
+// podirect pins the flow (ct mark = policy, exit 0); conntrack -D -m <policy mark>/0xffff00 drops these flows
 export function set_policy_direct(pid) {
 	const f = RUN + '/switch.nft';
-	fs.writefile(f, sprintf('delete element %s pol2exit { %s }\nadd element %s pol2exit { %s : accept }\n',
+	fs.writefile(f, sprintf('delete element %s pol2exit { %s }\nadd element %s pol2exit { %s : jump podirect }\n',
 		T, hex(pol_mark(pid)), T, hex(pol_mark(pid))));
 	let r = run('nft -f ' + f);
 	if (r.code != 0) {
-		fs.writefile(f, sprintf('add element %s pol2exit { %s : accept }\n', T, hex(pol_mark(pid))));
+		fs.writefile(f, sprintf('add element %s pol2exit { %s : jump podirect }\n', T, hex(pol_mark(pid))));
 		r = run('nft -f ' + f);
 	}
 	return r;

@@ -1,6 +1,6 @@
 #!/bin/sh
 # A-14: big lists. Sources are served by the PC (tests/stub/lists). CIDR list -> lst4_p1 and traffic
-# via the policy's exit; mixed-format domain list -> dnsmasq -> dom4_p1; "direct" list; a failing or
+# via the policy's exit; mixed-format domain list -> dnsmasq -> dom4_p1; a list of a "Directly" policy; a failing or
 # too short source keeps the previous data; boot restore from the flash snapshot; 30k CIDR timing.
 CL=192.168.1.145
 cl() { ssh -y -i /root/.ssh/id_dropbear root@$CL "$@" 2>/dev/null; }
@@ -13,8 +13,10 @@ st() { jsonfilter -i /tmp/detour/lists/$1.status -e "@.$2" 2>/dev/null; }
 i=0; while pgrep -f /usr/libexec/detour/lists-update >/dev/null && [ $i -lt 300 ]; do sleep 2; i=$((i+2)); done
 inset() { nft get element inet detour $1 "{ $2 }" >/dev/null 2>&1 && echo yes || echo no; }
 txb() { cat /sys/class/net/$1/statistics/tx_bytes 2>/dev/null || echo 0; }
-cleanup() { for s in tl_cidr tl_dom tl_dir tl_short tl_big tl_geo tl_v2; do uci -q delete detour.$s; done; uci commit detour; rm -f /etc/detour/lists/big.txt; }
+cleanup() { for s in tl_cidr tl_dom tl_dir tl_short tl_big tl_geo tl_v2 tdirect; do uci -q delete detour.$s; done; uci commit detour; rm -f /etc/detour/lists/big.txt; }
 cleanup
+# a "Directly" policy (action direct) with a free id: its list goes to lst4_p<id>
+DID=1; while uci show detour | grep -q "\.id='$DID'$"; do DID=$((DID + 1)); done
 uci -q batch <<U
 set detour.tl_cidr=list
 set detour.tl_cidr.policy=vpn
@@ -23,7 +25,10 @@ set detour.tl_dom=list
 set detour.tl_dom.policy=vpn
 add_list detour.tl_dom.url=$B/domains.txt
 set detour.tl_dir=list
-set detour.tl_dir.policy=direct
+set detour.tdirect=policy
+set detour.tdirect.id=$DID
+set detour.tdirect.action=direct
+set detour.tl_dir.policy=tdirect
 add_list detour.tl_dir.url=$B/direct.txt
 commit detour
 U
@@ -37,7 +42,8 @@ for d in ifconfig.io icanhazip.com example.com wikipedia.org a.example.net b.exa
 done
 grep -qxE 'localhost|bad_dom' $D && bad "junk domains kept" || ok "domains from hosts/adblock/dnsmasq/plain/wildcard, junk dropped ($(wc -l < $D))"
 waitfor yes "inset lst4_p1 198.51.100.7" 30 && [ "$(inset lst4_p1 8.8.8.8)" = yes ] && ok "lst4_p1 filled" || bad "lst4_p1"
-waitfor yes "inset lst4_direct 203.0.113.9" 30 && ok "lst4_direct filled" || bad "lst4_direct"
+waitfor yes "inset lst4_p$DID 203.0.113.9" 30 && ok "lst4_p$DID (the direct policy) filled" || bad "lst4_p$DID"
+nft list chain inet detour classify | grep -q "lst4_p$DID return" && ok "its addresses leave classify unmarked" || bad "classify: $(nft list chain inet detour classify | grep p$DID)"
 waitfor 0 "ls /tmp/dnsmasq.*.d/detour-list-tl_dom.conf >/dev/null 2>&1; echo \$?" 30 && ok "dnsmasq file for the domain list" || bad "no dnsmasq file"
 waitfor ok "cl 'nslookup example.org 192.168.1.1' | grep -q '^Address: [0-9]' && echo ok" 30 || true
 echo "== traffic"
@@ -59,7 +65,7 @@ echo "== boot: restored from the flash snapshot without downloads"
 [ -s /etc/detour/lists/tl_cidr.snap ] && ok "snapshot on flash" || bad "no snapshot"
 /etc/init.d/detour stop; rm -rf /tmp/detour/lists; nft delete table inet detour
 /usr/sbin/detour fw-start
-[ "$(inset lst4_p1 8.8.8.8)" = yes ] && [ "$(inset lst4_direct 203.0.113.9)" = yes ] && ok "sets back from snapshots" || bad "restore"
+[ "$(inset lst4_p1 8.8.8.8)" = yes ] && [ "$(inset lst4_p$DID 203.0.113.9)" = yes ] && ok "sets back from snapshots" || bad "restore"
 grep -q 'restored from snapshot' /tmp/detour/lists/tl_cidr.status && ok "status: restored from snapshot" || bad "status: $(cat /tmp/detour/lists/tl_cidr.status)"
 /etc/init.d/detour start; sleep 4
 echo "== v2fly/geosite text (runetfreedom, as stock): domain:/full: kept, keyword/regexp/include skipped"

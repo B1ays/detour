@@ -7,6 +7,13 @@
 'require uci';
 'require detour.msg as msg';
 
+// Text from the router (names of exits and servers come from subscriptions and links) never becomes HTML:
+// LuCI's E() puts a string child in with innerHTML, here it always goes in as a text node.
+const E = function(tag, attr, data) {
+	if (!(attr instanceof Object) || Array.isArray(attr)) { data = attr; attr = {}; }
+	return L.dom.create(tag, attr, (typeof data == 'string' || typeof data == 'number') ? [ data ] : data);
+};
+
 const callStatus = rpc.declare({ object: 'detour', method: 'status' });
 const callPin = rpc.declare({ object: 'detour', method: 'pin', params: [ 'policy', 'exit' ] });
 const callUnpin = rpc.declare({ object: 'detour', method: 'unpin', params: [ 'policy' ] });
@@ -43,7 +50,7 @@ function fmtTime(ts) {
 
 return view.extend({
 	load: function() {
-		return Promise.all([ callStatus().catch(function() { return null; }), uci.load('detour') ]).then(function(r) { return r[0]; });
+		return Promise.all([ callStatus().catch(function() { return null; }), L.resolveDefault(uci.load('detour'), null) ]).then(function(r) { return r[0]; });
 	},
 
 	// names people gave to exits and policies (internal names otherwise)
@@ -165,11 +172,11 @@ return view.extend({
 			E('th', { 'class': 'th' }, _('Manual choice'))
 		]) ];
 		(st.policies || []).forEach(function(p) {
-			if (p.block) {
+			if (p.block || p.action == 'direct') {
 				rows.push(E('tr', { 'class': 'tr' }, [
 					td(_('Policy'), [ self.lab(p.name), p.enabled ? '' : ' (' + _('disabled') + ')' ]),
-					td(_('Active exit'), E('strong', {}, _('blocks'))),
-					td(_('Exits in order'), st.blocked ? _('refused: %d').format(st.blocked) : '—'),
+					td(_('Active exit'), E('strong', {}, p.block ? _('blocks') : _('directly'))),
+					td(_('Exits in order'), p.block && st.blocked ? _('refused: %d').format(st.blocked) : '—'),
 					td(_('Manual choice'), '')
 				]));
 				return;
@@ -263,7 +270,7 @@ return view.extend({
 					dom.content(document.getElementById('detour-policies').parentNode, [ E('h3', {}, _('Policies')), self.renderPolicies(s) ]);
 				dom.content(document.getElementById('detour-exits').parentNode, [ E('h3', {}, _('Exits')), self.renderExits(s) ]);
 				dom.content(document.getElementById('detour-info').parentNode, [ E('h3', {}, _('State')), self.renderInfo(s) ]);
-				dom.content(document.getElementById('detour-events'), self.renderEvents(s).textContent);
+				document.getElementById('detour-events').textContent = self.renderEvents(s).textContent;
 				const ip = document.getElementById('detour-ip');
 				if (ip) ip.replaceWith(self.renderIp(s));
 			});

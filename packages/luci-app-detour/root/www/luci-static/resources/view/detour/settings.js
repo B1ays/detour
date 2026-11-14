@@ -4,6 +4,13 @@
 'require uci';
 'require rpc';
 
+// Text from the router (names of exits and servers come from subscriptions and links) never becomes HTML:
+// LuCI's E() puts a string child in with innerHTML, here it always goes in as a text node.
+const E = function(tag, attr, data) {
+	if (!(attr instanceof Object) || Array.isArray(attr)) { data = attr; attr = {}; }
+	return L.dom.create(tag, attr, (typeof data == 'string' || typeof data == 'number') ? [ data ] : data);
+};
+
 const callTunStatus = rpc.declare({ object: 'detour', method: 'sshtun_status' });
 const callTunKeygen = rpc.declare({ object: 'detour', method: 'sshtun_keygen' });
 const callTunTest = rpc.declare({ object: 'detour', method: 'sshtun_test' });
@@ -76,9 +83,14 @@ return view.extend({
 		o.default = '1';
 
 		o = s.option(form.Value, 'probe_period', _('Check exits every (s)'),
-			_('How often each exit is checked with a real request. Shorter: a failure is noticed sooner, a little more traffic.'));
+			_('How often an exit is checked with a real request while it fails, has just started, or sends without getting answers. Shorter: a failure is noticed sooner.'));
 		o.datatype = 'range(1,60)';
 		o.placeholder = '2';
+
+		o = s.option(form.Value, 'probe_idle', _('Check a working idle exit every (s)'),
+			_('An exit that works and carries nothing is checked this often; one that carries traffic and gets answers, once a minute. Each check is about 5 KB of traffic.'));
+		o.datatype = 'range(2,600)';
+		o.placeholder = '30';
 
 		o = s.option(form.Value, 'fails', _('Failed checks before switching'),
 			_('How many checks in a row must fail before a policy moves to its next exit. 2 with checks every 2 s: about 4-6 s.'));
@@ -96,7 +108,7 @@ return view.extend({
 		o.default = 'off';
 
 		o = s.option(form.ListValue, 'dns_policy', _('Policy'));
-		uci.sections('detour', 'policy').forEach(function(p) { o.value(p['.name'], p.label || p['.name']); });
+		uci.sections('detour', 'policy').forEach(function(p) { if (p.action != 'block' && p.action != 'direct') o.value(p['.name'], p.label || p['.name']); });
 		o.depends('dns', 'tunnel');
 
 		o = s.option(form.DynamicList, 'dns_server', _('Resolvers through the tunnel'));
@@ -137,15 +149,6 @@ return view.extend({
 		o.datatype = 'string';
 		o.optional = true;
 		o.validate = function(section_id, v) { return (!v || /^https?:\/\/[^\s]+$/.test(v)) ? true : _('http(s) address'); };
-
-		s = m.section(form.NamedSection, 'direct', 'direct', _('Always direct'),
-			_('Addresses that never go through a tunnel, whatever the policies say.'));
-		o = s.option(form.DynamicList, 'dst', _('Addresses'));
-		o.datatype = 'ipaddr';
-		o = s.option(form.DynamicList, 'device', _('Devices'), _('MAC addresses of devices that never use a tunnel.'));
-		o.datatype = 'macaddr';
-		o = s.option(form.DynamicList, 'domain', _('Domains'));
-		o.datatype = 'hostname';
 
 		if (!uci.get('detour', 'sshtun')) uci.add('detour', 'sshtun', 'sshtun');
 		s = m.section(form.NamedSection, 'sshtun', 'sshtun', _('The panel through your own VPS (SSH)'),

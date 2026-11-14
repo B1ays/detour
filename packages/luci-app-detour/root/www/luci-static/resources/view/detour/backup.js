@@ -4,11 +4,18 @@
 'require ui';
 'require fs';
 
+// Text from the router (names of exits and servers come from subscriptions and links) never becomes HTML:
+// LuCI's E() puts a string child in with innerHTML, here it always goes in as a text node.
+const E = function(tag, attr, data) {
+	if (!(attr instanceof Object) || Array.isArray(attr)) { data = attr; attr = {}; }
+	return L.dom.create(tag, attr, (typeof data == 'string' || typeof data == 'number') ? [ data ] : data);
+};
+
 // Backup and restore of Detour's settings (backup.uc). The router writes the encrypted file, the browser
 // downloads it (cgi-download); a restore uploads the file (cgi-upload), shows what it holds, then applies it.
 const OUT = '/tmp/detour-backup.bin';
 const IN = '/tmp/detour-restore.bin';
-const BEFORE = '/tmp/detour-before-restore.bin';
+const BEFORE = '/etc/detour/before-restore.bin';
 
 const callCreate = rpc.declare({ object: 'detour', method: 'backup_create', params: [ 'password' ] });
 const callCheck = rpc.declare({ object: 'detour', method: 'backup_check', params: [ 'password' ] });
