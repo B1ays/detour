@@ -13,7 +13,8 @@ for f in po2lmo.c lib/lmo.c lib/lmo.h lib/plural_formula.y contrib/lemon.c contr
 	curl -fsSL -o "$W/$f" "$B/$f"
 done
 cd "$W"
-cc -O2 -o contrib/lemon contrib/lemon.c
+# gnu17: the old K&R-style prototypes of lemon.c are errors under C23, the default of GCC 15
+cc -O2 -std=gnu17 -o contrib/lemon contrib/lemon.c
 ./contrib/lemon -q -Tcontrib/lempar.c lib/plural_formula.y
-cc -O2 -I lib -o /usr/local/bin/po2lmo po2lmo.c lib/lmo.c lib/plural_formula.c
+cc -O2 -std=gnu17 -I lib -o /usr/local/bin/po2lmo po2lmo.c lib/lmo.c lib/plural_formula.c
 echo "po2lmo: /usr/local/bin/po2lmo"
