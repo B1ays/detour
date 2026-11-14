@@ -1459,11 +1459,17 @@ msgstr "Сейчас ни один выход не работает: этот т
 msgid "Devices (all their traffic):"
 msgstr "Устройства (весь их трафик):"
 
-msgid "Addresses:"
-msgstr "Адреса:"
+msgid "Networks (all their devices):"
+msgstr "Сети (все их устройства):"
+
+msgid "Devices by address:"
+msgstr "Устройства по адресу:"
 
 msgid "and %d more"
 msgstr "и ещё %d"
+
+msgid "Addresses:"
+msgstr "Адреса:"
 
 msgid "Sites:"
 msgstr "Сайты:"
@@ -1477,8 +1483,8 @@ msgstr "Порты:"
 msgid "(on the Lists page)"
 msgstr "(на странице «Списки»)"
 
-msgid "Nothing goes through it yet: add devices, sites, addresses, ports or lists."
-msgstr "Через неё пока ничего не идёт: добавьте устройства, сайты, адреса, порты или списки."
+msgid "Nothing goes through it yet: add devices, networks, sites, addresses, ports or lists."
+msgstr "Через неё пока ничего не идёт: добавьте устройства, сети, сайты, адреса, порты или списки."
 
 msgid "Checked earlier"
 msgstr "Проверяется раньше"
@@ -1524,6 +1530,9 @@ msgstr "Роутер пока не знает ни одного устройст
 
 msgid "Other devices by MAC address, separated by spaces:"
 msgstr "Другие устройства по MAC-адресу, через пробел:"
+
+msgid "The router has no other networks."
+msgstr "Других сетей у роутера нет."
 
 msgid "for example: Blocked sites"
 msgstr "например: Заблокированные сайты"
@@ -1581,6 +1590,24 @@ msgstr "Весь трафик отмеченных устройств идёт �
 
 msgid "All traffic of the checked devices goes through the policy."
 msgstr "Весь трафик отмеченных устройств идёт через политику."
+
+msgid "Devices by address"
+msgstr "Устройства по адресу"
+
+msgid "IP addresses or subnets of devices, one per line: a fixed address, a subnet, devices behind another router (where the router sees no MAC address)."
+msgstr "IP-адреса или подсети устройств, по одному в строке: постоянный адрес, подсеть, устройства за другим роутером (там роутер не видит MAC-адресов)."
+
+msgid "Networks"
+msgstr "Сети"
+
+msgid "All devices of the checked networks get no internet at all."
+msgstr "Устройства отмеченных сетей остаются совсем без интернета."
+
+msgid "All traffic of the checked networks goes directly."
+msgstr "Весь трафик отмеченных сетей идёт напрямую."
+
+msgid "All traffic of the checked networks goes through the policy."
+msgstr "Весь трафик отмеченных сетей идёт через политику."
 
 msgid "Sites"
 msgstr "Сайты"
@@ -1759,14 +1786,20 @@ msgstr "Через туннель"
 msgid "Encrypted (DoH/DoT/DoQ), directly"
 msgstr "Шифрованный (DoH/DoT/DoQ), напрямую"
 
+msgid "Encrypted (DoH/DoT/DoQ) - install the dnsproxy package first"
+msgstr "Зашифрованный (DoH/DoT/DoQ) — сначала установите пакет dnsproxy"
+
+msgid "Encrypted DNS needs the dnsproxy package"
+msgstr "Для зашифрованного DNS нужен пакет dnsproxy"
+
 msgid "Resolvers through the tunnel"
 msgstr "DNS-серверы через туннель"
 
 msgid "Encrypted resolvers"
 msgstr "Шифрованные DNS-серверы"
 
-msgid "quic://, tls:// or https:// addresses, asked in parallel. Through the tunnel: used when its exits are down; encrypted: always. Needs the dnsproxy package."
-msgstr "Адреса quic://, tls:// или https://, опрашиваются параллельно. В режиме «Через туннель» — когда его выходы не работают; в режиме «Шифрованный» — всегда. Нужен пакет dnsproxy."
+msgid "quic://, tls:// or https:// addresses, asked in parallel. Through the tunnel: used when its exits are down; encrypted: always. Needs the dnsproxy package: without it, through the tunnel falls back to the provider's DNS while the exits are down."
+msgstr "Адреса quic://, tls:// или https://, опрашиваются параллельно. Через туннель — когда его выходы не работают; зашифрованный — всегда. Нужен пакет dnsproxy: без него режим «через туннель», пока выходы не работают, переходит на DNS провайдера."
 
 msgid "Create a bot with @BotFather, paste its token, write /start to the bot and put your chat id here. Messages go through a working tunnel first, then directly; undelivered ones wait and are sent later."
 msgstr "Создайте бота у @BotFather, вставьте его токен, напишите боту /start и укажите здесь id чата. Сообщения идут сначала через рабочий туннель, потом напрямую; недоставленные ждут и отправляются позже."
@@ -2124,6 +2157,12 @@ msgstr "политика %s: неверный домен «%s»"
 
 msgid "policy %s: wrong device address «%s»"
 msgstr "политика %s: неверный адрес устройства «%s»"
+
+msgid "policy %s: the network «%s» is missing or down - its devices are not under the policy now"
+msgstr "политика %s: сети «%s» нет или она выключена — её устройства сейчас не под политикой"
+
+msgid "policy %s: wrong network name «%s»"
+msgstr "политика %s: неверное имя сети «%s»"
 
 msgid "the packet mark bits %s are also used by %s - set other bits in Settings → Packet mark bits"
 msgstr "биты метки пакетов %s использует и %s — задайте другие в «Настройки → Биты метки пакетов»"

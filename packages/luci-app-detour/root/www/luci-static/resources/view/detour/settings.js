@@ -11,6 +11,7 @@ const E = function(tag, attr, data) {
 	return L.dom.create(tag, attr, (typeof data == 'string' || typeof data == 'number') ? [ data ] : data);
 };
 
+const callStatus = rpc.declare({ object: 'detour', method: 'status' });
 const callTunStatus = rpc.declare({ object: 'detour', method: 'sshtun_status' });
 const callTunKeygen = rpc.declare({ object: 'detour', method: 'sshtun_keygen' });
 const callTunTest = rpc.declare({ object: 'detour', method: 'sshtun_test' });
@@ -38,7 +39,7 @@ const CheckList = form.MultiValue.extend({
 
 return view.extend({
 	load: function() {
-		return Promise.all([ uci.load('detour'), L.resolveDefault(callTunStatus(), {}) ]);
+		return Promise.all([ uci.load('detour'), L.resolveDefault(callTunStatus(), {}), L.resolveDefault(callStatus(), {}) ]);
 	},
 
 	// "The panel through your own VPS": key, server key check, state (sshtun.uc / ssh-tunnel.sh in stock)
@@ -115,8 +116,11 @@ return view.extend({
 		o = s.option(form.ListValue, 'dns', _('DNS mode'));
 		o.value('off', _('Not managed (provider DNS)'));
 		o.value('tunnel', _('Through the tunnel'));
-		o.value('encrypted', _('Encrypted (DoH/DoT/DoQ), directly'));
+		// encrypted needs dnsproxy (dnsmasq itself does not encrypt): not offered without it
+		const hasProxy = !!(data[2] || {}).dnsproxy;
+		o.value('encrypted', hasProxy ? _('Encrypted (DoH/DoT/DoQ), directly') : _('Encrypted (DoH/DoT/DoQ) - install the dnsproxy package first'));
 		o.default = 'off';
+		o.validate = function(section_id, v) { return (v != 'encrypted' || hasProxy) ? true : _('Encrypted DNS needs the dnsproxy package'); };
 
 		o = s.option(form.ListValue, 'dns_policy', _('Policy'));
 		uci.sections('detour', 'policy').forEach(function(p) { if (p.action != 'block' && p.action != 'direct') o.value(p['.name'], p.label || p['.name']); });
@@ -128,7 +132,7 @@ return view.extend({
 		o.depends('dns', 'tunnel');
 
 		o = s.option(form.DynamicList, 'dns_fallback', _('Encrypted resolvers'),
-			_('quic://, tls:// or https:// addresses, asked in parallel. Through the tunnel: used when its exits are down; encrypted: always. Needs the dnsproxy package.'));
+			_('quic://, tls:// or https:// addresses, asked in parallel. Through the tunnel: used when its exits are down; encrypted: always. Needs the dnsproxy package: without it, through the tunnel falls back to the provider\'s DNS while the exits are down.'));
 		o.placeholder = 'quic://dns.adguard-dns.com';
 		o.depends('dns', 'tunnel');
 		o.depends('dns', 'encrypted');

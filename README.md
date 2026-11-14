@@ -106,7 +106,7 @@ flowchart LR
 | `sing-box` | for proxy exits and subscriptions | Proxy engine. |
 | `xray-core` | for Xray exits | Second engine (XHTTP, Xray configs, `vpn://` keys). |
 | `kmod-amneziawg`, `amneziawg-tools` | for AmneziaWG and WARP obfuscation | Kernel module and tools. |
-| `dnsproxy` | for encrypted DNS | DoH/DoT/DoQ resolver. |
+| `dnsproxy` | only for encrypted DNS | DoH/DoT/DoQ resolver. DNS through the tunnel works on dnsmasq alone; dnsproxy only encrypts its fallback while the exits are down. |
 | `ucode-mod-zlib` | for `vpn://` keys | Key decompression. |
 | `qrencode` | for QR codes | QR code in "Share". |
 | `tcpdump-mini` | for the DNS log | Capturing a device's DNS queries. |
@@ -223,6 +223,8 @@ config policy 'vpn'
 	list domain 'youtube.com'     # with subdomains
 	list dst '91.108.4.0/22'      # addresses and subnets
 	list device 'aa:bb:cc:dd:ee:ff'   # all traffic of a device
+	list src '192.168.1.50'       # a device by its address (or a subnet; behind another router)
+	list network 'guest'          # all devices of a network of the router
 	list port 'udp/443'           # 443 = TCP and UDP; tcp/6000-6100 = a range
 	option on_down 'direct'       # when every exit is down: directly (default: block)
 	option ipv6_block '1'         # refuse all IPv6 of the network from this policy on (IPv6 is not tunnelled)

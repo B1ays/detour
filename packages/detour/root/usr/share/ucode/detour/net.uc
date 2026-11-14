@@ -175,20 +175,21 @@ export function remove_all(forget) {
 // come under a policy. Unoffloaded, their next packet is classified anew and moves to the exit; offloaded
 // (fw4 flowtable - BE7000: software for Wi-Fi and the engines' tun, PPE for wired ports) they keep going
 // directly and never meet our rules again. Deleting the entry gives both cases the same outcome.
-export function flush_unclassified(dsts, macs, ports) {
+export function flush_unclassified(dsts, macs, ports, srcs) {
 	const L = marks();
 	// both kinds: never classified (0) and classified as "directly" (the cached decision)
 	const del = (args) => { for (let v in [ 0, L.direct ]) run(sprintf('conntrack -D -m 0x%x/0x%x %s', v, L.both, args)); };
 	let n = 0;
-	for (let d in dsts) {
+	// "1.2.3.0/24" -> [ "1.2.3.0", "255.255.255.0" ]
+	const net4 = (d) => {
 		const m = match(d, /^([0-9.]+)(\/([0-9]+))?$/);
-		if (!m) continue;
+		if (!m) return null;
 		const len = (m[3] != null) ? int(m[3]) : 32;
 		const v = (len == 0) ? 0 : ((0xffffffff << (32 - len)) & 0xffffffff);
-		const mask = sprintf('%d.%d.%d.%d', (v >> 24) & 255, (v >> 16) & 255, (v >> 8) & 255, v & 255);
-		del(sprintf('-d %s --mask-dst %s', m[1], mask));
-		n++;
-	}
+		return [ m[1], sprintf('%d.%d.%d.%d', (v >> 24) & 255, (v >> 16) & 255, (v >> 8) & 255, v & 255) ];
+	};
+	for (let d in dsts) { const x = net4(d); if (x) { del(sprintf('-d %s --mask-dst %s', x[0], x[1])); n++; } }
+	for (let d in srcs ?? []) { const x = net4(d); if (x) { del(sprintf('-s %s --mask-src %s', x[0], x[1])); n++; } }
 	if (length(macs)) {
 		const neigh = run('ip -4 neigh show').out;
 		for (let l in split(neigh, '\n')) {

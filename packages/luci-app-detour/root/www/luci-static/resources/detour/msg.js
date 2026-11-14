@@ -178,6 +178,8 @@ return baseclass.extend({
 		if ((m = t.match(/^policy (\S+): bad port "(.*)"$/))) return _('policy %s: wrong port «%s»').format(L(m[1]), m[2]);
 		if ((m = t.match(/^policy (\S+): bad domain "(.*)"$/))) return _('policy %s: wrong domain «%s»').format(L(m[1]), m[2]);
 		if ((m = t.match(/^policy (\S+): bad device MAC "(.*)"$/))) return _('policy %s: wrong device address «%s»').format(L(m[1]), m[2]);
+		if ((m = t.match(/^policy (\S+): network "(.*)" has no device now/))) return _('policy %s: the network «%s» is missing or down - its devices are not under the policy now').format(L(m[1]), m[2]);
+		if ((m = t.match(/^policy (\S+): bad network "(.*)"$/))) return _('policy %s: wrong network name «%s»').format(L(m[1]), m[2]);
 		if ((m = t.match(/^main: fwmark bits (0x[0-9a-f]+) are also used by (pbr|mwan3)/))) return _('the packet mark bits %s are also used by %s - set other bits in Settings → Packet mark bits').format(m[1], m[2]);
 		if ((m = t.match(/^main: bad fw_mask "(.*)"/))) return _('wrong packet mark bits «%s» - the default ones are used').format(m[1]);
 		if (/^router DNS through the tunnel: dnsproxy is not installed/.test(t)) return _('DNS through the tunnel: the dnsproxy package is not installed - if the exits fail, the provider\'s DNS is used unencrypted');

@@ -299,6 +299,14 @@ export function load(conf) {
 			if (match(d, RE_MAC)) push(devs, lc(d));
 			else push(errors, sprintf('policy %s: bad device MAC "%s"', n, d));
 		}
+		// devices by their address (a fixed one, a subnet, devices behind another router where no MAC is seen) and
+		// whole networks of the router (guest, IoT ...: their logical names; fw.apply finds the devices)
+		const src = split_addrs(as_list(s.src), errors, 'policy ' + n);
+		const nets = [];
+		for (let x in as_list(s.network)) {
+			if (match(x, /^[A-Za-z0-9_]{1,15}$/)) push(nets, x);
+			else push(errors, sprintf('policy %s: bad network "%s"', n, x));
+		}
 		// destination ports: "443" (TCP and UDP), "udp/443", "tcp/6000-6100" - one more "or" condition
 		const ports = { tcp: [], udp: [] };
 		for (let x in as_list(s.port)) {
@@ -314,6 +322,7 @@ export function load(conf) {
 			name: n, id, exits: ex, block, direct, on_down,
 			enabled: bool(s.enabled, true),
 			dst4: a.v4, dst6: a.v6, domains: doms, devices: devs, ports,
+			src4: src.v4, src6: src.v6, networks: nets, ifdevs: [],
 			// IPv6 is not tunnelled: an address policy does not know the IPv6 addresses of what it covers, so it
 			// may refuse all forwarded IPv6 from where it stands in the order (devices fall back to IPv4)
 			ipv6_block: !block && !direct && bool(s.ipv6_block, false),

@@ -736,6 +736,23 @@ RU = {
 	'DNS mode': 'Режим',
 	'General settings': 'Основное',
 	'Restoring the settings': 'Восстановление',
+	'Networks (all their devices):': 'Сети (все их устройства):',
+	'Devices by address:': 'Устройства по адресу:',
+	'Nothing goes through it yet: add devices, networks, sites, addresses, ports or lists.': 'Через неё пока ничего не идёт: добавьте устройства, сети, сайты, адреса, порты или списки.',
+	'The router has no other networks.': 'Других сетей у роутера нет.',
+	'Devices by address': 'Устройства по адресу',
+	'IP addresses or subnets of devices, one per line: a fixed address, a subnet, devices behind another router (where the router sees no MAC address).':
+		'IP-адреса или подсети устройств, по одному в строке: постоянный адрес, подсеть, устройства за другим роутером (там роутер не видит MAC-адресов).',
+	'Networks': 'Сети',
+	'All devices of the checked networks get no internet at all.': 'Устройства отмеченных сетей остаются совсем без интернета.',
+	'All traffic of the checked networks goes directly.': 'Весь трафик отмеченных сетей идёт напрямую.',
+	'All traffic of the checked networks goes through the policy.': 'Весь трафик отмеченных сетей идёт через политику.',
+	'Encrypted (DoH/DoT/DoQ) - install the dnsproxy package first': 'Зашифрованный (DoH/DoT/DoQ) — сначала установите пакет dnsproxy',
+	'Encrypted DNS needs the dnsproxy package': 'Для зашифрованного DNS нужен пакет dnsproxy',
+	"quic://, tls:// or https:// addresses, asked in parallel. Through the tunnel: used when its exits are down; encrypted: always. Needs the dnsproxy package: without it, through the tunnel falls back to the provider's DNS while the exits are down.":
+		'Адреса quic://, tls:// или https://, опрашиваются параллельно. Через туннель — когда его выходы не работают; зашифрованный — всегда. Нужен пакет dnsproxy: без него режим «через туннель», пока выходы не работают, переходит на DNS провайдера.',
+	'policy %s: the network «%s» is missing or down - its devices are not under the policy now': 'политика %s: сети «%s» нет или она выключена — её устройства сейчас не под политикой',
+	'policy %s: wrong network name «%s»': 'политика %s: неверное имя сети «%s»',
 	'IPv6': 'IPv6',
 	'refuse all IPv6 of the network': 'отклонять весь IPv6 домашней сети',
 	'IPv6 does not go through the tunnel. Sites of the policy lose their IPv6 addresses anyway; addresses and lists do not know the IPv6 addresses of a service, so a device could reach it directly over IPv6. With this on, devices use IPv4 for everything (the policies below this one too).':

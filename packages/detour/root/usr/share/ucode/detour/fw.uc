@@ -51,8 +51,26 @@ export function skip_uid(cfg) {
 	return out;
 }
 
+// the networks of the policies (logical names: guest, iot ...) -> their devices, from netifd now
+function resolve_networks(cfg) {
+	const dev = {};
+	for (let p in cfg.policies) {
+		p.ifdevs = [];
+		for (let n in p.networks) {
+			if (!(n in dev)) {
+				let st = null;
+				try { st = json(core.run('ubus call network.interface.' + n + ' status 2>/dev/null').out); } catch (e) { st = null; }
+				dev[n] = st?.l3_device ?? st?.device ?? null;
+			}
+			if (dev[n]) { if (index(p.ifdevs, dev[n]) < 0) push(p.ifdevs, dev[n]); }
+			else push(cfg.errors, sprintf('policy %s: network "%s" has no device now (missing or down)', p.name, n));
+		}
+	}
+}
+
 // full (re)apply; returns { ok, errors[], dns_restart }
 export function apply(cfg, active) {
+	resolve_networks(cfg);
 	dns.prepare(cfg);
 	active ??= active_map(cfg);
 	const uids = skip_uid(cfg);
@@ -79,8 +97,8 @@ export function apply(cfg, active) {
 			fs.rename(GOOD + '.tmp', GOOD);
 		}
 	}
-	if (cfg.main.dns == 'tunnel' && !fs.access('/usr/bin/dnsproxy'))
-		push(errors, 'router DNS through the tunnel: dnsproxy is not installed - when the exits of the DNS policy fail, the router falls back to the provider DNS, unencrypted');
+	// through the tunnel works on dnsmasq alone (dnsproxy only encrypts the fallback while its exits are down);
+	// encrypted needs dnsproxy - without it the router keeps the provider's DNS (LuCI does not offer it then)
 	if (cfg.main.dns == 'encrypted' && !fs.access('/usr/bin/dnsproxy'))
 		push(errors, 'encrypted router DNS: dnsproxy is not installed - the router uses the provider DNS, unencrypted');
 	net.sync_rules(cfg);

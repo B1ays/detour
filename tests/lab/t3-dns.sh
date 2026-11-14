@@ -71,7 +71,9 @@ ifdown wgx1; ifdown wgx2
 waitfor fallback dmode 25 && ok "mode fallback" || bad "mode $(dmode)"
 grep -q "^server=$W$" /tmp/detour/dns.servers && ok "servers file: provider DNS" || bad "servers: $(cat /tmp/detour/dns.servers)"
 expect "client DNS without dnsproxy" "$(q example.org)" "ok"
-ubus call detour reload >/dev/null; ubus call detour status | jsonfilter -e "@.errors[*]" | grep -q "dnsproxy is not installed" && ok "warning shown (after a reload)" || bad "no warning"
+# through the tunnel works on dnsmasq alone: no config error for a missing dnsproxy (only encrypted needs it)
+ubus call detour reload >/dev/null; ubus call detour status | jsonfilter -e "@.errors[*]" | grep -q "dnsproxy is not installed" && bad "an error for the tunnel mode without dnsproxy" || ok "no error: the tunnel mode needs no dnsproxy"
+[ "$(ubus call detour status | jsonfilter -e '@.dnsproxy')" = false ] && ok "status: no dnsproxy" || bad "status.dnsproxy"
 ifup wgx1; ifup wgx2; apk add -q dnsproxy; /etc/init.d/dnsproxy disable 2>/dev/null; /etc/init.d/dnsproxy stop 2>/dev/null
 waitfor tunnel dmode 25 && ok "back to tunnel" || bad "mode $(dmode)"
 

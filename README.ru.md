@@ -106,7 +106,7 @@ flowchart LR
 | `sing-box` | для прокси-выходов и подписок | Движок прокси. |
 | `xray-core` | для выходов на Xray | Второй движок (XHTTP, конфиги Xray, ключи `vpn://`). |
 | `kmod-amneziawg`, `amneziawg-tools` | для AmneziaWG и маскировки WARP | Модуль ядра и утилиты. |
-| `dnsproxy` | для шифрованного DNS | Резолвер DoH/DoT/DoQ. |
+| `dnsproxy` | только для шифрованного DNS | Резолвер DoH/DoT/DoQ. DNS через туннель работает на одном dnsmasq; dnsproxy лишь шифрует его запасной вариант, пока выходы не работают. |
 | `ucode-mod-zlib` | для ключей `vpn://` | Распаковка ключа. |
 | `qrencode` | для QR-кодов | QR-код в «Поделиться». |
 | `tcpdump-mini` | для журнала DNS | Запись DNS-запросов устройства. |
@@ -223,6 +223,8 @@ config policy 'vpn'
 	list domain 'youtube.com'     # с поддоменами
 	list dst '91.108.4.0/22'      # адреса и подсети
 	list device 'aa:bb:cc:dd:ee:ff'   # весь трафик устройства
+	list src '192.168.1.50'       # устройство по адресу (или подсеть; за другим роутером)
+	list network 'guest'          # все устройства сети роутера
 	list port 'udp/443'           # 443 = TCP и UDP; tcp/6000-6100 — диапазон
 	option on_down 'direct'       # если все выходы упали: напрямую (по умолчанию — блокировать)
 	option ipv6_block '1'         # отклонять весь IPv6 сети с места этой политики (IPv6 не туннелируется)

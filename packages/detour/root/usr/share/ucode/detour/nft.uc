@@ -20,7 +20,7 @@ function wanted(cfg) {
 	const sets = { lan_ifs: 1, bypass4: 1, bypass6: 1, exit_devs: 1 };
 	const chains = { classify: 1, prerouting: 1, output: 1, killswitch: 1, v6block: 1, dnsredir: 1, dotblock: 1, blockrej: 1, podirect: 1 };
 	for (let p in cfg.policies) {
-		for (let k in [ 'dev', 'dst4', 'dst6', 'dom4', 'dom6', 'lst4', 'lst6' ]) sets[sprintf('%s_p%d', k, p.id)] = 1;
+		for (let k in [ 'dev', 'dst4', 'dst6', 'dom4', 'dom6', 'lst4', 'lst6', 'src4', 'src6', 'ifs' ]) sets[sprintf('%s_p%d', k, p.id)] = 1;
 	}
 	for (let e in cfg.exits) {
 		chains[sprintf('exit%d', e.id)] = 1;
@@ -72,6 +72,9 @@ export function render(cfg, active, opts) {
 		add(sprintf('\tset lst4_p%d { type ipv4_addr; flags interval; auto-merge; }', p.id));
 		add(sprintf('\tset lst6_p%d { type ipv6_addr; flags interval; auto-merge; }', p.id));
 		add(sprintf('\tset dev_p%d { type ether_addr; }', p.id));
+		add(sprintf('\tset src4_p%d { type ipv4_addr; flags interval; auto-merge; }', p.id));
+		add(sprintf('\tset src6_p%d { type ipv6_addr; flags interval; auto-merge; }', p.id));
+		add(sprintf('\tset ifs_p%d { type ifname; }', p.id));
 		add(sprintf('\tset dst4_p%d { type ipv4_addr; flags interval; auto-merge; }', p.id));
 		add(sprintf('\tset dst6_p%d { type ipv6_addr; flags interval; auto-merge; }', p.id));
 		add(sprintf('\tset dom4_p%d { type ipv4_addr; flags timeout; timeout %s; }', p.id, to));
@@ -100,7 +103,7 @@ export function render(cfg, active, opts) {
 	add(sprintf('flush map %s pol2exit', T));
 	for (let s in [ 'lan_ifs', 'exit_devs' ]) add(sprintf('flush set %s %s', T, s));
 	for (let p in cfg.policies)
-		for (let k in [ 'dev', 'dst4', 'dst6' ]) add(sprintf('flush set %s %s_p%d', T, k, p.id));
+		for (let k in [ 'dev', 'dst4', 'dst6', 'src4', 'src6', 'ifs' ]) add(sprintf('flush set %s %s_p%d', T, k, p.id));
 
 	// 3. remove what the config no longer has (rules referencing them were flushed above)
 	for (let ch in opts.stale?.chains ?? []) { add(sprintf('flush chain %s %s', T, ch)); }
@@ -108,7 +111,10 @@ export function render(cfg, active, opts) {
 	for (let s in opts.stale?.sets ?? []) add(sprintf('delete set %s %s', T, s));
 
 	// 4. static elements
-	if (length(cfg.main.lan)) add(sprintf('add element %s lan_ifs { %s }', T, elems(cfg.main.lan, true)));
+	// the home networks: main.lan_dev and the networks policies name (a guest network is "home" for its policy)
+	const lan = [ ...cfg.main.lan ];
+	for (let p in cfg.policies) if (p.enabled) for (let d in p.ifdevs ?? []) if (index(lan, d) < 0) push(lan, d);
+	if (length(lan)) add(sprintf('add element %s lan_ifs { %s }', T, elems(lan, true)));
 	if (length(cfg.exits)) {
 		let devs = [];
 		for (let e in cfg.exits) if (index(devs, e.device) < 0) push(devs, e.device);
@@ -119,6 +125,9 @@ export function render(cfg, active, opts) {
 		if (length(p.devices)) add(sprintf('add element %s dev_p%d { %s }', T, p.id, elems(p.devices)));
 		if (length(p.dst4)) add(sprintf('add element %s dst4_p%d { %s }', T, p.id, elems(p.dst4)));
 		if (length(p.dst6)) add(sprintf('add element %s dst6_p%d { %s }', T, p.id, elems(p.dst6)));
+		if (length(p.src4)) add(sprintf('add element %s src4_p%d { %s }', T, p.id, elems(p.src4)));
+		if (length(p.src6)) add(sprintf('add element %s src6_p%d { %s }', T, p.id, elems(p.src6)));
+		if (length(p.ifdevs)) add(sprintf('add element %s ifs_p%d { %s }', T, p.id, elems(p.ifdevs, true)));
 	}
 
 	// 5. exit chains: set the exit id, keep everything else
@@ -151,6 +160,9 @@ export function render(cfg, active, opts) {
 		// "Directly": what matches leaves unmarked - the policies below it never see it
 		const v = p.direct ? sprintf('return comment "%s: directly"', p.name) : setp(p.id);
 		add(sprintf('add rule %s classify ether saddr @dev_p%d %s', T, p.id, v));
+		// by the source: only what came in from a home network (the router's own answers carry its LAN address)
+		add(sprintf('add rule %s classify iifname @ifs_p%d %s', T, p.id, v));
+		add(sprintf('add rule %s classify iifname @lan_ifs ip saddr @src4_p%d %s', T, p.id, v));
 		add(sprintf('add rule %s classify ip daddr @dst4_p%d %s', T, p.id, v));
 		add(sprintf('add rule %s classify ip daddr @dom4_p%d %s', T, p.id, v));
 		add(sprintf('add rule %s classify ip daddr @lst4_p%d %s', T, p.id, v));
@@ -214,6 +226,8 @@ export function render(cfg, active, opts) {
 		// order as classify)
 		if (p.direct) {
 			add(sprintf('add rule %s v6block iifname @lan_ifs meta nfproto ipv6 ether saddr @dev_p%d return', T, p.id));
+			add(sprintf('add rule %s v6block iifname @ifs_p%d meta nfproto ipv6 return', T, p.id));
+			add(sprintf('add rule %s v6block iifname @lan_ifs ip6 saddr @src6_p%d return', T, p.id));
 			add(sprintf('add rule %s v6block iifname @lan_ifs ip6 daddr @dst6_p%d return', T, p.id));
 			add(sprintf('add rule %s v6block iifname @lan_ifs ip6 daddr @lst6_p%d return', T, p.id));
 			for (let pr in [ 'tcp', 'udp' ])
@@ -222,6 +236,8 @@ export function render(cfg, active, opts) {
 			continue;
 		}
 		add(sprintf('add rule %s v6block iifname @lan_ifs meta nfproto ipv6 ether saddr @dev_p%d counter reject', T, p.id));
+		add(sprintf('add rule %s v6block iifname @ifs_p%d meta nfproto ipv6 counter reject', T, p.id));
+		add(sprintf('add rule %s v6block iifname @lan_ifs ip6 saddr @src6_p%d counter reject', T, p.id));
 		add(sprintf('add rule %s v6block iifname @lan_ifs ip6 daddr @dst6_p%d counter reject', T, p.id));
 		add(sprintf('add rule %s v6block iifname @lan_ifs ip6 daddr @dom6_p%d counter reject', T, p.id));
 		add(sprintf('add rule %s v6block iifname @lan_ifs ip6 daddr @lst6_p%d counter reject', T, p.id));

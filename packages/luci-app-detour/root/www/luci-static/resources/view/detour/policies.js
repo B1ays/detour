@@ -83,7 +83,7 @@ const RE_DOM = /^[a-z0-9_]([a-z0-9_.-]*[a-z0-9])?\.([a-z]{2,}|xn--[a-z0-9-]*[a-z
 return view.extend({
 	load: function() {
 		return Promise.all([ uci.load('detour'), L.resolveDefault(callStatus(), {}), L.resolveDefault(callHints(), {}),
-			L.resolveDefault(callLeases(), {}), L.resolveDefault(uci.load('dhcp'), null) ]).then(function(r) {
+			L.resolveDefault(callLeases(), {}), L.resolveDefault(uci.load('dhcp'), null), L.resolveDefault(uci.load('network'), null) ]).then(function(r) {
 			// the devices of the home network: DHCP leases and reserved addresses (getHostHints also knows the
 			// router's tunnel and WAN neighbours), named from the lease, the reservation or the hints
 			const hints = r[2] || {}, lan = {};
@@ -147,6 +147,9 @@ return view.extend({
 		const what = [];
 		const devs = arr(p.device);
 		if (devs.length) what.push(E('div', {}, [ E('strong', {}, (_('Devices (all their traffic):') + ' ')), devs.map(function(d) { return self.deviceName(d, hints); }).join(', ') ]));
+		const srcs = arr(p.src), nets = arr(p.network);
+		if (nets.length) what.push(E('div', {}, [ E('strong', {}, (_('Networks (all their devices):') + ' ')), nets.join(', ') ]));
+		if (srcs.length) what.push(E('div', {}, [ E('strong', {}, (_('Devices by address:') + ' ')), srcs.slice(0, 6).join(', ') + (srcs.length > 6 ? ' ' + _('and %d more').format(srcs.length - 6) : '') ]));
 		const dsts = arr(p.dst);
 		if (dsts.length) what.push(E('div', {}, [ E('strong', {}, (_('Addresses:') + ' ')), dsts.slice(0, 6).join(', ') + (dsts.length > 6 ? ' ' + _('and %d more').format(dsts.length - 6) : '') ]));
 		const doms = arr(p.domain);
@@ -156,7 +159,7 @@ return view.extend({
 		if (ports.length) what.push(E('div', {}, [ E('strong', {}, (_('Ports:') + ' ')), ports.join(', ') ]));
 		if (lists.length) what.push(E('div', {}, [ E('strong', {}, (_('Lists:') + ' ')), lists.map(function(l) { return msg.listTitle(l); }).join(', '),
 			' ', E('a', { 'href': L.url('admin/services/detour/lists') }, _('(on the Lists page)')) ]));
-		if (!what.length) what.push(E('em', {}, _('Nothing goes through it yet: add devices, sites, addresses, ports or lists.')));
+		if (!what.length) what.push(E('em', {}, _('Nothing goes through it yet: add devices, networks, sites, addresses, ports or lists.')));
 
 		const bEdit = E('button', { 'class': 'btn cbi-button-action', 'click': function() { self.edit(p, hints, kind); } }, _('Edit'));
 		const bUp = E('button', { 'class': 'btn', 'title': _('Checked earlier'), 'disabled': idx == 0 ? '' : null, 'click': function() {
@@ -245,6 +248,28 @@ return view.extend({
 		return wrap;
 	},
 
+	// the router's own networks (guest, IoT ...): not the provider's, not a tunnel of an exit
+	networkPicker: function(current) {
+		const exitIfs = {};
+		uci.sections('detour', 'exit').forEach(function(e) { exitIfs[e.iface || e['.name']] = true; });
+		const nets = uci.sections('network', 'interface').filter(function(s) {
+			const n = s['.name'];
+			return n != 'loopback' && !/^wan/.test(n) && !exitIfs[n] && [ 'wireguard', 'amneziawg', 'none', 'pppoe', 'dhcpv6', '6in4', '6to4' ].indexOf(s.proto) < 0;
+		}).map(function(s) { return s['.name']; });
+		const boxes = {};
+		const wrap = E('div', { 'class': 'detour-servers' }, nets.length ? nets.map(function(n) {
+			boxes[n] = E('input', { 'type': 'checkbox', 'checked': current.indexOf(n) >= 0 ? '' : null });
+			return E('label', { 'class': 'detour-server' }, [ boxes[n], ' ', n ]);
+		}) : E('em', {}, _('The router has no other networks.')));
+		// a network of the policy the router no longer has stays as it was (Overview reports it as a config error)
+		wrap.get = function() {
+			const out = Object.keys(boxes).filter(function(n) { return boxes[n].checked; });
+			current.forEach(function(n) { if (!(n in boxes) && out.indexOf(n) < 0) out.push(n); });
+			return out;
+		};
+		return wrap;
+	},
+
 	// kind: 'vpn' (through exits), 'block' (no exits, nothing gets through) or 'direct' (no exits, never a tunnel)
 	edit: function(p, hints, kind) {
 		const isNew = !p;
@@ -255,6 +280,8 @@ return view.extend({
 		const label = E('input', { 'class': 'cbi-input-text', 'value': p.label || '', 'placeholder': _('for example: Blocked sites') });
 		const exits = this.exitPicker(arr(p.exit));
 		const devices = this.devicePicker(arr(p.device), hints);
+		const networks = this.networkPicker(arr(p.network));
+		const src = E('textarea', { 'class': 'cbi-input-textarea', 'rows': 2, 'placeholder': '192.168.1.50\n192.168.2.0/24' }, arr(p.src).join('\n'));
 		const dst = E('textarea', { 'class': 'cbi-input-textarea', 'rows': 3, 'placeholder': '203.0.113.0/24' }, arr(p.dst).join('\n'));
 		const dom = E('textarea', { 'class': 'cbi-input-textarea', 'rows': 4, 'placeholder': 'example.com' }, arr(p.domain).join('\n'));
 		const port = E('input', { 'class': 'cbi-input-text', 'value': arr(p.port).join(' '), 'placeholder': 'udp/443 tcp/6000-6100' });
@@ -280,6 +307,8 @@ return view.extend({
 				: direct ? _('Anything that matches one of these goes directly. Bigger sets (all Russian sites, a service) are added as lists on the Lists page.')
 				: _('Anything that matches one of these goes through the policy. Bigger sets (all blocked sites, a service) are added as lists on the Lists page.')),
 			row(_('Devices'), devices, block ? _('The checked devices get no internet at all.') : (direct ? _('All traffic of the checked devices goes directly.') : _('All traffic of the checked devices goes through the policy.'))),
+			row(_('Devices by address'), src, _('IP addresses or subnets of devices, one per line: a fixed address, a subnet, devices behind another router (where the router sees no MAC address).')),
+			row(_('Networks'), networks, block ? _('All devices of the checked networks get no internet at all.') : (direct ? _('All traffic of the checked networks goes directly.') : _('All traffic of the checked networks goes through the policy.'))),
 			row(_('Sites'), dom, _('One per line. A site includes its subdomains (example.com covers www.example.com). Devices must use the router\'s DNS (they do by default).')),
 			row(_('Addresses'), dst, _('IP addresses or ranges (CIDR), one per line.')),
 			row(_('Ports'), port, _('Destination ports: 443 (TCP and UDP), udp/443, tcp/6000-6100, separated by spaces. All traffic of the network to these ports goes through the policy.'))
@@ -296,7 +325,9 @@ return view.extend({
 			}
 			const bad = [];
 			const d = lines(dst.value), o = lines(dom.value).map(asciiDomain), pt = lines(port.value), dv = devices.get();
+			const sr = lines(src.value), nw = networks.get();
 			d.forEach(function(x) { if (!isV4(x) && !isV6(x)) bad.push(x); });
+			sr.forEach(function(x) { if (!isV4(x) && !isV6(x)) bad.push(x); });
 			o.forEach(function(x) { if (!RE_DOM.test(x)) bad.push(x); });
 			pt.forEach(function(x) { if (!isPort(x)) bad.push(x); });
 			dv.forEach(function(x) { if (!RE_MAC.test(x)) bad.push(x); });
@@ -319,7 +350,7 @@ return view.extend({
 			const set = function(k, v) { if (v && (!Array.isArray(v) || v.length)) uci.set('detour', n, k, v); else uci.unset('detour', n, k); };
 			set('label', label.value.trim() || (block ? _('Block') : (direct ? _('Directly') : '')));
 			if (vpn) { set('exit', exits.get()); set('on_down', onDown.value == 'direct' ? 'direct' : null); set('ipv6_block', v6.checked ? '1' : null); }
-			set('device', dv); set('dst', d); set('domain', o); set('port', pt);
+			set('device', dv); set('src', sr); set('network', nw); set('dst', d); set('domain', o); set('port', pt);
 			return applyUci().then(function() { return true; });
 		});
 	},
