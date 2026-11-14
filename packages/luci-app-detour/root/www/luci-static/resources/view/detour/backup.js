@@ -3,6 +3,7 @@
 'require rpc';
 'require ui';
 'require fs';
+'require detour.pkg as pkg';
 
 // Text from the router (names of exits and servers come from subscriptions and links) never becomes HTML:
 // LuCI's E() puts a string child in with innerHTML, here it always goes in as a text node.
@@ -156,8 +157,10 @@ return view.extend({
 				].filter(function(x) { return x; }).join(', ') ]),
 				E('div', { 'class': 'detour-muted', 'style': 'margin-top:.5em' }, _('What is on the router now goes away - exits: %s; policies: %s; lists: %s. Device names the router already has stay.').format(names(now.exits), names(now.policies), names(now.lists)))
 			];
-			if (r.missing && r.missing.length)
-				rows.push(E('div', { 'class': 'alert-message warning', 'style': 'margin-top:.5em' }, _('Not installed on this router: %s. The exits that need it will not work until it is installed (System → Software).').format(r.missing.join(', '))));
+			// the engines the backup's exits need: an offer to install each
+			(r.missing || []).forEach(function(p) {
+				rows.push(pkg.offer(p == 'xray-core' ? 'xray' : 'singbox', _('Not installed on this router: %s. The exits that need it will not work until it is installed.').format(p)));
+			});
 			info.replaceChildren(E('div', { 'class': 'detour-lines' }, rows));
 			if (r.conflicts && r.conflicts.length) {
 				warnBox(box, errText('the router already has network interfaces with these names (not Detour\'s): ' + r.conflicts.join(', ')));

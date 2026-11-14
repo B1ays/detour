@@ -6,6 +6,7 @@
 'require poll';
 'require dom';
 'require detour.msg as msg';
+'require detour.pkg as pkg';
 
 // Text from the router (names of exits and servers come from subscriptions and links) never becomes HTML:
 // LuCI's E() puts a string child in with innerHTML, here it always goes in as a text node.
@@ -186,7 +187,7 @@ return view.extend({
 		], 'detour-wide');
 		return callWatch(d.mac, WATCH_S).then(function(r) {
 			if (r && r.error) {
-				body.replaceChildren(E('div', { 'class': 'alert-message warning' }, r.error == 'no tcpdump' ? _('This needs tcpdump: install the tcpdump-mini package.') : r.error));
+				body.replaceChildren(r.error == 'no tcpdump' ? pkg.offer('tcpdump', _('The DNS log needs tcpdump.')) : E('div', { 'class': 'alert-message warning' }, r.error));
 				return;
 			}
 			timer = setTimeout(tick, 1500);
@@ -241,7 +242,7 @@ return view.extend({
 			css(),
 			E('h2', {}, _('Devices')),
 			E('div', { 'class': 'cbi-map-descr' }, _('The devices of your home network. For each: whether it is online, how it is connected, how much it downloaded today, where its internet goes, and what it asks for.')),
-			(data[2] || {}).available === false ? E('div', { 'class': 'alert-message notice' }, _('The DNS log needs tcpdump: install the tcpdump-mini package.')) : '',
+			(data[2] || {}).available === false ? pkg.offer('tcpdump', _('The DNS log needs tcpdump.')) : '',
 			E('div', { 'class': 'cbi-section' }, box)
 		]);
 	},

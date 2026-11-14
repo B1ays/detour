@@ -34,8 +34,8 @@ msgstr "Шифрование VLESS работает только на Xray, а �
 msgid "Reality with an ML-DSA key runs only on Xray, and Xray cannot take this server"
 msgstr "Reality с ключом ML-DSA работает только на Xray, а этот сервер Xray принять не может"
 
-msgid "this key needs the ucode-mod-zlib package (System → Software)"
-msgstr "для этого ключа нужен пакет ucode-mod-zlib («Система» → «Программное обеспечение»)"
+msgid "this key needs the ucode-mod-zlib package"
+msgstr "для этого ключа нужен пакет ucode-mod-zlib"
 
 msgid "the vpn:// key has no AmneziaWG, WireGuard or Xray (other Amnezia protocols are not supported)"
 msgstr "в ключе vpn:// нет AmneziaWG, WireGuard или Xray (другие протоколы Amnezia не поддерживаются)"
@@ -78,6 +78,15 @@ msgstr "ссылку не удалось прочитать"
 
 msgid "a proxy without a server or port"
 msgstr "прокси без сервера или порта"
+
+msgid "Proxy exits run on sing-box."
+msgstr "Прокси-выходы работают на sing-box."
+
+msgid "This exit runs only on Xray."
+msgstr "Этот выход работает только на Xray."
+
+msgid "Amnezia vpn:// keys need ucode-mod-zlib."
+msgstr "Для ключей Amnezia vpn:// нужен ucode-mod-zlib."
 
 msgid "No answer from the router"
 msgstr "Роутер не ответил"
@@ -159,6 +168,9 @@ msgstr "Зарегистрировать WARP"
 
 msgid "AmneziaWG masking"
 msgstr "Маскировка AmneziaWG"
+
+msgid "Masking needs AmneziaWG."
+msgstr "Для маскировки нужен AmneziaWG."
 
 msgid "When plain WARP is blocked by the provider. Needs the AmneziaWG kernel module and openssl-util."
 msgstr "Когда провайдер блокирует обычный WARP. Нужны модуль ядра AmneziaWG и openssl-util."
@@ -316,8 +328,8 @@ msgstr[2] "история трафика: %d месяцев"
 msgid "What is on the router now goes away - exits: %s; policies: %s; lists: %s. Device names the router already has stay."
 msgstr "Текущие настройки будут удалены — выходы: %s; политики: %s; списки: %s. Имена устройств, которые уже есть на роутере, останутся."
 
-msgid "Not installed on this router: %s. The exits that need it will not work until it is installed (System → Software)."
-msgstr "На этом роутере не установлено: %s. Выходы, которым это нужно, не заработают, пока пакет не установлен («Система → Программное обеспечение»)."
+msgid "Not installed on this router: %s. The exits that need it will not work until it is installed."
+msgstr "На этом роутере не установлен %s. Выходы, которым он нужен, не заработают, пока его нет."
 
 msgid "Enter the password of the backup first."
 msgstr "Сначала введите пароль копии."
@@ -595,8 +607,8 @@ msgstr "Имена, которые устройство ищет в DNS за %d 
 msgid "Close"
 msgstr "Закрыть"
 
-msgid "This needs tcpdump: install the tcpdump-mini package."
-msgstr "Для этого нужен tcpdump: установите пакет tcpdump-mini."
+msgid "The DNS log needs tcpdump."
+msgstr "Для журнала DNS нужен tcpdump."
 
 msgid "Wi-Fi «%s», signal %d dBm"
 msgstr "Wi-Fi «%s», сигнал %d дБм"
@@ -642,9 +654,6 @@ msgstr "Устройства"
 
 msgid "The devices of your home network. For each: whether it is online, how it is connected, how much it downloaded today, where its internet goes, and what it asks for."
 msgstr "Устройства домашней сети: в сети ли, как подключено, сколько скачало сегодня, куда идёт его интернет и что оно запрашивает."
-
-msgid "The DNS log needs tcpdump: install the tcpdump-mini package."
-msgstr "Для журнала DNS нужен tcpdump: установите пакет tcpdump-mini."
 
 msgid "Junk packets (Jc)"
 msgstr "Мусорные пакеты (Jc)"
@@ -817,8 +826,8 @@ msgstr "Копировать"
 msgid "Download %s"
 msgstr "Скачать %s"
 
-msgid "For a QR code install the qrencode package (System → Software)."
-msgstr "Для QR-кода установите пакет qrencode («Система» → «Программное обеспечение»)."
+msgid "A QR code needs qrencode."
+msgstr "Для QR-кода нужен qrencode."
 
 msgid "Remove «%s»?"
 msgstr "Удалить «%s»?"
@@ -1414,6 +1423,78 @@ msgstr "Политики"
 msgid "Events"
 msgstr "События"
 
+msgid "exit «%s»"
+msgstr "выход «%s»"
+
+msgid "the router's encrypted DNS"
+msgstr "зашифрованный DNS роутера"
+
+msgid "the fallback of the router's DNS"
+msgstr "запасной DNS роутера"
+
+msgid "update available"
+msgstr "есть обновление"
+
+msgid "installed"
+msgstr "установлен"
+
+msgid "not in the repositories of this firmware"
+msgstr "нет в репозиториях этой прошивки"
+
+msgid "Installing %s"
+msgstr "Установка %s"
+
+msgid "Install"
+msgstr "Установить"
+
+msgid "Updating %s"
+msgstr "Обновление %s"
+
+msgid "Update to the new version"
+msgstr "Обновить"
+
+msgid "Remove %s (%s)?"
+msgstr "Удалить %s (%s)?"
+
+msgid "In use now: %s. These stop working without it."
+msgstr "Сейчас используется: %s. Без него это перестанет работать."
+
+msgid "Removing %s"
+msgstr "Удаление %s"
+
+msgid "Components"
+msgstr "Компоненты"
+
+msgid "Component"
+msgstr "Компонент"
+
+msgid "What it gives"
+msgstr "Что даёт"
+
+msgid "In use: %s"
+msgstr "Используется: %s"
+
+msgid "never"
+msgstr "ни разу"
+
+msgid "The package list of the repositories: %s"
+msgstr "Список пакетов репозиториев: %s"
+
+msgid "Updating the package list"
+msgstr "Обновление списка пакетов"
+
+msgid "Update the list"
+msgstr "Обновить список"
+
+msgid "The packages Detour uses. Only these are installed, updated or removed here - never the rest of the firmware. An update of Detour itself restarts it: the page reloads after it."
+msgstr "Пакеты, которые использует Detour. Здесь устанавливаются, обновляются и удаляются только они — остальная прошивка не затрагивается. Обновление самого Detour перезапускает его: после этого страница перезагрузится."
+
+msgid "%s: %s"
+msgstr "%s: %s"
+
+msgid "Still running… the page reloads when it is done."
+msgstr "Ещё выполняется… страница перезагрузится, когда закончится."
+
 msgid "Never through a tunnel."
 msgstr "Никогда через туннель."
 
@@ -1792,6 +1873,9 @@ msgstr "Зашифрованный (DoH/DoT/DoQ) — сначала устано
 msgid "Encrypted DNS needs the dnsproxy package"
 msgstr "Для зашифрованного DNS нужен пакет dnsproxy"
 
+msgid "Encrypted DNS needs dnsproxy."
+msgstr "Для зашифрованного DNS нужен dnsproxy."
+
 msgid "Resolvers through the tunnel"
 msgstr "DNS-серверы через туннель"
 
@@ -1906,8 +1990,8 @@ msgstr "30 дней"
 msgid "12 months"
 msgstr "12 месяцев"
 
-msgid "nlbwmon is not installed: devices are not counted (install the nlbwmon package)."
-msgstr "nlbwmon не установлен: трафик устройств не считается (установите пакет nlbwmon)."
+msgid "nlbwmon is not installed: devices are not counted."
+msgstr "nlbwmon не установлен: трафик устройств не считается."
 
 msgid "nlbwmon is not running: devices are not counted now (System → Startup: nlbwmon)."
 msgstr "nlbwmon не запущен: трафик устройств сейчас не считается (Система → Автозапуск: nlbwmon)."
@@ -2244,6 +2328,66 @@ msgstr "UUID выглядит неверно"
 
 msgid "Reality needs the public key"
 msgstr "Для Reality нужен открытый ключ"
+
+msgid "Unknown action"
+msgstr "Неизвестное действие"
+
+msgid "No package chosen"
+msgstr "Пакет не выбран"
+
+msgid "Another package action is running: %s"
+msgstr "Уже выполняется другое действие с пакетами: %s"
+
+msgid "%s is not removed from here"
+msgstr "%s здесь не удаляется"
+
+msgid "Detour itself and its web interface"
+msgstr "Сам Detour и его веб-интерфейс"
+
+msgid "Proxy exits: VLESS, VMess, Trojan, Shadowsocks, Hysteria2, TUIC; provider subscriptions"
+msgstr "Прокси-выходы: VLESS, VMess, Trojan, Shadowsocks, Hysteria2, TUIC; подписки провайдеров"
+
+msgid "Xray exits: XHTTP, Xray configs, VLESS encryption, Amnezia vpn:// keys of Xray"
+msgstr "Выходы Xray: XHTTP, конфиги Xray, шифрование VLESS, ключи Amnezia vpn:// с Xray"
+
+msgid "AmneziaWG exits and the masking of WARP (a kernel module and its tools)"
+msgstr "Выходы AmneziaWG и маскировка WARP (модуль ядра и утилиты)"
+
+msgid "Encrypted DNS of the router (DoH, DoT, DoQ)"
+msgstr "Зашифрованный DNS роутера (DoH, DoT, DoQ)"
+
+msgid "Amnezia vpn:// keys (they are compressed)"
+msgstr "Ключи Amnezia vpn:// (они сжаты)"
+
+msgid "QR codes of exits in «Share»"
+msgstr "QR-коды выходов в «Поделиться»"
+
+msgid "The DNS log of a device («what it asks for»)"
+msgstr "Журнал DNS устройства («что оно запрашивает»)"
+
+msgid "Traffic by device"
+msgstr "Трафик по устройствам"
+
+msgid "Running…"
+msgstr "Выполняется…"
+
+msgid "Done."
+msgstr "Готово."
+
+msgid "Failed: see the log."
+msgstr "Не получилось: см. журнал."
+
+msgid "The router does not answer - reload the page in a minute."
+msgstr "Роутер не отвечает — перезагрузите страницу через минуту."
+
+msgid "(the repositories of this firmware do not have it)"
+msgstr "(в репозиториях этой прошивки его нет)"
+
+msgid "(the package list was never downloaded: Components → Update the list)"
+msgstr "(список пакетов ещё не загружался: «Компоненты» → «Обновить список»)"
+
+msgid "Install the component %s"
+msgstr "Установить %s"
 
 msgid "Overview"
 msgstr "Обзор"

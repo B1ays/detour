@@ -1,5 +1,7 @@
 #!/bin/sh
 [ -n "$IPKG_INSTROOT" ] && exit 0
+# the package's default config next to the user's one: the user's stays, the default is not needed
+rm -f /etc/config/detour.apk-new
 # system user for notifications: its direct attempt is exempt from the policies (meta skuid)
 . /lib/functions.sh
 user_exists dtnotify || { g=$(group_add_next dtnotify); user_add dtnotify "$g" "$g" detour-notify /var/run /bin/false; }

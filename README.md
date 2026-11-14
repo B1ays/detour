@@ -168,6 +168,7 @@ On install and upgrade the package scripts set up cron jobs, reload the rules in
 | **Site check** | Where an address goes and why, whether it opens. |
 | **Traffic** | Statistics per device and per exit. |
 | **Backup** | Saving and restoring Detour's settings. |
+| **Components** | The packages Detour uses (sing-box, Xray, AmneziaWG, dnsproxy ...): install, update, remove - only these, never the rest of the firmware. Where a page needs one that is missing, it offers to install it. |
 
 Access is split into two ACL groups: `luci-app-detour` grants only viewing the state (Overview), `luci-app-detour-admin` grants the settings (including keys and tokens), the DNS log, backups and every action.
 

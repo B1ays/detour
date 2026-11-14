@@ -138,5 +138,18 @@
 				"luci-app-detour-admin"
 			]
 		}
+	},
+	"admin/services/detour/packages": {
+		"title": "Components",
+		"order": 11,
+		"action": {
+			"type": "view",
+			"path": "detour/packages"
+		},
+		"depends": {
+			"acl": [
+				"luci-app-detour-admin"
+			]
+		}
 	}
 }

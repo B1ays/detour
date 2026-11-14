@@ -4,3 +4,4 @@ feed/
 keys/private/
 tests/stub/*.log
 tests/stub/stock-lab.tgz
+__pycache__/

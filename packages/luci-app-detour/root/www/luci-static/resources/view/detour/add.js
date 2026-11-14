@@ -2,6 +2,7 @@
 'require view';
 'require rpc';
 'require uci';
+'require detour.pkg as pkg';
 
 // Text from the router (names of exits and servers come from subscriptions and links) never becomes HTML:
 // LuCI's E() puts a string child in with innerHTML, here it always goes in as a text node.
@@ -30,7 +31,7 @@ function errText(e) {
 	if (e == 'sing-box has no XHTTP transport') return _('XHTTP runs only on Xray, and Xray cannot take this server');
 	if (e == 'sing-box has no VLESS encryption') return _('VLESS encryption runs only on Xray, and Xray cannot take this server');
 	if (e == 'sing-box has no ML-DSA check of Reality') return _('Reality with an ML-DSA key runs only on Xray, and Xray cannot take this server');
-	if (/the ucode-mod-zlib package is needed/.test(e)) return _('this key needs the ucode-mod-zlib package (System → Software)');
+	if (/the ucode-mod-zlib package is needed/.test(e)) return _('this key needs the ucode-mod-zlib package');
 	if (/^vpn:\/\/: no AmneziaWG/.test(e)) return _('the vpn:// key has no AmneziaWG, WireGuard or Xray (other Amnezia protocols are not supported)');
 	if (/^vpn:\/\//.test(e)) return _('the vpn:// key could not be read');
 	if (/not a WireGuard config/.test(e)) return _('not a WireGuard config (keys or the server address missing)');
@@ -45,6 +46,15 @@ function errText(e) {
 	if (fixed[e]) return fixed[e];
 	if (/cannot (parse|decode)|bad host:port|no method:password|bad base64/.test(e)) return _('the link could not be read');
 	return e;
+}
+
+// what the router said needs a package (its own words, before translation): an offer to install it
+function offers(texts) {
+	const t = texts.filter(function(x) { return x; }).join('\n'), out = [];
+	if (/sing-box is not installed/.test(t)) out.push(pkg.offer('singbox', _('Proxy exits run on sing-box.')));
+	if (/xray-core is not installed/.test(t)) out.push(pkg.offer('xray', _('This exit runs only on Xray.')));
+	if (/ucode-mod-zlib package is needed/.test(t)) out.push(pkg.offer('zlib', _('Amnezia vpn:// keys need ucode-mod-zlib.')));
+	return out;
 }
 
 function busy(btn, on) { btn.disabled = on; btn.classList.toggle('spinning', on); }
@@ -107,12 +117,14 @@ return view.extend({
 			busy(bAdd, true);
 			const chosen = engs.map(function(s) { return s ? s.value : ''; });
 			return callExitAdd(text.value, picks, name.value.trim(), via.value, '', chosen).then(function(r) {
+				const raw = [ r && r.error ].concat((r && r.notes) || []);
 				if (r && r.error) r.error = r.error.split('; ').map(errText).join('; ');
 				result(box, r, function(x) {
 					const names = (x.added || []).map(function(a) { return a.name; }).join(', ');
 					return E('div', {}, [ E('div', {}, N_((x.added || []).length, 'Exit %s added. Put it into a policy on the Policies page.', 'Exits %s added. Put them into a policy on the Policies page.').format(names)),
 						(x.notes && x.notes.length) ? E('div', { 'class': 'detour-muted' }, x.notes.map(errText).join('; ')) : '' ]);
 				});
+				offers(raw).forEach(function(o) { box.appendChild(o); });
 				if (r && !r.error) { text.value = ''; found.replaceChildren(); bAdd.style.display = 'none'; }
 			}).finally(function() { busy(bAdd, false); });
 		} }, _('Add the chosen'));
@@ -122,7 +134,13 @@ return view.extend({
 			busy(bParse, true);
 			box.replaceChildren();
 			return callParse(text.value).then(function(r) {
-				if (!r || r.error) { found.replaceChildren(); bAdd.style.display = 'none'; return result(box, r && r.error ? { error: errText(r.error) } : r); }
+				if (!r || r.error) {
+					found.replaceChildren(); bAdd.style.display = 'none';
+					result(box, r && r.error ? { error: errText(r.error) } : r);
+					offers([ r && r.error ]).forEach(function(o) { box.appendChild(o); });
+					return;
+				}
+				offers(r.candidates.map(function(c) { return c.error; })).forEach(function(o) { box.appendChild(o); });
 				checks = []; engs = [];
 				const have = r.installed || {};
 				const usable = r.candidates.filter(function(c) { return !c.error; }).length;
@@ -173,7 +191,7 @@ return view.extend({
 		} }, _('Register WARP'));
 		const body = [
 			row(_('Name'), name),
-			row(_('AmneziaWG masking'), awg, _('When plain WARP is blocked by the provider. Needs the AmneziaWG kernel module and openssl-util.')),
+			row(_('AmneziaWG masking'), E('div', {}, [ awg, pkg.offer('awg', _('Masking needs AmneziaWG.')) ]), _('When plain WARP is blocked by the provider. Needs the AmneziaWG kernel module and openssl-util.')),
 			actions([ btn ]), box
 		];
 		const warps = uci.sections('detour', 'exit').filter(function(s) { return s.warp == '1'; });

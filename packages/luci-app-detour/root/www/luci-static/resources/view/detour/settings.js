@@ -3,6 +3,7 @@
 'require form';
 'require uci';
 'require rpc';
+'require detour.pkg as pkg';
 
 // Text from the router (names of exits and servers come from subscriptions and links) never becomes HTML:
 // LuCI's E() puts a string child in with innerHTML, here it always goes in as a text node.
@@ -121,6 +122,10 @@ return view.extend({
 		o.value('encrypted', hasProxy ? _('Encrypted (DoH/DoT/DoQ), directly') : _('Encrypted (DoH/DoT/DoQ) - install the dnsproxy package first'));
 		o.default = 'off';
 		o.validate = function(section_id, v) { return (v != 'encrypted' || hasProxy) ? true : _('Encrypted DNS needs the dnsproxy package'); };
+		if (!hasProxy) {
+			o = s.option(form.DummyValue, '_dnsproxy', ' ');
+			o.renderWidget = function() { return pkg.offer('dnsproxy', _('Encrypted DNS needs dnsproxy.')); };
+		}
 
 		o = s.option(form.ListValue, 'dns_policy', _('Policy'));
 		uci.sections('detour', 'policy').forEach(function(p) { if (p.action != 'block' && p.action != 'direct') o.value(p['.name'], p.label || p['.name']); });

@@ -32,7 +32,9 @@
 			"ubus": {
 				"detour": [
 					"site_explain",
-					"dns_log"
+					"dns_log",
+					"pkg_list",
+					"pkg_job"
 				]
 			},
 			"uci": [
@@ -83,7 +85,8 @@
 					"site_check",
 					"dns_watch",
 					"dns_watch_stop",
-					"catalog_refresh"
+					"catalog_refresh",
+					"pkg_run"
 				]
 			},
 			"uci": [

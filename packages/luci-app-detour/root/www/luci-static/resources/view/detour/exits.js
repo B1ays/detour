@@ -5,6 +5,7 @@
 'require uci';
 'require dom';
 'require detour.outform as outform';
+'require detour.pkg as pkg';
 
 // Text from the router (names of exits and servers come from subscriptions and links) never becomes HTML:
 // LuCI's E() puts a string child in with innerHTML, here it always goes in as a text node.
@@ -206,7 +207,7 @@ return view.extend({
 				])
 			];
 			if (r.qr_svg) items.push(E('div', { 'class': 'detour-qr' }, E('img', { 'src': 'data:image/svg+xml;base64,' + btoa(r.qr_svg), 'alt': 'QR' })));
-			else if (r.qr_missing) items.push(E('div', { 'class': 'detour-muted' }, _('For a QR code install the qrencode package (System → Software).')));
+			else if (r.qr_missing) items.push(pkg.offer('qrencode', _('A QR code needs qrencode.')));
 			body.replaceChildren(E('div', { 'class': 'detour-modal-body' }, items));
 		});
 	},

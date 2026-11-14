@@ -5,6 +5,7 @@
 'require dom';
 'require uci';
 'require detour.chart as chart';
+'require detour.pkg as pkg';
 
 // Text from the router (names of exits and servers come from subscriptions and links) never becomes HTML:
 // LuCI's E() puts a string child in with innerHTML, here it always goes in as a text node.
@@ -57,7 +58,7 @@ return view.extend({
 	notes: function(r) {
 		const out = [];
 		const s = r.source || {};
-		if (!s.nlbwmon) out.push(E('div', { 'class': 'alert-message warning' }, _('nlbwmon is not installed: devices are not counted (install the nlbwmon package).')));
+		if (!s.nlbwmon) out.push(pkg.offer('nlbwmon', _('nlbwmon is not installed: devices are not counted.')));
 		else if (!s.running) out.push(E('div', { 'class': 'alert-message warning' }, _('nlbwmon is not running: devices are not counted now (System → Startup: nlbwmon).')));
 		if (s.hw_offload) out.push(E('div', { 'class': 'alert-message notice' }, _('Hardware flow offloading works on this router: some traffic may bypass the counting, the numbers by device can be too low.')));
 		if (r.since) {

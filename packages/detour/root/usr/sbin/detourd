@@ -23,6 +23,7 @@ import * as dnswatch from 'detour.dnswatch';
 import * as devices from 'detour.devices';
 import { cursor } from 'uci';
 import * as listmem from 'detour.listmem';
+import * as pkgs from 'detour.pkgs';
 import { _ } from 'detour.i18n';
 
 const t0 = time();
@@ -757,6 +758,10 @@ conn.publish('detour', {
 	sshtun_keygen:   { call: (req) => cli_job(req, [ 'sshtun', 'keygen' ]), args: { ...S } },
 	sshtun_test:     { call: (req) => cli_job(req, [ 'sshtun', 'test' ]), args: { ...S } },
 	sshtun_forget:   { call: (req) => cli_job(req, [ 'sshtun', 'forget' ]), args: { ...S } },
+	// LuCI "Components": the packages Detour uses; an action runs detached (see pkgs.uc), LuCI follows pkg_job
+	pkg_list:        { call: () => pkgs.list(), args: { ...S } },
+	pkg_job:         { call: () => ({ job: pkgs.job() }), args: { ...S } },
+	pkg_run:         { call: (req) => pkgs.start(req.args.action, req.args.packages), args: { action: '', packages: '', ...S } },
 	lists_update:    { call: (req) => cli_job(req, [ 'lists-update', ...(length(req.args.name ?? '') ? [ req.args.name ] : []) ]), args: { name: '', ...S } },
 });
 

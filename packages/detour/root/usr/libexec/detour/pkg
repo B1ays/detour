@@ -1,0 +1,42 @@
+#!/bin/sh
+# One package action of LuCI "Components", started detached by the daemon (detour.pkgs):
+#   pkg <update|install|upgrade|remove> [package...]
+# The log and the state are in /tmp/detour/pkg: state.json { action, packages, pid, started, running, code, finished }.
+# install / upgrade read the index first (apk update); only the named packages are upgraded, never the system.
+# out of the daemon's cgroup first: procd ends every process of a service's cgroup when it stops the service,
+# and an upgrade of Detour (or a restart meanwhile) must not end the action that does it
+[ -w /sys/fs/cgroup/cgroup.procs ] && echo $$ > /sys/fs/cgroup/cgroup.procs 2>/dev/null
+D=/tmp/detour/pkg
+mkdir -p "$D"
+act=$1; shift
+pkgs="$*"
+state() {   # state <running true|false> [code]
+	printf '{"action":"%s","packages":"%s","pid":%d,"started":%d,"running":%s,"code":%s,"finished":%s}\n' \
+		"$act" "$pkgs" $$ "$T0" "$1" "${2:-null}" "$([ "$1" = false ] && date +%s || echo null)" > "$D/state.json.tmp"
+	mv "$D/state.json.tmp" "$D/state.json"
+}
+T0=$(date +%s)
+: > "$D/log"
+state true
+exec >> "$D/log" 2>&1
+
+rc=0
+case "$act" in
+update)  apk update || rc=$? ;;
+install) apk update && apk add $pkgs || rc=$? ;;
+upgrade) apk update && apk upgrade $pkgs || rc=$? ;;
+remove)  apk del $pkgs || rc=$? ;;
+*)       echo "unknown action: $act"; rc=2 ;;
+esac
+
+if [ "$rc" = 0 ] && [ "$act" != update ]; then
+	# LuCI forgets its menu and module caches (a LuCI package came or went)
+	rm -f /tmp/luci-indexcache* /tmp/luci-modulecache/* 2>/dev/null
+	# Detour sees a new or removed engine, dnsproxy, AmneziaWG at once (its own upgrade restarts it anyway)
+	case " $pkgs " in *" detour "*) ;; *) ubus call detour reload >/dev/null 2>&1 ;; esac
+	echo "done"
+else
+	[ "$rc" = 0 ] && echo "done" || echo "failed (code $rc)"
+fi
+state false "$rc"
+exit "$rc"
