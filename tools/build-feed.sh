@@ -6,6 +6,7 @@
 #   KEY   private ECDSA P-256 key (default /root/detour-keys/detour-dev.key, created if missing)
 #   OUT   output dir (default <repo>/feed)
 #   APK   apk-tools 3 binary (default: apk3, else apk)
+#   PKGS  space-separated package directories to build (default: all)
 set -eu
 REPO=$(cd "$(dirname "$0")/.." && pwd)
 KEY=${KEY:-/root/detour-keys/detour-dev.key}
@@ -26,6 +27,8 @@ trap 'rm -rf "$W"' EXIT
 rm -rf "$OUT"; mkdir -p "$OUT"
 for d in "$REPO"/packages/*/; do
 	[ -f "$d/control" ] || continue
+	# PKGS="detour luci-app-detour": only these (the public feed has no architecture-bound builds)
+	if [ -n "${PKGS:-}" ]; then case " $PKGS " in *" $(basename "$d") "*) ;; *) continue;; esac; fi
 	name= version= description= license= depends= arch=noarch prepare=
 	while IFS='=' read -r k v; do
 		case "$k" in name|version|description|license|depends|arch|prepare) eval "$k=\$v";; esac
@@ -62,4 +65,5 @@ for d in "$REPO"/packages/*/; do
 done
 "$APK" mkndx --allow-untrusted --sign-key "$KEY" -o "$OUT/packages.adb" "$OUT"/*.apk
 cp "${KEY%.key}.pem" "$OUT/"
+chmod 644 "$OUT/$(basename "${KEY%.key}.pem")"   # a key made here was written under umask 077
 ls -la "$OUT"

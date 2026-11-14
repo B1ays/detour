@@ -116,21 +116,39 @@ flowchart LR
 
 ## Установка
 
-Соберите фид (см. [сборку](#сборка-из-исходников)) или возьмите готовый, скопируйте его на роутер, например в `/tmp/detour-feed`, и установите:
+### Быстрая установка
+
+На роутере, по SSH:
 
 ```sh
-apk add --allow-untrusted --repository /tmp/detour-feed/packages.adb detour luci-app-detour
+wget -qO- https://b1ays.github.io/detour/install.sh | sh
 ```
 
-Чтобы не указывать `--allow-untrusted`, положите открытый ключ фида `detour-dev.pem` в `/etc/apk/keys/`.
+Скрипт добавляет фид Detour и его ключ подписи, заменяет `dnsmasq` на `dnsmasq-full` (на время замены роутер спрашивает DNS-серверы провайдера напрямую: пока dnsmasq удалён, своего DNS у него нет) и ставит `detour` и `luci-app-detour`. Повторный запуск обновляет. `DETOUR_NO_LUCI=1` ставит без веб-интерфейса.
+
+### Вручную
+
+```sh
+wget -O /etc/apk/keys/detour.pem https://b1ays.github.io/detour/detour.pem
+echo https://b1ays.github.io/detour/packages.adb >> /etc/apk/repositories.d/customfeeds.list
+apk update
+apk del dnsmasq && apk add dnsmasq-full    # пропустите, если dnsmasq-full уже стоит
+apk add detour luci-app-detour
+```
+
+Пока `dnsmasq` удалён, роутер не может разрешать имена: если `apk add dnsmasq-full` не сработал, на время замены пропишите в `/tmp/resolv.conf` DNS-серверы провайдера (так делает скрипт установки).
+
+Каждый релиз есть и на [странице релизов](../../releases): пакеты, индекс и ключ — для установки без фида.
+
+### Обновление
 
 Обновление — **только с перечислением пакетов по имени**, иначе `apk upgrade` обновит заодно все системные пакеты:
 
 ```sh
-apk upgrade --repository /tmp/detour-feed/packages.adb detour luci-app-detour
+apk upgrade detour luci-app-detour
 ```
 
-При установке и обновлении скрипт пакета ставит задания cron, перезагружает правила на месте и перезапускает демон. Удаление (`apk del detour`) убирает таблицу, правила и маршруты.
+При установке и обновлении скрипт пакета ставит задания cron, перезагружает правила на месте и перезапускает демон. Удаление (`apk del detour luci-app-detour`) убирает таблицу, правила и маршруты.
 
 ## Настройка
 
@@ -278,10 +296,12 @@ detour purge                      # убрать все следы Detour из n
 │  ├─ luci-app-detour/     веб-интерфейс, права доступа, перевод
 │  ├─ xray-core/           Xray для прошивок без него в репозиториях
 │  └─ dnsproxy/            dnsproxy для прошивок без него в репозиториях
-├─ tools/                  сборка фида, перевод, каталог категорий
-└─ tests/
-   ├─ lab/                 приёмочные тесты (выполняются на тестовом роутере)
-   └─ stub/                заглушки внешних сервисов
+├─ tools/                  сборка фида, перевод, каталог категорий, страница релизов
+├─ tests/
+│  ├─ lab/                 приёмочные тесты (выполняются на тестовом роутере)
+│  └─ stub/                заглушки внешних сервисов
+├─ .github/workflows/      проверки на каждый push, релизы по тегу
+└─ install.sh              скрипт быстрой установки
 ```
 
 Каталог `packages/<имя>/root/` содержит файлы ровно в том виде, как они лягут на роутер; `control` — имя, версия и зависимости пакета; `scripts/` — сценарии установки и удаления.
@@ -326,12 +346,31 @@ detour purge                      # убрать все следы Detour из n
 sh tools/build-feed.sh
 ```
 
-Результат в `feed/`: подписанный индекс `packages.adb`, пакеты `*.apk` и открытый ключ `detour-dev.pem`. Закрытый ключ подписи хранится вне репозитория (путь задаёт переменная `KEY`) и создаётся при первой сборке.
+Результат в `feed/`: подписанный индекс `packages.adb`, пакеты `*.apk` и открытый ключ `detour-dev.pem`. Закрытый ключ подписи хранится вне репозитория (путь задаёт переменная `KEY`) и создаётся при первой сборке. `PKGS="detour luci-app-detour"` собирает только эти пакеты.
 
 - Версия пакета берётся из `control` (`version=0.1.0-rN`).
 - `xray-core` и `dnsproxy` при сборке скачивают официальные релизы той версии, что указана в `control`, и сверяют SHA-256. Архивы кэшируются в `build/`, бинарники в git не хранятся.
 - Переводы собираются из `po/*/*.po`, для этого нужен `po2lmo` (один раз собирается `tools/build-po2lmo.sh`).
 - Каталог гео-категорий пересобирается командой `python tools/geo-catalog.py packages/luci-app-detour/root/www/luci-static/resources/detour/geo-catalog.json`.
+
+### Релизы
+
+GitHub Actions проверяет каждый push (`.github/workflows/ci.yml`: синтаксис shell и JavaScript, актуальность переводов, пробная сборка). Тег `v<версия>` публикует релиз (`release.yml`): пакеты получают эту версию (`v0.2.0` → `0.2.0-r1`) и подписываются ключом релизов, фид с `install.sh` и страницей уходит на GitHub Pages, те же файлы — в релиз GitHub.
+
+Один раз для репозитория:
+
+1. Ключ релизов (закрытый храните надёжно — им подписано всё, что ставят роутеры):
+   ```sh
+   openssl ecparam -name prime256v1 -genkey -noout -out detour-release.key
+   ```
+2. **Settings → Secrets and variables → Actions → New repository secret**: `APK_SIGNING_KEY`, содержимое `detour-release.key`.
+3. **Settings → Pages → Source: GitHub Actions**.
+
+Релиз:
+
+```sh
+git tag v0.2.0 && git push origin v0.2.0
+```
 
 ### Перевод интерфейса
 

@@ -116,21 +116,39 @@ If your firmware's repositories lack `xray-core` or `dnsproxy`, they can be buil
 
 ## Installation
 
-Build the feed (see [building](#building-from-source)) or take a ready one, copy it to the router, for example to `/tmp/detour-feed`, and install:
+### Quick install
+
+On the router, over SSH:
 
 ```sh
-apk add --allow-untrusted --repository /tmp/detour-feed/packages.adb detour luci-app-detour
+wget -qO- https://b1ays.github.io/detour/install.sh | sh
 ```
 
-To avoid `--allow-untrusted`, put the feed's public key `detour-dev.pem` into `/etc/apk/keys/`.
+The script adds the Detour feed and its signing key, replaces `dnsmasq` with `dnsmasq-full` (for the swap the router asks the provider's DNS servers directly, since it has no DNS of its own while dnsmasq is away) and installs `detour` and `luci-app-detour`. Run it again to upgrade. `DETOUR_NO_LUCI=1` installs without the web interface.
+
+### By hand
+
+```sh
+wget -O /etc/apk/keys/detour.pem https://b1ays.github.io/detour/detour.pem
+echo https://b1ays.github.io/detour/packages.adb >> /etc/apk/repositories.d/customfeeds.list
+apk update
+apk del dnsmasq && apk add dnsmasq-full    # skip if dnsmasq-full is installed
+apk add detour luci-app-detour
+```
+
+While `dnsmasq` is removed the router cannot resolve names: if `apk add dnsmasq-full` fails, point `/tmp/resolv.conf` at your provider's DNS servers for the swap (as the install script does).
+
+Every release is also on the [releases page](../../releases): the packages, the index and the key, for installing without the feed.
+
+### Upgrade
 
 Upgrade **only by naming the packages**, otherwise `apk upgrade` also upgrades every system package:
 
 ```sh
-apk upgrade --repository /tmp/detour-feed/packages.adb detour luci-app-detour
+apk upgrade detour luci-app-detour
 ```
 
-On install and upgrade the package scripts set up cron jobs, reload the rules in place and restart the daemon. Removal (`apk del detour`) takes away the table, rules and routes.
+On install and upgrade the package scripts set up cron jobs, reload the rules in place and restart the daemon. Removal (`apk del detour luci-app-detour`) takes away the table, rules and routes.
 
 ## Configuration
 
@@ -278,10 +296,12 @@ The daemon is also available over ubus: `ubus call detour status`.
 │  ├─ luci-app-detour/     web interface, access rights, translation
 │  ├─ xray-core/           Xray for firmware without it in the repositories
 │  └─ dnsproxy/            dnsproxy for firmware without it in the repositories
-├─ tools/                  feed build, translation, category catalogue
-└─ tests/
-   ├─ lab/                 acceptance tests (run on a test router)
-   └─ stub/                stubs of external services
+├─ tools/                  feed build, translation, category catalogue, the release page
+├─ tests/
+│  ├─ lab/                 acceptance tests (run on a test router)
+│  └─ stub/                stubs of external services
+├─ .github/workflows/      checks on every push, releases by tag
+└─ install.sh              the quick install script
 ```
 
 `packages/<name>/root/` holds the files exactly as they land on the router; `control` has the package name, version and dependencies; `scripts/` the install and removal scripts.
@@ -326,12 +346,31 @@ Linux or WSL is required; the OpenWrt SDK is not.
 sh tools/build-feed.sh
 ```
 
-The result is in `feed/`: the signed index `packages.adb`, the `*.apk` packages and the public key `detour-dev.pem`. The private signing key is kept outside the repository (its path is set by the `KEY` variable) and is created on the first build.
+The result is in `feed/`: the signed index `packages.adb`, the `*.apk` packages and the public key `detour-dev.pem`. The private signing key is kept outside the repository (its path is set by the `KEY` variable) and is created on the first build. `PKGS="detour luci-app-detour"` builds only those packages.
 
 - A package's version comes from its `control` (`version=0.1.0-rN`).
 - `xray-core` and `dnsproxy` download the official release of the version in `control` at build time and verify its SHA-256. Archives are cached in `build/`; binaries are not stored in git.
 - Translations are built from `po/*/*.po`, which needs `po2lmo` (built once by `tools/build-po2lmo.sh`).
 - The geo category catalogue is rebuilt with `python tools/geo-catalog.py packages/luci-app-detour/root/www/luci-static/resources/detour/geo-catalog.json`.
+
+### Releases
+
+GitHub Actions checks every push (`.github/workflows/ci.yml`: shell and JavaScript syntax, translations in sync, a test build). A tag `v<version>` publishes a release (`release.yml`): the packages get that version (`v0.2.0` → `0.2.0-r1`), are signed with the release key, the feed with `install.sh` and a page goes to GitHub Pages, the same files to a GitHub release.
+
+Once per repository:
+
+1. A release key (keep the private one safe, it signs everything routers install):
+   ```sh
+   openssl ecparam -name prime256v1 -genkey -noout -out detour-release.key
+   ```
+2. **Settings → Secrets and variables → Actions → New repository secret**: `APK_SIGNING_KEY`, the contents of `detour-release.key`.
+3. **Settings → Pages → Source: GitHub Actions**.
+
+A release:
+
+```sh
+git tag v0.2.0 && git push origin v0.2.0
+```
 
 ### Interface translation
 

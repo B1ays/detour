@@ -1,0 +1,49 @@
+# Checks on every push and pull request: shell and JavaScript syntax, translations in sync with the code,
+# and a test build of the packages (apk-tools 3 from an Alpine container, signed with a throwaway key).
+# The acceptance tests need a router (tests/lab) and do not run here.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Shell syntax
+        run: |
+          fail=0
+          for f in install.sh tools/*.sh tests/lab/*.sh packages/*/scripts/* \
+                   packages/detour/root/etc/init.d/* packages/detour/root/usr/libexec/detour/* packages/detour/root/usr/sbin/*; do
+            head -n1 "$f" | grep -q ucode && continue
+            sh -n "$f" || { echo "::error file=$f::shell syntax"; fail=1; }
+          done
+          exit $fail
+
+      - name: JavaScript syntax (LuCI)
+        run: |
+          fail=0
+          for f in $(find packages/luci-app-detour/root/www -name '*.js'); do
+            node --check "$f" || { echo "::error file=$f::JavaScript syntax"; fail=1; }
+          done
+          exit $fail
+
+      - name: Translations in sync
+        run: |
+          python3 tools/i18n-ru.py packages/luci-app-detour
+          git diff --exit-code -- packages/luci-app-detour/po packages/detour/root/usr/share/detour/i18n \
+            || { echo "::error::run python tools/i18n-ru.py packages/luci-app-detour and commit the result"; exit 1; }
+
+      - name: Build the packages
+        run: |
+          docker run --rm -v "$PWD:/w" -w /w alpine:edge sh -euc '
+            apk add -q build-base curl openssl
+            KEY=/tmp/ci/detour.key OUT=/tmp/feed PKGS="detour luci-app-detour" sh tools/build-feed.sh
+            ls -l /tmp/feed'

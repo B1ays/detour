@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Detour for OpenWrt</title>
+<meta name="description" content="Policy-based routing through VPN exits for OpenWrt: the package feed and the install script.">
+<style>
+  :root { --bg: #fafaf8; --fg: #1d1d1b; --muted: #66665f; --line: #deded8; --code: #f0f0eb; --acc: #1e6fd9; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #151614; --fg: #e8e8e3; --muted: #9b9b94; --line: #2f302d; --code: #1f201e; --acc: #6aa8ff; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 46rem; margin: 0 auto; padding: 3rem 1rem 4rem; }
+  h1 { font-size: 1.9rem; margin: 0 0 .25rem; letter-spacing: -.01em; }
+  h2 { font-size: 1.1rem; margin: 2.2rem 0 .6rem; }
+  p { margin: .5rem 0; }
+  .lead { color: var(--muted); margin-bottom: 1.5rem; }
+  .ver { display: inline-block; font-size: .8rem; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: .05rem .6rem; }
+  pre { background: var(--code); border: 1px solid var(--line); border-radius: 8px; padding: .75rem .9rem; overflow-x: auto; margin: .6rem 0; }
+  code { font: .9rem/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  p code { background: var(--code); padding: .05rem .3rem; border-radius: 4px; }
+  ol { padding-left: 1.3rem; }
+  li { margin: .35rem 0; }
+  a { color: var(--acc); }
+  footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .9rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Detour for OpenWrt</h1>
+  <span class="ver">@VERSION@</span>
+  <p class="lead">Policy-based routing for a home router: which traffic goes through a VPN, which goes directly, which is blocked.
+    Failover between VPN exits and a kill-switch. A LuCI section, Services → Detour.</p>
+
+  <h2>Install</h2>
+  <p>On the router (OpenWrt 25.12 or a snapshot, <code>apk</code>), over SSH:</p>
+  <pre><code>wget -qO- @FEED_URL@/install.sh | sh</code></pre>
+  <p>The script adds this feed and its signing key, replaces <code>dnsmasq</code> with <code>dnsmasq-full</code> and installs
+    <code>detour</code> and <code>luci-app-detour</code>. Run it again to upgrade, or use <code>apk upgrade detour luci-app-detour</code>.</p>
+
+  <h2>Install by hand</h2>
+  <ol>
+    <li>The signing key and the feed:
+      <pre><code>wget -O /etc/apk/keys/detour.pem @FEED_URL@/detour.pem
+echo @FEED_URL@/packages.adb >> /etc/apk/repositories.d/customfeeds.list
+apk update</code></pre></li>
+    <li><code>dnsmasq-full</code> instead of <code>dnsmasq</code> (skip if it is installed already). While dnsmasq is away the router has no DNS,
+      so download it first or point <code>/tmp/resolv.conf</code> at your provider's servers for the swap:
+      <pre><code>apk del dnsmasq &amp;&amp; apk add dnsmasq-full</code></pre></li>
+    <li>Detour:
+      <pre><code>apk add detour luci-app-detour</code></pre></li>
+  </ol>
+
+  <h2>Files</h2>
+  <p><a href="packages.adb">packages.adb</a> (the signed index) · <a href="detour.pem">detour.pem</a> (the public key) ·
+    <a href="install.sh">install.sh</a> · every release: <a href="@REPO_URL@/releases">@REPO_URL@/releases</a></p>
+
+  <footer>Source, documentation and issues: <a href="@REPO_URL@">@REPO_URL@</a> · MIT license</footer>
+</main>
+</body>
+</html>

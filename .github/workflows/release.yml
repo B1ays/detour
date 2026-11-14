@@ -1,0 +1,102 @@
+# A tag v<version> (v0.2.0, or v0.2.0-r2) publishes a release: the packages are built with that version and
+# signed with the release key, the feed and the install script go to GitHub Pages (what routers install
+# from and upgrade with), the same files are attached to a GitHub release.
+# Needs once: the secret APK_SIGNING_KEY (the private ECDSA P-256 key, PEM) and Pages with
+# "Source: GitHub Actions". A custom Pages address: the repository variable PAGES_URL.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version from the tag
+        id: ver
+        run: |
+          v=${GITHUB_REF_NAME#v}
+          case "$v" in *-r[0-9]*) ;; *) v="$v-r1";; esac
+          echo "$v" | grep -Eq '^[0-9]+(\.[0-9]+)*-r[0-9]+$' || { echo "::error::tag $GITHUB_REF_NAME is not v<x.y.z> or v<x.y.z>-r<n>"; exit 1; }
+          sed -i "s/^version=.*/version=$v/" packages/detour/control packages/luci-app-detour/control
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+
+      - name: Signing key
+        env:
+          APK_SIGNING_KEY: ${{ secrets.APK_SIGNING_KEY }}
+        run: |
+          [ -n "$APK_SIGNING_KEY" ] || { echo "::error::the secret APK_SIGNING_KEY is not set"; exit 1; }
+          mkdir -p "$RUNNER_TEMP/key"; chmod 700 "$RUNNER_TEMP/key"
+          ( umask 077; printf '%s\n' "$APK_SIGNING_KEY" > "$RUNNER_TEMP/key/detour.key" )
+          openssl ec -in "$RUNNER_TEMP/key/detour.key" -pubout -out "$RUNNER_TEMP/key/detour.pem"
+
+      - name: Build the packages
+        run: |
+          docker run --rm -v "$PWD:/w" -v "$RUNNER_TEMP/key:/key" -w /w alpine:edge sh -euc '
+            apk add -q build-base curl openssl
+            KEY=/key/detour.key OUT=/w/out PKGS="detour luci-app-detour" sh tools/build-feed.sh'
+          sudo chown -R "$(id -u):$(id -g)" out
+          rm -rf "$RUNNER_TEMP/key"
+
+      - name: The site (feed, key, install script, page)
+        env:
+          PAGES_URL: ${{ vars.PAGES_URL }}
+        run: |
+          owner=$(echo "$GITHUB_REPOSITORY_OWNER" | tr 'A-Z' 'a-z')
+          url=${PAGES_URL:-https://$owner.github.io/${GITHUB_REPOSITORY#*/}}
+          url=${url%/}
+          mkdir site
+          cp out/*.apk out/packages.adb site/
+          cp out/detour.pem site/detour.pem
+          sed "s#@FEED_URL@#$url#g" install.sh > site/install.sh
+          sed -e "s#@FEED_URL@#$url#g" -e "s#@VERSION@#${{ steps.ver.outputs.version }}#g" \
+              -e "s#@REPO_URL@#$GITHUB_SERVER_URL/$GITHUB_REPOSITORY#g" tools/pages/index.html > site/index.html
+          ls -l site
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: site
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  pages:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
+
+  release:
+    needs: [build, pages]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: site
+          path: site
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" site/*.apk site/packages.adb site/detour.pem site/install.sh \
+            --repo "$GITHUB_REPOSITORY" --title "Detour ${{ needs.build.outputs.version }}" --generate-notes
