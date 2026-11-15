@@ -56,10 +56,15 @@ echo "$R" | grep -q 'no endpoint outside DME' && [ "$(echo "$R" | jsonfilter -e 
 
 echo "== the daemon does it by itself"
 colo_srv 4 ARN
+# ex4 forgets where the client is: otherwise its answers roam the tunnel back to it (a lab artefact - a real
+# anycast endpoint does not reach out to a client that went elsewhere)
+ip netns exec ex4 wg set wgex peer "$CPUB" remove; ip netns exec ex4 wg set wgex peer "$CPUB" allowed-ips 0.0.0.0/0
 wg set wd peer "$(jsonfilter -i /etc/detour/warp/wd.json -e '@.peer')" endpoint 10.199.3.2:51820
 uci set network.@wireguard_wd[0].endpoint_host=10.199.3.2; uci commit network
+T0=$(date +%s)   # only an event of this step counts (the list keeps those of earlier runs)
+moved() { ubus call detour status | jsonfilter -e '@.events[*]' | awk -v t=$T0 '$1 >= t && /WARP wd moved/' | tail -n1; }
 uci set detour.main.warp_check=20; uci commit detour; ubus call detour reload >/dev/null
-waitfor yes "ubus call detour status | jsonfilter -e '@.events[*]' | grep -q 'WARP wd moved' && echo yes" 200 && ok "daemon moved it ($(ubus call detour status | jsonfilter -e '@.events[*]' | grep 'WARP wd moved' | tail -n1))" || bad "daemon did not move"
+waitfor yes '[ -n "$(moved)" ] && echo yes' 200 && ok "daemon moved it ($(moved))" || bad "daemon did not move"
 
 echo "== cleanup"
 detour warp-unregister wd >/dev/null

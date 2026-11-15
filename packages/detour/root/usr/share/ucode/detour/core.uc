@@ -104,6 +104,20 @@ export function run(cmd) {
 	return { code, out };
 };
 
+// a simple command (no pipes, no ";") that may hang - a client of a service that stopped answering: at most
+// secs seconds, then it is killed (code 143) and what it wrote so far is the output. Busybox of OpenWrt 25.12
+// has no "timeout". The output goes through a file: the killer's sleep must not hold a pipe open.
+let nlim = 0;
+export function run_for(secs, cmd) {
+	fs.mkdir(RUN);
+	const f = sprintf('%s/.run%d', RUN, ++nlim % 4);
+	const r = run(sprintf('%s > %s 2>/dev/null & p=$!; ( sleep %d; kill $p ) >/dev/null 2>&1 & k=$!; wait $p 2>/dev/null; c=$?; kill $k 2>/dev/null; exit $c',
+		cmd, f, secs));
+	const out = fs.readfile(f) ?? '';
+	fs.unlink(f);
+	return { code: r.code, out };
+};
+
 export function hex(n) {
 	return sprintf('0x%08x', n);
 };

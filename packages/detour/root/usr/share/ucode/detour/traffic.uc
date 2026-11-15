@@ -95,7 +95,9 @@ function classify(known) {
 function nlbw() {
 	src.nlbwmon = !!fs.access('/usr/sbin/nlbw');
 	if (!src.nlbwmon) { src.running = false; return null; }
-	const r = core.run('nlbw -c json -g mac');
+	// nlbwmon can stop answering (seen with 25.12 after many reloads): nlbw then waits forever, and so would the
+	// daemon - a bounded wait, the step goes on without the devices' counters
+	const r = core.run_for(5, 'nlbw -c json -g mac');
 	let j = null;
 	try { j = json(r.out); } catch (e) { }
 	src.running = r.code == 0 && type(j?.data) == 'array';
