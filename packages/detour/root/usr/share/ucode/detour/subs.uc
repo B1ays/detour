@@ -48,7 +48,7 @@ export function parse_headers(text) {
 		}
 	}
 	return info;
-}
+};
 
 // the stock SSRF guard: the URL must not point into the router's own networks (unless allowed - lab).
 // -> { private, host, port, addr }: addr is the address that was checked, curl is then pinned to it (--resolve),
@@ -104,7 +104,7 @@ export function parse_body(body) {
 		push(out, links.for_singbox(r.outbound));
 	}
 	return { outbounds: out, skipped, names };
-}
+};
 
 // one update of a subscription at a time (cron, the daemon and LuCI may all ask): a lock directory, taken
 // over when it is older than any update can last
@@ -202,7 +202,7 @@ export function update(name) {
 	try { r = update_locked(name); } catch (e) { r = { error: 'update failed: ' + e }; }
 	fs.rmdir(l);
 	return r;
-}
+};
 
 // cron, hourly: the subscriptions whose interval (option interval, hours, default 24) has passed
 export function update_due() {
@@ -217,10 +217,10 @@ export function update_due() {
 		push(out, update(s['.name']));
 	});
 	return out;
-}
+};
 
 export function update_all() {
 	const out = [];
 	cursor().foreach('detour', 'subscription', (s) => { push(out, update(s['.name'])); });
 	return out;
-}
+};

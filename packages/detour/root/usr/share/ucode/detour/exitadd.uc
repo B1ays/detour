@@ -390,7 +390,7 @@ export function candidates(text) {
 	const r = from_text(text);
 	if (r.error) return { error: r.error };
 	return { candidates: map(r.list, describe), installed: { singbox: installed('singbox'), xray: installed('xray') } };
-}
+};
 
 function free_id(c) {
 	const used = {};
@@ -460,4 +460,4 @@ export function add(text, picks, name, via, label, engs) {
 	}
 	if (!length(out)) return { error: join('; ', notes) || 'nothing was added' };
 	return { added: out, notes };
-}
+};

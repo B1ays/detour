@@ -12,6 +12,7 @@ send() { conntrack -D -p $1 --dport $2 >/dev/null 2>&1
 	if [ $1 = tcp ]; then cl "nc -w 2 $D $2 </dev/null"; else cl "echo x | nc -u -w 1 $D $2"; fi; sleep 1; }
 WID=$(uci -q get detour.warp.id)
 WANT=$(( (WID << 16) | (21 << 8) ))
+DIRECT=$(( 0xff << 8 ))   # "decided: directly" (no policy matched)
 cleanup() { uci -q delete detour.tport; uci commit detour; ubus call detour reload >/dev/null; }
 cleanup
 uci -q batch <<'U'
@@ -30,8 +31,8 @@ nft list chain inet detour v6block | grep -q 'tcp dport { 9101, 9103-9104 }' && 
 send tcp 9101; [ "$(mark tcp 9101)" = $WANT ] && ok "tcp/9101 -> the policy ($WANT)" || bad "tcp/9101 mark '$(mark tcp 9101)'"
 send udp 9102; [ "$(mark udp 9102)" = $WANT ] && ok "udp/9102 -> the policy" || bad "udp/9102 mark '$(mark udp 9102)'"
 send udp 9104; [ "$(mark udp 9104)" = $WANT ] && ok "udp/9104 (range, both protocols) -> the policy" || bad "udp/9104 mark '$(mark udp 9104)'"
-send udp 9101; [ "$(mark udp 9101)" = 0 ] && ok "udp/9101 stays direct (tcp only)" || bad "udp/9101 mark '$(mark udp 9101)'"
-send tcp 9105; [ "$(mark tcp 9105)" = 0 ] && ok "tcp/9105 stays direct" || bad "tcp/9105 mark '$(mark tcp 9105)'"
+send udp 9101; [ "$(mark udp 9101)" = $DIRECT ] && ok "udp/9101 stays direct (tcp only)" || bad "udp/9101 mark '$(mark udp 9101)'"
+send tcp 9105; [ "$(mark tcp 9105)" = $DIRECT ] && ok "tcp/9105 stays direct" || bad "tcp/9105 mark '$(mark tcp 9105)'"
 echo "== a bad entry"
 uci add_list detour.tport.port=70000; uci commit detour
 detour check 2>&1 | grep -q 'policy tport: bad port "70000"' && ok "reported" || bad "not reported: $(detour check 2>&1 | head -3)"

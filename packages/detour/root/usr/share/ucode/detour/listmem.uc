@@ -32,12 +32,12 @@ export function instances() {
 	let n = 0;
 	cursor().foreach('dhcp', 'dnsmasq', () => { n++; });
 	return n || 1;
-}
+};
 
 export function cost(kind, n, inst) {
 	n = int(n ?? 0);
 	return (kind == 'domain') ? n * COST.domain * (inst ?? instances()) : n * COST.cidr;
-}
+};
 
 function lines(f) {
 	const fh = fs.open(f);
@@ -57,7 +57,7 @@ export function current(name) {
 	let st = null;
 	try { st = json(fs.readfile(sprintf('%s/%s.status', LISTS, name)) ?? 'null'); } catch (e) { }
 	return { kind, n: (type(st?.count) == 'int') ? st.count : lines(data) };
-}
+};
 
 function opt_mb(c, k) {
 	const v = c.get('detour', 'main', k);
@@ -79,7 +79,7 @@ export function budget() {
 	const left = max(0, min(cap - used, m.avail - reserve));
 	return { total: m.total, avail: m.avail, cap, reserve, used, left, instances: inst,
 		per: { domain: COST.domain * inst, cidr: COST.cidr } };
-}
+};
 
 // MB with one decimal: what is needed rounded up, what is left rounded down (never "needs 2, 2 left")
 function mb_up(b) { return sprintf('%.1f', int((b * 10 + MB - 1) / MB) / 10.0); }
@@ -117,16 +117,16 @@ export function check(name, kind, n, target, accepted) {
 	const room = max(0, min(by_cap, by_free));
 	if (delta <= room) return null;
 	return sprintf('not enough memory: needs ~%s MB, %s MB left for lists', mb_up(delta), mb_down(room));
-}
+};
 
 // what list <name> adds when it becomes <n> entries of <kind> (bytes, 0 when it does not grow)
 export function delta(name, kind, n) {
 	const inst = instances(), old = current(name);
 	return max(0, cost(kind, n, inst) - cost(old.kind, old.n, inst));
-}
+};
 
 // the biggest download a list may take now (its raw text sits in /tmp, and sorting holds it again)
 export function rawmax(accepted) {
 	const b = budget();
 	return max(MB, min(256 * MB, int((b.avail - b.reserve - int(accepted ?? 0)) / 4)));
-}
+};

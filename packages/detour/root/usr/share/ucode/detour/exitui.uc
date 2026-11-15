@@ -38,7 +38,7 @@ export function summary(o) {
 		if (o.type == 'hysteria2' && o.obfs?.type) push(p, 'obfs');
 	}
 	return join(' · ', filter(p, (x) => x));
-}
+};
 
 function server_of(o) {
 	if (o?.protocol) {
@@ -128,7 +128,7 @@ export function info() {
 		push(out, x);
 	});
 	return out;
-}
+};
 
 // remove an exit with everything it owns: its engine and outbound files, its netifd interface (and WG/AWG
 // peers), its place in the firewall zone, its place in policies; a subscription's exit takes the
@@ -177,7 +177,7 @@ export function remove(name) {
 	run('/etc/init.d/network reload; fw4 -q reload; /etc/init.d/detour reload');
 	log(sprintf('exit %s removed%s', name, sub ? ' with its subscription ' + sub : ''));
 	return { name, removed: true, subscription: sub };
-}
+};
 
 // one server of a subscription ("" = automatic: the urltest group picks)
 export function pick(name, key) {
@@ -193,7 +193,7 @@ export function pick(name, key) {
 	c.commit('detour');
 	run('/etc/init.d/detour reload');
 	return { name, pick: key || null };
-}
+};
 
 // the configuration of a proxy exit, for the editor (an admin's LuCI session; it holds the exit's secrets)
 export function outbound_get(name) {
@@ -203,7 +203,7 @@ export function outbound_get(name) {
 	const outs = outbounds_of(c.get('detour', eng, 'outbound'));
 	if (!length(outs)) return { error: 'the configuration file is missing' };
 	return { name, engine: c.get('detour', eng, 'type'), config: sprintf('%.J', outs[0]) };
-}
+};
 
 export function outbound_set(name, text) {
 	const c = cursor();
@@ -222,7 +222,7 @@ export function outbound_set(name, text) {
 	run('/etc/init.d/detour reload');
 	log(sprintf('exit %s: configuration edited', name));
 	return { name, proto: summary(o) };
-}
+};
 
 // another server for the same exit from a share link (its place in policies stays). The exit keeps its engine when
 // that engine runs the link, else it moves to the one that does (an XHTTP link -> Xray, an HTTP/2 one -> sing-box)
@@ -249,7 +249,7 @@ export function set_link(name, link) {
 	run('/etc/init.d/detour reload');
 	log(sprintf('exit %s: server replaced from a link (%s)', name, et));
 	return { name, proto: summary(r.outbound), server: r.outbound.server, engine: et };
-}
+};
 
 // Export: the exit as a share link (a proxy) or a wg-quick .conf (WireGuard / AmneziaWG), and a QR code of it
 // when qrencode is installed. It holds the exit's keys: an admin's LuCI session only.
@@ -288,7 +288,7 @@ export function export_exit(name) {
 	}
 	else out.qr_missing = true;
 	return out;
-}
+};
 
 // a proxy exit dials its server through another exit (the provider blocks the server's address), or directly again
 export function set_via(name, via) {
@@ -310,4 +310,4 @@ export function set_via(name, via) {
 	run('/etc/init.d/detour reload');
 	log(sprintf('exit %s: connects %s', name, via ? 'through ' + via : 'directly'));
 	return { name, via };
-}
+};

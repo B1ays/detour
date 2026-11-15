@@ -17,8 +17,8 @@ const GOOD = core.PERSIST + '/ruleset.good';   // the last ruleset nft accepted,
 // -t: without the sets' elements (the big lists)
 function table_present() { return core.run('nft -t list table inet detour').code == 0; }
 
-export function pins() { return core.read_json(PINS) ?? {}; }
-export function save_pins(p) { fs.mkdir(core.PERSIST); core.write_json(PINS, p); }
+export function pins() { return core.read_json(PINS) ?? {}; };
+export function save_pins(p) { fs.mkdir(core.PERSIST); core.write_json(PINS, p); };
 
 // policy id -> exit id. Kept across reloads; first boot: pinned exit, else the first exit.
 // fresh: as at boot, without what the running daemon has chosen (for the saved "last good" rules).
@@ -37,9 +37,9 @@ export function active_map(cfg, fresh) {
 		out['' + p.id] = eid;
 	}
 	return out;
-}
+};
 
-export function save_active(m) { fs.mkdir(core.RUN); core.write_json(ACTIVE, m); }
+export function save_active(m) { fs.mkdir(core.RUN); core.write_json(ACTIVE, m); };
 
 // system users whose traffic always goes direct (never classified): the DNS fallback resolver and
 // the direct attempt of notifications ("VPN is down" must not run into the dead tunnel), the panel tunnel
@@ -49,7 +49,7 @@ export function skip_uid(cfg) {
 	if (core.uid_of('dtnotify') != null) push(out, core.uid_of('dtnotify'));
 	if (core.uid_of('dtssh') != null) push(out, core.uid_of('dtssh'));   // the panel tunnel to a VPS (sshtun)
 	return out;
-}
+};
 
 // the networks of the policies (logical names: guest, iot ...) -> their devices, from netifd now
 function resolve_networks(cfg) {
@@ -119,7 +119,7 @@ export function apply(cfg, active) {
 	}
 	else if (dns.ensure_uci(false)) restart = true;
 	return { ok: r.code == 0, errors, dns_restart: restart };
-}
+};
 
 // lists to load - or leftovers of removed ones: lists-update also cleans up (the dnsmasq file of the last
 // removed list kept answering for its domains - a removed "Block" list kept blocking)
@@ -127,7 +127,7 @@ export function has_lists() {
 	let n = 0;
 	cursor().foreach('detour', 'list', () => { n++; });
 	return n > 0 || length(fs.glob('/tmp/dnsmasq*.d/detour-list-*.conf') ?? []) > 0 || length(fs.glob(core.RUN + '/lists/*.data') ?? []) > 0;
-}
+};
 
 // early boot (START before dnsmasq): table + sets exist before dnsmasq starts filling them
 export function start() {
@@ -154,14 +154,14 @@ export function start() {
 	if (res.dns_restart && core.run('pidof dnsmasq').code == 0) dns.restart();
 	for (let e in res.errors) core.log('fw: ' + e);
 	return res;
-}
+};
 
 export function stop(keep_dom) {
 	const cfg = core.load();
 	if (keep_dom) { fs.mkdir(core.PERSIST); nft.save_dom(cfg, DOMSAVE); }
 	nft.remove_table();
 	net.remove_all();
-}
+};
 
 // leave a stock router: no table, no rules, dnsmasq back to its own upstreams
 export function purge() {
@@ -176,4 +176,4 @@ export function purge() {
 	if (restart) dns.restart();
 	auth.restore();
 	auth.ssh_apply(false);
-}
+};

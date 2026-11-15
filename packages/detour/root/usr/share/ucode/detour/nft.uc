@@ -49,7 +49,7 @@ export function stale(cfg) {
 		if (o.chain && !w.chains[o.chain.name]) push(out.chains, o.chain.name);
 	}
 	return out;
-}
+};
 
 // active: { <policy id>: <exit id> }; opts: { skip_uid: <num|null>, stale: {sets,chains} }
 export function render(cfg, active, opts) {
@@ -256,14 +256,14 @@ export function render(cfg, active, opts) {
 		add(sprintf('add rule %s dotblock iifname @lan_ifs meta l4proto { tcp, udp } th dport 853 counter reject comment "DoT/DoQ bypasses domain policies"', T));
 	}
 	return join('\n', L) + '\n';
-}
+};
 
 export function apply(text) {
 	fs.mkdir(RUN);
 	const f = RUN + '/ruleset.nft';
 	fs.writefile(f, text);
 	return run('nft -f ' + f);
-}
+};
 
 // switch one policy to another exit: one atomic element replace
 export function set_policy_exit(pid, eid) {
@@ -277,7 +277,7 @@ export function set_policy_exit(pid, eid) {
 		r = run('nft -f ' + f);
 	}
 	return r;
-}
+};
 
 // a policy whose exits are all down and which may then go directly (on_down 'direct'): its packets keep their
 // policy mark (so they are known as its traffic) but take no exit - the main table, the provider's line.
@@ -293,23 +293,23 @@ export function set_policy_direct(pid) {
 		r = run('nft -f ' + f);
 	}
 	return r;
-}
+};
 
 // how many packets the "Block" target refused
 export function counter_blocked() {
 	const m = match(run(sprintf('nft list chain %s blockrej', T)).out, /packets ([0-9]+)/);
 	return m ? int(m[1]) : 0;
-}
+};
 
 export function counter_drops(eid) {
 	const r = run(sprintf('nft list chain %s ks%d', T, eid));
 	const m = match(r.out, /packets ([0-9]+)/);
 	return m ? int(m[1]) : 0;
-}
+};
 
 export function remove_table() {
 	return run('nft delete table inet detour');
-}
+};
 
 // --- dnsmasq-filled sets survive reboot: save with the remaining timeout, restore before dnsmasq
 export function save_dom(cfg, file) {
@@ -329,9 +329,9 @@ export function save_dom(cfg, file) {
 	fs.writefile(file + '.tmp', join('\n', out) + '\n');
 	fs.rename(file + '.tmp', file);
 	return length(out);
-}
+};
 
 export function restore_dom(file) {
 	if (!fs.access(file)) return { code: 0, out: 'nothing saved' };
 	return run('nft -f ' + file);
-}
+};

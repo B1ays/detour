@@ -19,7 +19,7 @@ export function confdirs() {
 		if (substr(d, 0, 1) == '/') push(out, d);
 	});
 	return out;
-}
+};
 
 function chunks(list, n) {
 	const out = [];
@@ -37,7 +37,7 @@ export function wan_dns() {
 		if (m && index(out, m[1]) < 0) push(out, m[1]);
 	}
 	return out;
-}
+};
 
 // server names the enabled engines dial ({ host, via_dev }): sing-box "server", Xray vnext/servers
 // "address", read straight from the engines' outbound files (this module is on the early-boot path of
@@ -99,7 +99,7 @@ export function render_conf(cfg) {
 		}
 	}
 	return join('\n', L) + '\n';
-}
+};
 
 // returns true when any instance's file changed (caller restarts dnsmasq: conf-dir is not re-read on HUP)
 export function write_conf(cfg) {
@@ -114,7 +114,7 @@ export function write_conf(cfg) {
 		}
 	}
 	return changed;
-}
+};
 
 export function remove_conf() {
 	let changed = false;
@@ -124,7 +124,7 @@ export function remove_conf() {
 		for (let f in fs.glob(d + '/detour-list-*.conf') ?? []) { fs.unlink(f); changed = true; }
 	}
 	return changed;
-}
+};
 
 // router DNS through the tunnel: dnsmasq reads its upstreams only from our servers-file
 // (re-read on SIGHUP, no restart). Returns true when the UCI side changed (needs a restart).
@@ -147,7 +147,7 @@ export function ensure_uci(enabled) {
 	});
 	if (changed) c.commit('dhcp');
 	return changed;
-}
+};
 
 // mode: 'tunnel' | 'fallback' | 'encrypted' (= the fallback's resolver, permanently)
 export function write_servers(cfg, mode) {
@@ -164,11 +164,11 @@ export function write_servers(cfg, mode) {
 	if (fs.readfile(SERVERS) == text) return false;
 	fs.writefile(SERVERS, text);
 	return true;
-}
+};
 
-export function hup() { return run('killall -HUP dnsmasq'); }
+export function hup() { return run('killall -HUP dnsmasq'); };
 // one at a time, and never left stopped (usr/libexec/detour/dnsmasq-restart)
-export function restart() { return run('/usr/libexec/detour/dnsmasq-restart'); }
+export function restart() { return run('/usr/libexec/detour/dnsmasq-restart'); };
 
 // the router's upstream resolvers must go through the DNS policy
 export function prepare(cfg) {
@@ -177,4 +177,4 @@ export function prepare(cfg) {
 		if (p.name == cfg.main.dns_policy)
 			for (let s in cfg.main.dns_servers)
 				if (index(p.dst4, s) < 0) push(p.dst4, s);
-}
+};

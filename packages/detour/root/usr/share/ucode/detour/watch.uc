@@ -10,14 +10,14 @@ import { run, RUN, log } from 'detour.core';
 import * as notify from 'detour.notify';
 import { _, lang } from 'detour.i18n';
 
-export function q(s) { return sprintf(_('"%s"'), s); }
+export function q(s) { return sprintf(_('"%s"'), s); };
 
 export function dur(s) {
 	s = int(s);
 	if (s < 90) return sprintf(_('%d s'), s);
 	if (s < 5400) return sprintf(_('%d min'), int((s + 30) / 60));
 	return sprintf(_('%d h %d min'), int(s / 3600), int((s % 3600) / 60));
-}
+};
 
 function gb(b) { return sprintf(_('%.1f GB'), b / 1073741824.0); }
 
@@ -73,7 +73,7 @@ export function init() {
 	// a router that has just booted (not a daemon restart): one message once the exits had their chance
 	const up = +split(fs.readfile('/proc/uptime') ?? '0', ' ')[0];
 	boot_pending = up < 600;
-}
+};
 
 // the provider's internet: the main table has a default route (PPPoE / DHCP gone = no route)
 function wan_present() {
@@ -81,9 +81,9 @@ function wan_present() {
 }
 
 let wan_back = 0;
-export function wan_down() { return !wan_ok; }
+export function wan_down() { return !wan_ok; };
 // the exits fall and rise with the provider's line: say nothing about them meanwhile and for 3 min after
-export function quiet() { return !wan_ok || time() - wan_back < 180; }
+export function quiet() { return !wan_ok || time() - wan_back < 180; };
 
 function check_wan() {
 	const ok = wan_present();
@@ -173,4 +173,4 @@ export function tick(exits, healthy, ready) {
 	check_boot(exits, healthy, ready);
 	check_lists();
 	check_subs();
-}
+};

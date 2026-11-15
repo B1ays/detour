@@ -71,7 +71,7 @@ export function ensure_zone(c, iface) {
 	const nets = c.get('firewall', zone, 'network');
 	const list = (type(nets) == 'array') ? nets : (nets ? split(nets, /\s+/) : []);
 	if (index(list, iface) < 0) { push(list, iface); c.set('firewall', zone, 'network', list); }
-}
+};
 
 // opts: { name, api, peer_key, port, awg }
 // where the API is asked from: via=<exit> -> only through it; else direct, then every enabled exit that is up
@@ -184,7 +184,7 @@ export function register(opts) {
 	run('/etc/init.d/network reload; fw4 -q reload');
 	log(sprintf('WARP %s registered (exit id %d)', name, id));
 	return { name, exit_id: id, address: v4, endpoint: ep };
-}
+};
 
 export function unregister(name) {
 	const f = DIR + '/' + name + '.json';
@@ -228,4 +228,4 @@ export function unregister(name) {
 	run('/etc/init.d/network reload; fw4 -q reload');
 	log(sprintf('WARP %s removed (API deregistration: %s)', name, api_ok ? 'ok' : 'failed'));
 	return { name, deregistered: api_ok };
-}
+};

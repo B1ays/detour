@@ -110,10 +110,10 @@ export function create(out, pwfile) {
 	fs.chmod(out + '.tmp', 0600);
 	fs.rename(out + '.tmp', out);
 	return { file: out, size: fs.stat(out)?.size, manifest: man };
-}
+};
 
 // the decrypted contents never stay in /tmp longer than one command
-export function cleanup() { run('rm -rf ' + WORK); }
+export function cleanup() { run('rm -rf ' + WORK); };
 
 function read_json_file(p) { try { return json(fs.readfile(p) ?? 'null'); } catch (e) { return null; } }
 
@@ -175,7 +175,7 @@ export function open(path, pwfile) {
 		if (type(h) != 'object' || !match(h.mac ?? '', /^[0-9A-Fa-f:\s-]+$/)) return { error: 'damaged backup (dhcp)' };
 	}
 	return { dir: x, man, net, hosts, cfg: cc };
-}
+};
 
 function labels(c, t) {
 	const l = [];
@@ -248,7 +248,7 @@ export function preview(o) {
 		conflicts: conflicts(c, o.net),
 		missing: missing_engines(o),
 	};
-}
+};
 
 function migrate(c) {
 	// what post-upgrade does for an older config
@@ -346,4 +346,4 @@ export function apply(o, pwfile) {
 	const n = o.man.count ?? {};
 	return { restored: { exits: n.exit ?? 0, policies: n.policy ?? 0, lists: n.list ?? 0, subscriptions: n.subscription ?? 0, devices: nh },
 		before: BEFORE };
-}
+};

@@ -191,7 +191,7 @@ export function parse(link) {
 	case 'tuic': return tuic(m[2]);
 	default: return { error: 'unsupported scheme ' + m[1] };
 	}
-}
+};
 
 // --- back: an outbound -> a share link (export) ----------------------------------------------------------------
 
@@ -265,7 +265,7 @@ export function to_link(o, remark) {
 	}
 	}
 	return null;
-}
+};
 
 // --- one server, two engines -----------------------------------------------------------------------------------
 
@@ -279,7 +279,7 @@ export function singbox_why(o) {
 	if (o?._x?.encryption) return 'sing-box has no VLESS encryption';
 	if (o?._x?.pqv) return 'sing-box has no ML-DSA check of Reality';
 	return null;
-}
+};
 
 // a server in the form above -> { xray: outbound } | { error }
 export function to_xray(o) {
@@ -315,9 +315,9 @@ export function to_xray(o) {
 	else
 		settings = { servers: [ { address: o.server, port: o.server_port, method: o.method, password: o.password } ] };
 	return { xray: clean({ protocol: o.type, settings, streamSettings: ss }) };
-}
+};
 
-export function xray_why(o) { return to_xray(o).error; }
+export function xray_why(o) { return to_xray(o).error; };
 
 // an Xray outbound -> { outbound } in the form above | { error } (then it stays an Xray-only server)
 export function from_xray(xo) {
@@ -370,7 +370,7 @@ export function from_xray(xo) {
 	else if (length(ss.security ?? '') && ss.security != 'none') return { error: 'no sing-box form for the security ' + ss.security };
 	if (length(keys(x))) o._x = x;
 	return { outbound: clean(o) };
-}
+};
 
 // the server in sing-box's own terms: what only Xray needs left out
 export function for_singbox(o) {
@@ -378,4 +378,4 @@ export function for_singbox(o) {
 	const c = { ...o };
 	delete c._x;
 	return c;
-}
+};

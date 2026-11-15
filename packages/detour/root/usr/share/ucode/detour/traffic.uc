@@ -58,7 +58,7 @@ function own_macs() {
 // answer (7 s measured on the lab), and the daemon waits on every call - nothing else is served meanwhile
 export function netifd_dump() {
 	try { return json(core.run('ubus -t 2 call network.interface dump').out); } catch (e) { return null; }
-}
+};
 
 let home_cache = null, home_at = 0;
 export function home_devs() {
@@ -79,7 +79,7 @@ export function home_devs() {
 	}
 	home_cache = out; home_at = time();
 	return out;
-}
+};
 
 // mac -> is it in a home network; remembered, as a device offline now has no neighbour entry
 function classify(known) {
@@ -167,17 +167,17 @@ export function tick(cfg, via_of) {
 	core.write_json(STATE, { d: cur.d ?? last?.d ?? {}, x: cur.x, home: cur.home, at: now });
 	core.write_json(RAMDIR + '/' + m + '.json', data);
 	if (now - saved_at >= 1800 || !fs.access(DISK + '/' + m + '.json')) save_disk();
-}
+};
 
 // the daemon stops (reboot, upgrade): today so far goes to flash
-export function flush() { if (month && data) save_disk(); }
+export function flush() { if (month && data) save_disk(); };
 
 // the history on flash was replaced (a restore from a backup): what is in memory is dropped, the next step loads
 // the month from flash again (the step's counters stay: growth goes on from where it was)
 export function reset() {
 	month = null; data = null; saved_at = 0;
 	for (let f in fs.glob(RAMDIR + '/[0-9]*.json') ?? []) fs.unlink(f);
-}
+};
 
 function days_back(n) {
 	const out = [];
@@ -234,4 +234,4 @@ export function report(period) {
 		vpn: { rx: vpn[0] < total[0] ? vpn[0] : total[0], tx: vpn[1] < total[1] ? vpn[1] : total[1] },
 		direct: { rx: min0(total[0], vpn[0]), tx: min0(total[1], vpn[1]) },
 	};
-}
+};

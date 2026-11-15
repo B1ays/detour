@@ -40,6 +40,7 @@ add_list detour.tnet.network=lan
 commit detour
 U
 ubus call detour reload >/dev/null; sleep 3
+logread | tail -20 | grep -q 'new under a policy: .* 1 networks' && ok "the direct flows of the network reset (logged)" || bad "no reset of the network: $(logread | grep 'new under a policy' | tail -1)"
 LD=$(ubus call network.interface.lan status | jsonfilter -e '@.l3_device')
 nft list set $T ifs_p35 | grep -q "\"$LD\"" && ok "the network lan is its device $LD" || bad "ifs_p35: $(nft list set $T ifs_p35)"
 cl "nohup ping -c 20 -i 0.5 $D >/dev/null 2>&1 </dev/null &"

@@ -34,7 +34,7 @@ export function twofa_enabled() {
 		if (s.enabled == '1') on = true;
 	});
 	return on;
-}
+};
 
 function grants_login() {
 	const s = fs.readfile(ACL);
@@ -60,7 +60,7 @@ export function restore() {
 	fs.unlink(BACKUP);
 	reload_rpcd();
 	return true;
-}
+};
 
 // --- A-9: with 2FA on, SSH password login only from LAN networks; elsewhere keys only.
 // Specific and wildcard listeners on one port do not mix (whoever binds second gets EADDRINUSE,
@@ -99,7 +99,7 @@ export function root_keys() {
 '))
 		if (match(l, /^(ssh-|ecdsa-|sk-)/)) n++;
 	return n;
-}
+};
 
 function sname(prefix, net) { return prefix + replace(net, /[^A-Za-z0-9_]/g, '_'); }
 
@@ -150,7 +150,7 @@ export function ssh_apply(on) {
 		log(on ? 'SSH: password login only from LAN networks, keys elsewhere (2FA is on)' : 'SSH: stock dropbear settings restored');
 	}
 	return changed;
-}
+};
 
 // returns 'closed' | 'reopened' (we closed it again) | 'restored' | 'ok'
 export function guard() {
@@ -170,10 +170,10 @@ export function guard() {
 		return 'restored';
 	}
 	return 'ok';
-}
+};
 
 export function status() {
 	let ssh_guard = false;
 	cursor().foreach('dropbear', 'dropbear', function(x) { if (index(x['.name'], PW_PREFIX) == 0 || index(x['.name'], KEY_PREFIX) == 0) ssh_guard = true; });
 	return { twofa: twofa_enabled(), http_login_open: grants_login(), managed: ours(), ssh_lan_password_only: ssh_guard, root_keys: root_keys() };
-}
+};

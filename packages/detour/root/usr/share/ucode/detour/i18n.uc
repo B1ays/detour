@@ -20,7 +20,7 @@ export function lang() {
 	if (!l || l == 'auto') l = fs.access('/usr/lib/lua/luci/i18n/base.ru.lmo') ? 'ru' : 'en';
 	l = lc(split(l, /[_-]/)[0]);
 	return known(l) ? l : 'en';
-}
+};
 
 function dict(l) {
 	if (l == 'en') return null;
@@ -36,4 +36,4 @@ function dict(l) {
 export function _(s) {
 	const d = dict(lang());
 	return (d && d[s] != null) ? d[s] : s;
-}
+};

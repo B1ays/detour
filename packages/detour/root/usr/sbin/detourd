@@ -204,19 +204,23 @@ function load_all(reason) {
 	opened = {};
 	// destinations / devices newly under a policy: their direct flows (offloaded ones would never be
 	// re-classified) are dropped so the next packets meet the new rules
-	const keys = {}, nd = [], nm = [], np = [], ns = [];
+	const keys = {}, nd = [], nm = [], np = [], ns = [], nn = [];
 	for (let p in cfg.policies) {
 		if (!p.enabled || p.direct) continue;   // under "Directly" the flows already go direct
 		for (let d in p.dst4) keys['d ' + d] = true;
 		for (let m in p.devices) keys['m ' + m] = true;
 		for (let a in p.src4) keys['s ' + a] = true;
+		for (let i in p.ifdevs ?? []) keys['n ' + i] = true;   // whole networks (their devices, by fw.apply)
 		for (let pr in [ 'tcp', 'udp' ]) for (let x in p.ports?.[pr] ?? []) keys['p ' + pr + '/' + x] = true;
 	}
 	if (pol_keys != null)
-		for (let k in keys) if (!pol_keys[k]) push({ d: nd, m: nm, p: np, s: ns }[substr(k, 0, 1)], substr(k, 2));
+		for (let k in keys) if (!pol_keys[k]) push({ d: nd, m: nm, p: np, s: ns, n: nn }[substr(k, 0, 1)], substr(k, 2));
 	pol_keys = keys;
-	if (length(nd) || length(nm) || length(np) || length(ns)) ev(sprintf('new under a policy: %d destinations, %d devices, %d ports, %d sources - their direct flows reset (%d)',
-		length(nd), length(nm), length(np), length(ns), net.flush_unclassified(nd, nm, np, ns)));
+	// a network: the flows from its subnets
+	const nsrc = [ ...ns ];
+	for (let i in nn) for (let s in net.dev_nets4(i)) push(nsrc, s);
+	if (length(nd) || length(nm) || length(np) || length(ns) || length(nn)) ev(sprintf('new under a policy: %d destinations, %d devices, %d ports, %d sources, %d networks - their direct flows reset (%d)',
+		length(nd), length(nm), length(np), length(ns), length(nn), net.flush_unclassified(nd, nm, np, nsrc)));
 	if (res.dns_restart) dns.restart();
 	apply_errors = res.errors;
 	for (let e in res.errors) ev('config: ' + e);

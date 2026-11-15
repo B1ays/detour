@@ -14,15 +14,16 @@ const MAX_S = 600;
 
 let w = null;   // { mac, started, until, procs: [ uloop.process ], files: [] }
 
-export function available() { return !!fs.access('/usr/bin/tcpdump') || !!fs.access('/usr/sbin/tcpdump'); }
+export function available() { return !!fs.access('/usr/bin/tcpdump') || !!fs.access('/usr/sbin/tcpdump'); };
 
 export function stop() {
 	if (!w) return { ok: true };
+	if (w.timer) { w.timer.cancel(); w.timer = null; }
 	for (let p in w.procs) { const pid = p.pid(); if (pid) core.run('kill ' + pid + ' 2>/dev/null'); }
 	w.procs = [];
 	w.until = time();
 	return { ok: true };
-}
+};
 
 export function start(mac, seconds) {
 	mac = lc(mac ?? '');
@@ -45,14 +46,17 @@ export function start(mac, seconds) {
 		if (fs.access('/sys/class/net/' + d + '/brport')) continue;
 		const f = sprintf('%s/%s.txt', DIR, d);
 		push(w.files, f);
-		// exec: the process uloop knows is tcpdump itself (busybox timeout execs the command), so stop() reaches it
-		const p = uloop.process('/bin/sh', [ '-c', sprintf('exec timeout %d tcpdump -i %s -n -l -tt -s 512 -c 20000 %s > %s 2>/dev/null',
-			seconds, core.shq(d), core.shq(filter), f) ], {}, function() { });
+		// exec: the process uloop knows is tcpdump itself, so stop() reaches it (the time limit is a uloop timer:
+		// busybox of OpenWrt 25.12 has no "timeout")
+		const p = uloop.process('/bin/sh', [ '-c', sprintf('exec tcpdump -i %s -n -l -tt -s 512 -c 20000 %s > %s 2>/dev/null',
+			core.shq(d), core.shq(filter), f) ], {}, function() { });
 		if (p) push(w.procs, p);
 	}
 	if (!length(w.procs)) { w = null; return { error: 'tcpdump did not start' }; }
+	const mine = w;
+	w.timer = uloop.timer(seconds * 1000, () => { if (w === mine) { w.timer = null; stop(); } });
 	return { ok: true, mac, until: w.until, seconds };
-}
+};
 
 // the names asked, most asked first: { name, n, types, first, last }
 export function log(mac) {
@@ -80,4 +84,4 @@ export function log(mac) {
 	const list = sort(values(q), (a, b) => (b.n - a.n) || (b.last - a.last));
 	return { running: time() < w.until && length(w.procs) > 0, mac: w.mac, started: w.started, until: w.until, now: time(),
 		total, dot, queries: list };
-}
+};

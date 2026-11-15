@@ -31,7 +31,7 @@ export function config() {
 		throttle: int(s.throttle ?? 60),
 		name: s.router_name ?? 'Detour',
 	};
-}
+};
 
 function load_q() {
 	try { return json(fs.readfile(QUEUE) ?? '[]'); } catch (e) { return []; }
@@ -54,7 +54,7 @@ export function event(ev, key, text) {
 	push(q, { t: now, text });
 	save_q(q);
 	return true;
-}
+};
 
 function fmt_time(t) {
 	const lt = localtime(t);
@@ -118,9 +118,9 @@ export function flush(paths, done_cb) {
 		});
 	};
 	attempt();
-}
+};
 
-export function queued() { return length(load_q()); }
+export function queued() { return length(load_q()); };
 
 // queue a test message regardless of event filters/throttle; false when not configured
 export function test() {
@@ -129,4 +129,4 @@ export function test() {
 	push(q, { t: time(), text: _('Test message: notifications work') });
 	save_q(q);
 	return true;
-}
+};

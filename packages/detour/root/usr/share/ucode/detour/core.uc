@@ -23,7 +23,7 @@ export function mark_layout(mask) {
 	for (let s = 0; s <= 12; s++)
 		if (mask == (0xffff << s)) return { shift: s, pol: 0xff << s, exit: 0xff << (s + 8), both: mask, direct: 0xff << s };
 	return null;
-}
+};
 let LAYOUT = null;      // of the last load(); read from UCI by whoever needs it before
 function parse_mask(v) {
 	if (v == null) return null;
@@ -35,9 +35,9 @@ function parse_mask(v) {
 }
 export function marks() {
 	return LAYOUT ??= (mark_layout(parse_mask(cursor().get('detour', 'main', 'fw_mask'))) ?? mark_layout());
-}
-export function pol_mark(id) { return id << marks().shift; }
-export function exit_mark(id) { return id << (marks().shift + 8); }
+};
+export function pol_mark(id) { return id << marks().shift; };
+export function exit_mark(id) { return id << (marks().shift + 8); };
 
 // other users of the same fwmark bits: pbr and mwan3 (with their own masks, or their defaults)
 function mark_conflicts(L) {
@@ -71,7 +71,7 @@ export function is_private6(a) {
 	const h = hex4(a);
 	if (h == null) return false;
 	return (h & 0xfe00) == 0xfc00 || (h & 0xffc0) == 0xfe80 || (h & 0xff00) == 0xff00;
-}
+};
 
 // routing tables of the exits: registered in rt_tables as detour_<exit>, numbered after the last table in use
 // (as pbr does); rules at free priorities from here on (net.uc)
@@ -80,7 +80,7 @@ export const UNREACH_METRIC = 4278198272;
 
 export function log(msg) {
 	system(['logger', '-t', 'detour', msg]);
-}
+};
 
 // single-quote for /bin/sh
 // a name that came from outside (a server's remark in a link, a subscription, a Clash or JSON config): no markup
@@ -89,11 +89,11 @@ export function clean_label(s) {
 	if (s == null) return null;
 	s = trim(replace('' + s, /[<>&"[:cntrl:]]/g, ''));
 	return length(s) ? substr(s, 0, 64) : null;
-}
+};
 
 export function shq(s) {
 	return "'" + replace('' + s, "'", "'\\''") + "'";
-}
+};
 
 // run a shell command line, return { code, out }
 export function run(cmd) {
@@ -102,11 +102,11 @@ export function run(cmd) {
 	const out = p.read('all') ?? '';
 	const code = p.close();
 	return { code, out };
-}
+};
 
 export function hex(n) {
 	return sprintf('0x%08x', n);
-}
+};
 
 function as_list(v) {
 	if (v == null) return [];
@@ -132,7 +132,7 @@ export function lan_zones() {
 		if (z.name && length(filter(nets, (n) => index(ifs, n) >= 0)) && index(out, z.name) < 0) push(out, z.name);
 	});
 	return length(out) ? out : [ 'lan' ];
-}
+};
 
 function bool(v, dflt) {
 	if (v == null) return dflt;
@@ -150,7 +150,7 @@ export function is_v4(a) {
 	if (!m) return false;
 	for (let i = 1; i <= 4; i++) if (int(m[i]) > 255) return false;
 	return !length(m[6] ?? '') || int(m[6]) <= 32;
-}
+};
 
 export function is_v6(a) {
 	const m = match(a, RE_V6);
@@ -167,7 +167,7 @@ export function is_v6(a) {
 		}
 	}
 	return (length(halves) == 2) ? n <= 7 : n == 8;
-}
+};
 
 const RE_MAC = /^[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5}$/;
 const RE_DOMAIN = /^[A-Za-z0-9_]([A-Za-z0-9_.-]*[A-Za-z0-9])?$/;
@@ -352,12 +352,12 @@ export function load(conf) {
 	else main.ipv6_block = bool(main.ipv6_block, false);
 
 	return { main, exits, policies, errors, by_name };
-}
+};
 
 export function exit_by_id(cfg, id) {
 	for (let e in cfg.exits) if (e.id == id) return e;
 	return null;
-}
+};
 
 // numeric uid of a system user, or null (nft resolves names at load time; a missing user breaks nft -f)
 export function uid_of(user) {
@@ -367,16 +367,16 @@ export function uid_of(user) {
 		if (f[0] == user) return int(f[2]);
 	}
 	return null;
-}
+};
 
 export function read_json(path) {
 	const s = fs.readfile(path);
 	if (!s) return null;
 	try { return json(s); } catch (e) { return null; }
-}
+};
 
 export function write_json(path, v) {
 	const tmp = path + '.tmp';
 	fs.writefile(tmp, sprintf('%J', v));
 	fs.rename(tmp, path);
-}
+};

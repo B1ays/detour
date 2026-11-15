@@ -96,4 +96,4 @@ export function list() {
 	// the router's own interfaces are not devices
 	for (let n in fs.lsdir('/sys/class/net') ?? []) delete o[lc(trim(fs.readfile('/sys/class/net/' + n + '/address') ?? ''))];
 	return { devices: values(o) };
-}
+};

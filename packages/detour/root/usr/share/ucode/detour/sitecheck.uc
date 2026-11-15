@@ -27,7 +27,7 @@ export function target(q) {
 	if (!match(url, /^https?:\/\/[A-Za-z0-9._~:\/?#@!$&()*+,;=%-]+$/)) return { error: 'bad target' };
 	const port = m[4] ? int(m[4]) : (m[1] == 'http' ? 80 : 443);
 	return { host, ip, port, url: m[1] + '://' + m[2] + (m[3] ?? '') + (m[5] ?? '/') };
-}
+};
 
 function ip2n(a) { const m = match(a, RE_IP4); return m ? ((int(m[1]) << 24) | (int(m[2]) << 16) | (int(m[3]) << 8) | int(m[4])) : null; }
 export function in_cidr(ip, cidr) {
@@ -37,7 +37,7 @@ export function in_cidr(ip, cidr) {
 	if (len == 0) return true;
 	const mask = (0xffffffff << (32 - len)) & 0xffffffff;
 	return (n & mask) == (b & mask);
-}
+};
 
 // the router's dnsmasq (fills the domain sets on the way); IPv4 only, up to 4
 function resolve(host) {
@@ -132,7 +132,7 @@ export function explain(cfg, state, q, mac) {
 	else if (state.direct?.[win.policy]) goes = { to: 'direct_down', policy: win.policy, label: win.label };
 	else goes = { to: 'exit', policy: win.policy, label: win.label, exit: state.active?.[win.policy] };
 	return { host: t.host, ip: t.ip, port: t.port, url: t.url, ips, goes, matches: m };
-}
+};
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 // the stubs of providers and of the registry: a redirect there is a block, not "the site moved"
@@ -142,7 +142,7 @@ const STUB_RE = /warning\.rt\.ru|blocked|blocklist|zapret|eais\.rkn|rkn\.gov\.ru
 export function probe_cmd(url, dev, bin, f) {
 	return sprintf("%s -s -o /dev/null -A %s -H 'Accept: text/html,*/*' --connect-timeout 7 -m 12 --interface %s -w '%%{http_code}|%%{time_connect}|%%{time_appconnect}|%%{time_starttransfer}|%%{size_download}|%%{remote_ip}|%%{redirect_url}' %s > %s 2>/dev/null; echo \"|$?\" >> %s",
 		bin ?? 'curl', shq(UA), shq(dev), shq(url), f, f);
-}
+};
 
 // what one path saw: ok, http_block (403/451), stub (a provider's page), http_err, dns, refused, silent (no
 // answer), sni (connected, TLS never started - cut by the name), freeze (started, then stopped), reset, tls, fail
@@ -164,7 +164,7 @@ export function probe_read(f) {
 	else if (rc == 35 || rc == 56 || rc == 52) st = (ta > 0) ? 'freeze' : 'reset';
 	else if (index([ 51, 58, 59, 60, 77, 80, 83, 90, 91 ], rc) >= 0) st = 'tls';
 	return { st, code, ms: int(tf * 1000), ip: w[5] ?? '', rc };
-}
+};
 
 export function verdict(d, v) {
 	if (d.st == 'ok') return 'direct_ok';
@@ -172,4 +172,4 @@ export function verdict(d, v) {
 	if (v.st == 'ok') return (d.st == 'http_block') ? 'geo' : 'need_vpn';
 	if (d.st == 'http_block' && v.st == 'http_block') return 'unclear';   // both 403: the site refuses robots
 	return 'both_bad';
-}
+};

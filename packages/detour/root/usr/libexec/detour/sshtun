@@ -81,8 +81,14 @@ test_conn() {
 	[ -n "$(lan_ip)" ] || { echo "br-lan has no address"; return 1; }
 	t=/tmp/detour/sshtun-test.log; mkdir -p /tmp/detour; : > $t
 	export HOME=$H
-	timeout 10 sh -c "$(declare_client)" >> $t 2>&1
+	# 10 s, then TERM (no "timeout": busybox of OpenWrt 25.12 lacks it)
+	sh -c "$(declare_client)" >> $t 2>&1 &
+	p=$!
+	( sleep 10; kill $p 2>/dev/null ) &
+	k=$!
+	wait $p 2>/dev/null   # no "Terminated" from the shell in the answer
 	rc=$?
+	kill $k 2>/dev/null
 	if [ $rc = 143 ] || [ $rc = 124 ]; then rm -f $t; echo ok; return 0; fi
 	why=$(grep -v '^$' $t | tail -1 | sed 's/^dbclient: //'); rm -f $t
 	echo "${why:-the client exited with code $rc}"; return 1
@@ -135,7 +141,7 @@ case "$1" in
 	test)   test_conn ;;
 	run)    run_loop ;;
 	# a client of the loop that is connecting right now must not write the key back after the removal
-	forget) rm -f $KNOWN; pkill -f "dbclient.*$KEY" 2>/dev/null; sleep 1; rm -f $KNOWN; echo "the server key is forgotten" ;;
+	forget) rm -f $KNOWN; for p in $(pgrep -f "dbclient.*$KEY"); do kill $p 2>/dev/null; done; sleep 1; rm -f $KNOWN; echo "the server key is forgotten" ;;
 	status) status ;;
 	*) echo "usage: sshtun keygen|pubkey|test|run|forget|status"; exit 1 ;;
 esac

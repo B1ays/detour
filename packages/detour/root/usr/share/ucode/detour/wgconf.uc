@@ -26,7 +26,7 @@ export function ini(text) {
 		o[sec][trim(substr(l, 0, i))] = trim(substr(l, i + 1));
 	}
 	return o;
-}
+};
 
 // masking really on: plain WireGuard is Jc 0, S 0, H 1..4, no I
 function masked(I) {
@@ -61,7 +61,7 @@ function build(I, P, from) {
 		warp: P.PublicKey == WARP_PUB };
 }
 
-export function from_conf(text, from) { const c = ini(text); return build(c.Interface, c.Peer, from ?? 'config'); }
+export function from_conf(text, from) { const c = ini(text); return build(c.Interface, c.Peer, from ?? 'config'); };
 
 function pct(s) { return replace(s ?? '', /%([0-9A-Fa-f]{2})/g, (m, h) => chr(hex(h))); }
 
@@ -83,7 +83,7 @@ export function from_link(link) {
 	if (r.error) return r;
 	r.remark = m[5] ? pct(substr(m[5], 1)) : null;
 	return r;
-}
+};
 
 // network UCI: the interface and its one peer (a repeated write does not stack peers)
 export function write(c, n, e) {
@@ -104,7 +104,7 @@ export function write(c, n, e) {
 	for (let k, v in e.peer) if (v != null && length('' + v)) c.set('network', ps, k, v);
 	c.set('network', ps, 'allowed_ips', [ '0.0.0.0/0' ]);
 	c.set('network', ps, 'route_allowed_ips', '0');
-}
+};
 
 // network UCI -> a wg-quick .conf (export); null when the interface is not WG/AWG
 export function to_conf(c, iface) {
@@ -125,4 +125,4 @@ export function to_conf(c, iface) {
 	push(L, 'Endpoint = ' + (index(h, ':') >= 0 ? '[' + h + ']' : h) + ':' + (peer.endpoint_port ?? '51820'));
 	if (peer.persistent_keepalive) push(L, 'PersistentKeepalive = ' + peer.persistent_keepalive);
 	return join('\n', L) + '\n';
-}
+};

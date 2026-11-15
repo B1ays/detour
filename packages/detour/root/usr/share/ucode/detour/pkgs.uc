@@ -29,7 +29,7 @@ export function names() {
 	const out = [];
 	for (let c in COMPONENTS) for (let p in c.pkgs) push(out, p);
 	return out;
-}
+};
 
 // what the configuration has that needs a component: [ { kind: exit | dns, name } ] (LuCI words them)
 function used_by(id) {
@@ -97,7 +97,7 @@ export function job() {
 	const log = fs.readfile(D + '/log') ?? '';
 	s.log = length(log) > 6000 ? '…' + substr(log, -6000) : log;
 	return s;
-}
+};
 
 // "apk query" as JSON: [ { name, version, installed-size, file-size, status } ] (opts: --installed, --from
 // repositories, --recursive: what an install takes with its dependencies)
@@ -183,7 +183,7 @@ export function list() {
 	if (!j?.running) { fs.mkdir(RUN); fs.mkdir(D); fs.writefile(D + '/list.json', sprintf('%J', { ...r, job: null })); }
 	r.job = j;
 	return r;
-}
+};
 
 // action: update | install | upgrade | remove; pkgs: names from COMPONENTS
 export function start(action, pkgs) {
@@ -204,4 +204,4 @@ export function start(action, pkgs) {
 	const r = run(sprintf('start-stop-daemon -S -b -x /usr/libexec/detour/pkg -- %s %s', shq(action), join(' ', map(pkgs, shq))));
 	if (r.code != 0) { fs.unlink(D + '/state.json'); return { error: 'could not start: ' + trim(r.out) }; }
 	return { started: true, action, packages: join(' ', pkgs) };
-}
+};

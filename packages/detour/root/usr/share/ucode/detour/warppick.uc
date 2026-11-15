@@ -47,7 +47,7 @@ export function trace(s) {
 	const r = run(sprintf('curl -s -m 6 --interface %s %s', shq(s.dev), shq(s.trace)));
 	const warp = match(r.out, /(^|\n)warp=([a-z]+)/), colo = match(r.out, /(^|\n)colo=([A-Z0-9]+)/);
 	return { ok: warp?.[2] == 'on' || warp?.[2] == 'plus', colo: colo?.[2] };
-}
+};
 
 function handshake(s) {
 	const r = run(sprintf('%s show %s latest-handshakes', s.tool, shq(s.dev)));
@@ -147,4 +147,4 @@ export function pick(name, force) {
 	}
 	set_endpoint(s, s.host, s.port);
 	return { colo: null, moved: false, endpoint: sprintf('%s:%d', s.host, s.port), tried, note: 'no endpoint answered through the tunnel' };
-}
+};

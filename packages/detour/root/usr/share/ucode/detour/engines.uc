@@ -22,16 +22,16 @@ function tun_addr(e) { return sprintf('172.19.%d.1/30', e.idx % 500 % 256); }
 
 export function check_name(name) {
 	return match(name ?? '', /^[a-z][a-z0-9_]{0,10}$/) ? null : 'name: a-z, 0-9, _ (max 11, starts with a letter)';
-}
+};
 
 // a subscription server's names (remarks of its links) are kept beside the outbounds: sing-box takes no
 // unknown fields. A server's identity across updates: its remark and address.
-export function names_file(exit) { return sprintf('%s/engines/%s.names.json', PERSIST, exit); }
+export function names_file(exit) { return sprintf('%s/engines/%s.names.json', PERSIST, exit); };
 export function server_key(o, name) {
 	const v = o?.protocol ? (o.settings?.vnext?.[0] ?? o.settings?.servers?.[0]) : null;
 	const host = v ? v.address : o?.server, port = v ? v.port : o?.server_port;
 	return (name ?? '') + '|' + (host ?? '') + ':' + (port ?? '');
-}
+};
 
 // write the outbound(s) of a sing-box engine; one object or an array (several -> urltest group)
 export function write_outbound(name, outbound) {
@@ -41,7 +41,7 @@ export function write_outbound(name, outbound) {
 	fs.writefile(f + '.tmp', sprintf('%.J\n', outbound));
 	fs.rename(f + '.tmp', f);
 	return f;
-}
+};
 
 // engine (sing-box, or Xray for an Xray outbound) + netifd interface (proto none) + firewall zone + Detour exit,
 // for an existing outbound file
@@ -72,7 +72,7 @@ export function create_exit(name, f, via, label, dev, etype) {
 	// the engine itself starts with the service's reload (procd instances of engines.prepare())
 	run('/etc/init.d/network reload; fw4 -q reload; /etc/init.d/detour reload');
 	return { exit_id: id, device: dev };
-}
+};
 
 // a share link -> sing-box engine exit
 export function add_from_link(name, link, via) {
@@ -87,7 +87,7 @@ export function add_from_link(name, link, via) {
 	const x = create_exit(name, write_outbound(name, r.outbound), via, r.remark ?? name);
 	if (x.error) return x;
 	return { name, exit_id: x.exit_id, device: x.device, server: r.outbound.server, type: r.outbound.type };
-}
+};
 
 export function list() {
 	const out = [];
@@ -118,12 +118,12 @@ export function list() {
 		});
 	});
 	return out;
-}
+};
 
 // A group of servers (a subscription) gets sing-box's control API on 127.0.0.1, behind a secret: which server
 // the group chose and each server's delay, without switching. Its address and secret are written as a curl
 // config (mode 600) - the secret never shows on a command line.
-export function api_file(engine) { return sprintf('%s/%s.api', DIR, engine); }
+export function api_file(engine) { return sprintf('%s/%s.api', DIR, engine); };
 function api_conf(e) {
 	fs.mkdir(RUN); fs.mkdir(DIR);
 	const port = 19100 + e.idx % 500;
@@ -146,7 +146,7 @@ function api_conf(e) {
 export function api_port(engine) {
 	const m = match(fs.readfile(api_file(engine)) ?? '', /# url http:\/\/127\.0\.0\.1:([0-9]+)/);
 	return m ? int(m[1]) : null;
-}
+};
 
 function read_outbound(e) {
 	if (e.given) return { o: e.given, all: [ e.given ] };   // test(): an outbound not written anywhere yet
@@ -215,7 +215,7 @@ export function render(e) {
 		};
 	}
 	return { config: cfg };
-}
+};
 
 // writes the configs; returns lines "name<TAB>binary<TAB>args" for the init script
 export function prepare() {
@@ -233,7 +233,7 @@ export function prepare() {
 		push(lines, sprintf('%s\t%s\trun -c %s', e.name, BIN[e.type], f));
 	}
 	return { lines, errors };
-}
+};
 
 // does the engine itself take this outbound? The config an exit would get, checked by the binary
 // ("sing-box check" / "xray run -test"); null when it does, else the engine's first complaint
@@ -254,7 +254,7 @@ export function test(etype, outbound) {
 	why = length(ls) ? ls[length(ls) - 1] : why;
 	why = replace(why, /^.*(Failed to start: main: failed to load config files: \[[^\]]*\] > |FATAL\[[0-9]+\] )/, '');
 	return substr(why, 0, 300);
-}
+};
 
 // Xray creates its tun device down; sing-box brings its own up
 export function devices_up() {
@@ -275,4 +275,4 @@ export function devices_up() {
 			log(sprintf('engine %s: tun address %s restored on %s', e.name, a, e.device));
 		}
 	}
-}
+};
