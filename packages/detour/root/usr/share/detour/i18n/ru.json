@@ -36,6 +36,8 @@
 	"not enough router memory: ~%s MB more needed, %s MB left for lists": "не хватает памяти роутера: нужно ещё ~%s МБ, для списков осталось %s МБ",
 	"only %s entries came (at least %s needed)": "пришло только %s записей (нужно не меньше %s)",
 	"the download is bigger than the memory holds (over %s MB)": "скачанное больше, чем помещается в память (больше %s МБ)",
+	"the engine cannot make its tunnel: the kernel module kmod-tun is missing": "движок не может создать туннель: нет модуля ядра kmod-tun",
+	"the engine did not start: its tunnel device is missing": "движок не запустился: нет его туннельного устройства",
 	"the provider did not answer": "провайдер не ответил",
 	"the server answers neither directly nor through another exit": "сервер не отвечает ни напрямую, ни через другой выход",
 	"the server answers, the protocol itself does not work (keys, settings or the provider filtering the content)": "сервер отвечает, не работает сам протокол (ключи, настройки или фильтр провайдера по содержимому)",

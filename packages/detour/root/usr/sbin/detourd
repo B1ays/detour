@@ -223,7 +223,13 @@ function load_all(reason) {
 		length(nd), length(nm), length(np), length(ns), length(nn), net.flush_unclassified(nd, nm, np, nsrc)));
 	if (res.dns_restart) dns.restart();
 	apply_errors = res.errors;
-	for (let e in res.errors) ev('config: ' + e);
+	// engines the init script could not start (it only tells its stderr): here they reach the log and LuCI
+	for (let e in engines.list()) {
+		if (!e.enabled) continue;
+		if (!e.installed) push(apply_errors, sprintf('engine %s: %s is not installed', e.name, e.type == 'xray' ? 'xray-core' : 'sing-box'));
+		else if (!fs.access('/dev/net/tun')) push(apply_errors, sprintf('engine %s: no /dev/net/tun (apk add kmod-tun)', e.name));
+	}
+	for (let e in apply_errors) ev('config: ' + e);
 	dns_mode = null;
 	ev(sprintf('%s: %d exits, %d policies', reason, length(cfg.exits), length(cfg.policies)));
 	// lists: rebuild the sets for the current policies, download lists that have no data yet
@@ -495,6 +501,10 @@ function diag_exit(name, cb) {
 	if (!x?.server || !x?.port) return cb({ verdict: 'unknown' });
 	if (index([ 'wireguard', 'amneziawg' ], x.kind) >= 0 || match(x.proto ?? '', /^(Hysteria|TUIC|WireGuard)/))
 		return cb({ verdict: 'udp', server: x.server, port: x.port });
+	// a proxy exit without its device: the engine did not start - nothing about the server can be told from here
+	const me = cfg.by_name[name];
+	if (x.engine && me && !fs.access('/sys/class/net/' + me.device))
+		return cb({ verdict: fs.access('/dev/net/tun') ? 'nodev' : 'notun', server: x.server, port: x.port, engine: true });
 	const proxy = {};
 	for (let i in info) proxy[i.name] = !!i.engine;
 	const via = x.via ? cfg.by_name[x.via] : null;
@@ -622,6 +632,8 @@ function verdict_text(v) {
 		silent: _('the server does not answer'),
 		reachable: _('the server answers, the protocol itself does not work (keys, settings or the provider filtering the content)'),
 		dns: _("the server's name is not found in DNS"),
+		nodev: _('the engine did not start: its tunnel device is missing'),
+		notun: _('the engine cannot make its tunnel: the kernel module kmod-tun is missing'),
 	}[v];
 }
 

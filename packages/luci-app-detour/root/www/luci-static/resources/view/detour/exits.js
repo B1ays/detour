@@ -164,6 +164,8 @@ return view.extend({
 			silent: _('The server does not answer. There is no other working exit to tell whether the provider blocks it.'),
 			reachable: _('The server answers: the connection itself fails - wrong keys or settings, or the provider filters this protocol.'),
 			dns: _('The server\'s name is not found in DNS.'),
+			nodev: _('The engine did not start: its tunnel device is missing. See the router\'s log.'),
+			notun: _('The engine cannot make its tunnel: the kernel module kmod-tun is missing (apk add kmod-tun).'),
 			udp: _('The server works over UDP: the router cannot tell from here whether the provider blocks it.')
 		};
 		const items = [ E('div', {}, V[d.verdict] || '') ];

@@ -808,6 +808,12 @@ msgstr "Сервер отвечает, но само подключение не
 msgid "The server's name is not found in DNS."
 msgstr "Имя сервера не находится в DNS."
 
+msgid "The engine did not start: its tunnel device is missing. See the router's log."
+msgstr "Движок не запустился: нет его туннельного устройства. Подробности в журнале роутера."
+
+msgid "The engine cannot make its tunnel: the kernel module kmod-tun is missing (apk add kmod-tun)."
+msgstr "Движок не может создать туннель: нет модуля ядра kmod-tun (apk add kmod-tun)."
+
 msgid "The server works over UDP: the router cannot tell from here whether the provider blocks it."
 msgstr "Сервер работает по UDP: отсюда роутер не может понять, блокирует ли его провайдер."
 

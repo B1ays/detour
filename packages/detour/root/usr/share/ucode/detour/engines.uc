@@ -225,6 +225,9 @@ export function prepare() {
 	for (let e in list()) {
 		if (!e.enabled) continue;
 		if (!e.installed) { push(errors, sprintf('engine %s: %s is not installed', e.name, BIN[e.type])); continue; }
+		// both engines make their device through /dev/net/tun: without kmod-tun (xray-core does not pull it in,
+		// sing-box does) the engine starts and the exit never comes up
+		if (!fs.access('/dev/net/tun')) { push(errors, sprintf('engine %s: no /dev/net/tun (apk add kmod-tun)', e.name)); continue; }
 		const r = render(e);
 		if (r.error) { push(errors, sprintf('engine %s: %s', e.name, r.error)); continue; }
 		const f = sprintf('%s/%s.json', DIR, e.name);
