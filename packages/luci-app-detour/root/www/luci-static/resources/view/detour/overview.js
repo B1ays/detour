@@ -1,5 +1,6 @@
 'use strict';
 'require view';
+'require detour.load as pdata';
 'require rpc';
 'require ui';
 'require poll';
@@ -59,7 +60,7 @@ function fmtTime(ts) {
 
 return view.extend({
 	load: function() {
-		return Promise.all([ callStatus().catch(function() { return null; }), L.resolveDefault(uci.load('detour'), null) ]).then(function(r) { return r[0]; });
+		return pdata.all({ status: callStatus().catch(function() { return null; }), cfg: L.resolveDefault(uci.load('detour'), null) }).then(function(r) { return r.status; });
 	},
 
 	// names people gave to exits and policies (internal names otherwise)

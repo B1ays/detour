@@ -1,5 +1,6 @@
 'use strict';
 'require view';
+'require detour.load as pdata';
 'require form';
 'require uci';
 'require rpc';
@@ -39,7 +40,7 @@ const CheckList = form.MultiValue.extend({
 
 return view.extend({
 	load: function() {
-		return Promise.all([ uci.load('detour'), L.resolveDefault(callStatus(), {}) ]);
+		return pdata.all({ cfg: uci.load('detour'), status: L.resolveDefault(callStatus(), {}) });
 	},
 
 	// "Log": the level (set at once through the daemon: verbose ends by itself after 24 h) and the archive of logs
@@ -123,7 +124,7 @@ return view.extend({
 		o.value('off', _('Not managed (provider DNS)'));
 		o.value('tunnel', _('Through the tunnel'));
 		// encrypted needs dnsproxy (dnsmasq itself does not encrypt): not offered without it
-		const hasProxy = !!(data[1] || {}).dnsproxy;
+		const hasProxy = !!(data.status || {}).dnsproxy;
 		o.value('encrypted', hasProxy ? _('Encrypted (DoH/DoT/DoQ), directly') : _('Encrypted (DoH/DoT/DoQ) - install the dnsproxy package first'));
 		o.default = 'off';
 		o.validate = function(section_id, v) { return (v != 'encrypted' || hasProxy) ? true : _('Encrypted DNS needs the dnsproxy package'); };
@@ -182,7 +183,7 @@ return view.extend({
 		s = m.section(form.NamedSection, 'main', 'main', _('Detour logs'),
 			_('The verbose level is only for diagnosing the system. It switches itself off after 24 hours.'));
 		o = s.option(form.DummyValue, '_log', _('Detour log level'));
-		o.renderWidget = function() { return self.logInfo((data[1] || {}).log); };
+		o.renderWidget = function() { return self.logInfo((data.status || {}).log); };
 
 		// detour.css: the last field of a card must not touch its bottom (Argon gives the node no padding)
 		return m.render().then(function(node) {

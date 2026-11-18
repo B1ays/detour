@@ -1,5 +1,6 @@
 'use strict';
 'require view';
+'require detour.load as pdata';
 'require rpc';
 'require ui';
 'require uci';
@@ -85,7 +86,7 @@ const VERDICT = {
 
 return view.extend({
 	load: function() {
-		return Promise.all([ uci.load('detour'), L.resolveDefault(callLeases(), {}), L.resolveDefault(callStatus(), {}) ]);
+		return pdata.all({ cfg: uci.load('detour'), leases: L.resolveDefault(callLeases(), {}), status: L.resolveDefault(callStatus(), {}) });
 	},
 
 	// one click after the check: the site (or address) goes to a VPN policy, to the "Directly" one, or is blocked
@@ -113,8 +114,8 @@ return view.extend({
 
 	render: function(data) {
 		const self = this;
-		const leases = (data[1] || {}).dhcp_leases || [];
-		const st = data[2] || {};
+		const leases = (data.leases || {}).dhcp_leases || [];
+		const st = data.status || {};
 		const target = E('input', { 'class': 'cbi-input-text', 'placeholder': 'youtube.com / https://example.org/page / 203.0.113.5' });
 		const dev = E('select', { 'class': 'cbi-input-select' }, [ E('option', { 'value': '' }, _('any device')) ].concat(leases.map(function(l) {
 			return E('option', { 'value': l.macaddr }, (l.hostname ? l.hostname + ' ' : '') + '(' + l.ipaddr + ')');

@@ -1,5 +1,6 @@
 'use strict';
 'require view';
+'require detour.load as pdata';
 'require rpc';
 'require poll';
 'require dom';
@@ -42,7 +43,7 @@ return view.extend({
 	period: 'day',
 
 	load: function() {
-		return Promise.all([ callTraffic(this.period).catch(function() { return null; }), callHints().catch(function() { return {}; }), uci.load('detour') ]);
+		return pdata.all({ traffic: callTraffic(this.period).catch(function() { return null; }), hints: callHints().catch(function() { return {}; }), cfg: uci.load('detour') });
 	},
 
 	devName: function(mac) {
@@ -173,7 +174,7 @@ return view.extend({
 
 	render: function(data) {
 		const self = this;
-		this.hints = data[1] || {};
+		this.hints = data.hints || {};
 		const tabs = E('div', { 'class': 'detour-period' }, PERIODS.map(function(p) {
 			return E('button', { 'class': 'btn' + (p[0] == self.period ? ' cbi-button-action' : ''), 'data-period': p[0], 'click': function() { return self.show(p[0]); } }, p[1]);
 		}));
@@ -183,7 +184,7 @@ return view.extend({
 			E('h2', {}, _('Traffic')),
 			E('div', { 'class': 'cbi-map-descr' }, _('How much each device downloaded and uploaded, and how much of it went through the VPN. Counted every 5 minutes; kept for a year.')),
 			tabs,
-			E('div', { 'id': 'detour-traffic' }, this.body(data[0]))
+			E('div', { 'id': 'detour-traffic' }, this.body(data.traffic))
 		]);
 	},
 

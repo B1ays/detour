@@ -1,5 +1,6 @@
 'use strict';
 'require view';
+'require detour.load as pdata';
 'require rpc';
 'require ui';
 'require uci';
@@ -82,12 +83,12 @@ function goesText(r) {
 
 return view.extend({
 	load: function() {
-		return Promise.all([
-			callDevices().catch(function() { return null; }),
-			callTraffic('day').catch(function() { return null; }),
-			callLog('').catch(function() { return {}; }),
-			uci.load('detour'), uci.load('dhcp')
-		]);
+		return pdata.all({
+			devices: callDevices().catch(function() { return null; }),
+			traffic: callTraffic('day').catch(function() { return null; }),
+			log: callLog('').catch(function() { return {}; }),
+			cfg: uci.load('detour'), dhcp: uci.load('dhcp')
+		});
 	},
 
 	modeSelect: function(d) {
@@ -230,19 +231,19 @@ return view.extend({
 
 	render: function(data) {
 		const self = this;
-		if (!data[0]) return E('div', { 'class': 'alert-message warning' }, _('The Detour service is not running.'));
-		const box = E('div', { 'id': 'detour-devices' }, this.cards(data[0].devices || [], data[1]));
+		if (!data.devices) return E('div', { 'class': 'alert-message warning' }, _('The Detour service is not running.'));
+		const box = E('div', { 'id': 'detour-devices' }, this.cards(data.devices.devices || [], data.traffic));
 		poll.add(function() {
 			// a page with an open select or a dialog stays as it is
 			if (document.querySelector('.modal') && document.body.classList.contains('modal-overlay-active')) return;
 			if (document.activeElement && document.activeElement.tagName == 'SELECT') return;
-			return Promise.all([ callDevices(), callTraffic('day') ]).then(function(r) { if (r[0]) dom.content(box, self.cards(r[0].devices || [], r[1])); });
+			return pdata.all({ devices: callDevices(), traffic: callTraffic('day') }).then(function(r) { if (r.devices) dom.content(box, self.cards(r.devices.devices || [], r.traffic)); });
 		}, 30);
 		return E('div', {}, [
 			css(),
 			E('h2', {}, _('Devices')),
 			E('div', { 'class': 'cbi-map-descr' }, _('The devices of your home network. For each: whether it is online, how it is connected, how much it downloaded today, where its internet goes, and what it asks for.')),
-			(data[2] || {}).available === false ? pkg.offer('tcpdump', _('The DNS log needs tcpdump.')) : '',
+			(data.log || {}).available === false ? pkg.offer('tcpdump', _('The DNS log needs tcpdump.')) : '',
 			E('div', { 'class': 'cbi-section' }, box)
 		]);
 	},

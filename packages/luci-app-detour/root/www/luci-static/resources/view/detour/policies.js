@@ -1,5 +1,6 @@
 'use strict';
 'require view';
+'require detour.load as pdata';
 'require rpc';
 'require ui';
 'require uci';
@@ -82,21 +83,21 @@ const RE_DOM = /^[a-z0-9_]([a-z0-9_.-]*[a-z0-9])?\.([a-z]{2,}|xn--[a-z0-9-]*[a-z
 
 return view.extend({
 	load: function() {
-		return Promise.all([ uci.load('detour'), L.resolveDefault(callStatus(), {}), L.resolveDefault(callHints(), {}),
-			L.resolveDefault(callLeases(), {}), L.resolveDefault(uci.load('dhcp'), null), L.resolveDefault(uci.load('network'), null) ]).then(function(r) {
+		return pdata.all({ cfg: uci.load('detour'), status: L.resolveDefault(callStatus(), {}), hints: L.resolveDefault(callHints(), {}),
+			leases: L.resolveDefault(callLeases(), {}), dhcp: L.resolveDefault(uci.load('dhcp'), null), network: L.resolveDefault(uci.load('network'), null) }).then(function(r) {
 			// the devices of the home network: DHCP leases and reserved addresses (getHostHints also knows the
 			// router's tunnel and WAN neighbours), named from the lease, the reservation or the hints
-			const hints = r[2] || {}, lan = {};
+			const hints = r.hints || {}, lan = {};
 			const put = function(mac, name, ip) {
 				if (!mac || !RE_MAC.test(mac)) return;
 				const k = mac.toUpperCase(), h = lan[k] || (lan[k] = { name: null, ipaddrs: [] });
 				if (name && !h.name) h.name = name;
 				if (ip && h.ipaddrs.indexOf(ip) < 0) h.ipaddrs.push(ip);
 			};
-			((r[3] || {}).dhcp_leases || []).forEach(function(l) { put(l.macaddr, l.hostname, l.ipaddr); });
+			((r.leases || {}).dhcp_leases || []).forEach(function(l) { put(l.macaddr, l.hostname, l.ipaddr); });
 			uci.sections('dhcp', 'host').forEach(function(h) { arr(h.mac).forEach(function(m) { put(m, h.name, h.ip); }); });
 			Object.keys(lan).forEach(function(k) { const h = hints[k] || {}; if (!lan[k].name && h.name) lan[k].name = h.name; });
-			r[2] = lan;
+			r.hints = lan;   // the devices of the home network, named
 			return r;
 		});
 	},
@@ -357,8 +358,8 @@ return view.extend({
 
 	render: function(data) {
 		const self = this;
-		const st = data[1] || {};
-		const hints = data[2] || {};
+		const st = data.status || {};
+		const hints = data.hints || {};
 		const all = uci.sections('detour', 'policy');
 		return E('div', {}, [
 			E('link', { 'rel': 'stylesheet', 'href': L.resource('detour/detour.css') + '?v=' + encodeURIComponent(L.env.resource_version || '') }),

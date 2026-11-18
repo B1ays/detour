@@ -1,5 +1,6 @@
 'use strict';
 'require view';
+'require detour.load as pdata';
 'require rpc';
 'require ui';
 'require uci';
@@ -90,7 +91,7 @@ function applyUci() { return uci.save().then(function() { return ui.changes.appl
 
 return view.extend({
 	load: function() {
-		return Promise.all([ L.resolveDefault(callInfo(), { exits: [] }), L.resolveDefault(callStatus(), {}), uci.load('detour'), uci.load('network') ]);
+		return pdata.all({ info: L.resolveDefault(callInfo(), { exits: [] }), status: L.resolveDefault(callStatus(), {}), cfg: uci.load('detour'), network: uci.load('network') });
 	},
 
 	exitsBy: function(info) {
@@ -525,9 +526,9 @@ return view.extend({
 
 	render: function(data) {
 		const self = this;
-		const info = data[0] || { exits: [] };
+		const info = data.info || { exits: [] };
 		const subState = {};
-		((data[1] || {}).subscriptions || []).forEach(function(s) { subState[s.name] = s; });
+		((data.status || {}).subscriptions || []).forEach(function(s) { subState[s.name] = s; });
 		const by = this.exitsBy(info);
 		const plain = info.exits.filter(function(x) { return x.kind != 'subscription'; });
 		const subs = info.exits.filter(function(x) { return x.kind == 'subscription'; });

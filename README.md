@@ -357,6 +357,7 @@ sh tools/build-feed.sh
 The result is in `feed/`: the signed index `packages.adb`, the `*.apk` packages and the public key `detour-dev.pem`. The private signing key is kept outside the repository (its path is set by the `KEY` variable) and is created on the first build. `PKGS="detour luci-app-detour"` builds only those packages.
 
 - A package's version comes from its `control` (`version=0.1.0-rN`).
+- The build first runs `tools/check-ui.sh` on the LuCI pages: a page gets its data by name (`pdata.all({ status: … })` from `detour/load.js`), never by position (`data[1]`, `Promise.all`), and its syntax is checked where node is installed.
 - `xray-core` and `dnsproxy` download the official release of the version in `control` at build time and verify its SHA-256. Archives are cached in `build/`; binaries are not stored in git.
 - Translations are built from `po/*/*.po`, which needs `po2lmo` (built once by `tools/build-po2lmo.sh`).
 - The geo category catalogue is rebuilt with `python tools/geo-catalog.py packages/luci-app-detour/root/www/luci-static/resources/detour/geo-catalog.json`.

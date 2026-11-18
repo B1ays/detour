@@ -13,6 +13,8 @@ KEY=${KEY:-/root/detour-keys/detour-dev.key}
 OUT=${OUT:-$REPO/feed}
 APK=${APK:-$(command -v apk3 || command -v apk)}
 "$APK" --version | grep -q '^apk-tools 3' || { echo "need apk-tools 3"; exit 1; }
+# the LuCI views: data by name, not by position (and their syntax, where node is installed)
+sh "$REPO/tools/check-ui.sh" || exit 1
 
 if [ ! -f "$KEY" ]; then
 	mkdir -p "$(dirname "$KEY")"; umask 077

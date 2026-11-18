@@ -356,7 +356,7 @@ sh tools/build-feed.sh
 
 Результат в `feed/`: подписанный индекс `packages.adb`, пакеты `*.apk` и открытый ключ `detour-dev.pem`. Закрытый ключ подписи хранится вне репозитория (путь задаёт переменная `KEY`) и создаётся при первой сборке. `PKGS="detour luci-app-detour"` собирает только эти пакеты.
 
-- Версия пакета берётся из `control` (`version=0.1.0-rN`).
+- Сначала сборка запускает `tools/check-ui.sh` для страниц LuCI: страница получает данные по именам (`pdata.all({ status: … })` из `detour/load.js`), а не по номерам позиций (`data[1]`, `Promise.all`); где установлен node, проверяется и синтаксис.
 - `xray-core` и `dnsproxy` при сборке скачивают официальные релизы той версии, что указана в `control`, и сверяют SHA-256. Архивы кэшируются в `build/`, бинарники в git не хранятся.
 - Переводы собираются из `po/*/*.po`, для этого нужен `po2lmo` (один раз собирается `tools/build-po2lmo.sh`).
 - Каталог гео-категорий пересобирается командой `python tools/geo-catalog.py packages/luci-app-detour/root/www/luci-static/resources/detour/geo-catalog.json`.

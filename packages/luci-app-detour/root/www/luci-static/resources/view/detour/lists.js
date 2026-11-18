@@ -1,5 +1,6 @@
 'use strict';
 'require view';
+'require detour.load as pdata';
 'require rpc';
 'require ui';
 'require uci';
@@ -70,7 +71,7 @@ function policyLabel(n) {
 
 return view.extend({
 	load: function() {
-		return Promise.all([ uci.load('detour'), L.resolveDefault(callStatus(), {}) ]);
+		return pdata.all({ cfg: uci.load('detour'), status: L.resolveDefault(callStatus(), {}) });
 	},
 
 	renderList: function(l, st) {
@@ -267,12 +268,12 @@ return view.extend({
 			else origin.textContent = _('v2fly categories: built into this version (%s)').format(c.generated || '?');
 			draw();
 		};
-		Promise.all([
-			L.Request.get(L.resource('detour/geo-catalog.json') + '?v=' + encodeURIComponent(L.env.resource_version || '')).then(function(r) { return r.json(); }),
-			L.resolveDefault(callCatNames(), null)
-		]).then(function(r) {
-			built = r[0];
-			load(r[1]);
+		pdata.all({
+			built: L.Request.get(L.resource('detour/geo-catalog.json') + '?v=' + encodeURIComponent(L.env.resource_version || '')).then(function(r) { return r.json(); }),
+			names: L.resolveDefault(callCatNames(), null)
+		}).then(function(r) {
+			built = r.built;
+			load(r.names);
 			search.focus();
 		}).catch(function() { out.replaceChildren(E('em', {}, _('The catalogue is missing from this build.'))); });
 	},
@@ -280,8 +281,8 @@ return view.extend({
 	render: function(data) {
 		const self = this;
 		const st = {};
-		((data[1] || {}).lists || []).forEach(function(l) { st[l.name] = l; });
-		this.mem = (data[1] || {}).lists_memory || null;
+		((data.status || {}).lists || []).forEach(function(l) { st[l.name] = l; });
+		this.mem = (data.status || {}).lists_memory || null;
 		const m = this.mem;
 		const all = uci.sections('detour', 'list');
 		return E('div', {}, [
