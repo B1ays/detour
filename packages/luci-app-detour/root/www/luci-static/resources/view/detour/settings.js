@@ -14,10 +14,6 @@ const E = function(tag, attr, data) {
 };
 
 const callStatus = rpc.declare({ object: 'detour', method: 'status' });
-const callTunStatus = rpc.declare({ object: 'detour', method: 'sshtun_status' });
-const callTunKeygen = rpc.declare({ object: 'detour', method: 'sshtun_keygen' });
-const callTunTest = rpc.declare({ object: 'detour', method: 'sshtun_test' });
-const callTunForget = rpc.declare({ object: 'detour', method: 'sshtun_forget' });
 const callLogLevel = rpc.declare({ object: 'detour', method: 'log_level', params: [ 'level' ] });
 const callLogsArchive = rpc.declare({ object: 'detour', method: 'logs_archive' });
 
@@ -43,7 +39,7 @@ const CheckList = form.MultiValue.extend({
 
 return view.extend({
 	load: function() {
-		return Promise.all([ uci.load('detour'), L.resolveDefault(callTunStatus(), {}), L.resolveDefault(callStatus(), {}) ]);
+		return Promise.all([ uci.load('detour'), L.resolveDefault(callStatus(), {}) ]);
 	},
 
 	// "Log": the level (set at once through the daemon: verbose ends by itself after 24 h) and the archive of logs
@@ -87,39 +83,7 @@ return view.extend({
 		return E('div', {}, [ sel, state, E('div', { 'style': 'margin-top:.5em' }, [ bGet ]), box ]);
 	},
 
-	// "The panel through your own VPS": key, server key check, state (sshtun.uc / ssh-tunnel.sh in stock)
-	tunInfo: function(st) {
-		const box = E('div');
-		const info = E('div');
-		const show = function(t) {
-			t = t || {};
-			info.replaceChildren(
-				E('div', {}, [ E('strong', {}, (_('State:') + ' ')), !t.on ? _('switched off') : (t.connected ? _('connected') : (t.running ? _('connecting…') : _('not running (check the connection first)'))) ]),
-				t.target ? E('div', {}, [ E('strong', {}, (_('Leads to:') + ' ')), t.target, ' ', E('span', { 'class': 'cbi-value-description' }, (/:443$/.test(t.target) ? _('(LuCI over HTTPS: the VPS sees nothing)') : _('(LuCI over HTTP: the VPS can see the pages - enable HTTPS in uhttpd)'))) ]) : '',
-				t.pubkey ? E('div', {}, [ E('strong', {}, _('Router key - put it into ~/.ssh/authorized_keys of the user on the VPS:')), E('pre', { 'class': 'detour-key' }, t.pubkey) ]) : E('div', {}, _('No router key yet.')),
-				t.host_fp ? E('div', {}, [ E('strong', {}, (_('Server key:') + ' ')), E('code', {}, t.host_fp), E('div', { 'class': 'cbi-value-description' }, _('Compare with ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub on the VPS.')) ]) : '',
-				t.last ? E('div', { 'class': 'cbi-value-description' }, _('Last: %s').format(t.last)) : '');
-		};
-		const refresh = function() { return L.resolveDefault(callTunStatus(), {}).then(show); };
-		const act = function(btn, fn, okText) {
-			btn.disabled = true;
-			return fn().then(function(r) {
-				box.replaceChildren(E('div', { 'class': 'alert-message ' + ((!r || r.error) ? 'warning' : 'success') }, (!r) ? _('No answer from the router') : (r.error || okText(r))));
-				return refresh();
-			}).finally(function() { btn.disabled = false; });
-		};
-		const bKey = E('button', { 'class': 'btn cbi-button-action', 'click': function(ev) { ev.preventDefault(); return act(bKey, callTunKeygen, function() { return _('Key ready.'); }); } }, _('Create router key'));
-		const bTest = E('button', { 'class': 'btn cbi-button-action', 'click': function(ev) { ev.preventDefault(); return act(bTest, callTunTest, function(r) { return _('The VPS accepted the key and gave the port. Server key %s recorded; from now on it must not change.').format(r.host_fp || ''); }); } }, _('Check the connection'));
-		const bForget = E('button', { 'class': 'btn cbi-button-negative', 'click': function(ev) { ev.preventDefault();
-			if (!confirm(_('Forget the server key? The tunnel stops; the next check accepts whatever key the server shows.'))) return;
-			return act(bForget, callTunForget, function() { return _('Server key forgotten.'); }); } }, _('Forget the server key'));
-		show(st);
-		return E('div', {}, [ info, E('div', { 'style': 'margin-top:.5em' }, [ bKey, ' ', bTest, ' ', bForget ]), box,
-			E('div', { 'class': 'cbi-value-description' }, _('Save the settings above before checking.')) ]);
-	},
-
 	render: function(data) {
-		const tunStatus = data[1];
 		const self = this;
 		const m = new form.Map('detour', _('Detour settings'));
 
@@ -218,33 +182,10 @@ return view.extend({
 		o.optional = true;
 		o.validate = function(section_id, v) { return (!v || /^https?:\/\/[^\s]+$/.test(v)) ? true : _('http(s) address'); };
 
-		if (!uci.get('detour', 'sshtun')) uci.add('detour', 'sshtun', 'sshtun');
-		s = m.section(form.NamedSection, 'sshtun', 'sshtun', _('The panel through your own VPS (SSH)'),
-			_('Open LuCI from outside without a public address and without opening ports: the router itself connects to your server ' +
-			  'over SSH and holds a port there that leads to LuCI at home. The connection always goes directly, around the policies. ' +
-			  'Then open https://127.0.0.1:PORT through ssh -L on your computer, or https://VPS:PORT when the port is public (PORT is the port on the VPS below).'));
-		o = s.option(form.Flag, 'enabled', _('Enabled'));
-		o = s.option(form.Value, 'host', _('Server'));
-		o.datatype = 'host';
-		o.placeholder = 'vps.example.com';
-		o = s.option(form.Value, 'port', _('SSH port'));
-		o.datatype = 'port';
-		o.placeholder = '22';
-		o = s.option(form.Value, 'user', _('User'));
-		o.placeholder = 'tunnel';
-		o.validate = function(section_id, v) { return (!v || /^[A-Za-z0-9._-]+$/.test(v)) ? true : _('Letters, digits, . _ -'); };
-		o = s.option(form.Value, 'rport', _('Port on the VPS'));
-		o.datatype = 'port';
-		o.placeholder = '18443';
-		o = s.option(form.Flag, 'public', _('Listen on all addresses of the VPS'),
-			_('Otherwise only on 127.0.0.1 of the VPS (reach it with ssh -L). Needs GatewayPorts clientspecified in sshd_config.'));
-		o = s.option(form.DummyValue, '_tun', _('Key and state'));
-		o.renderWidget = function() { return self.tunInfo(tunStatus); };
-
 		s = m.section(form.NamedSection, 'main', 'main', _('Detour logs'),
 			_('The verbose level is only for diagnosing the system. It switches itself off after 24 hours.'));
 		o = s.option(form.DummyValue, '_log', _('Detour log level'));
-		o.renderWidget = function() { return self.logInfo((data[2] || {}).log); };
+		o.renderWidget = function() { return self.logInfo((data[1] || {}).log); };
 
 		// detour.css: the last field of a card must not touch its bottom (Argon gives the node no padding)
 		return m.render().then(function(node) {

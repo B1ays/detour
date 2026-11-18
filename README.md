@@ -60,7 +60,7 @@ Detour ships as regular OpenWrt packages (`apk`) plus a section in the LuCI web 
 **Other**
 - The router's own DNS: through a tunnel with an encrypted fallback (DoH/DoT/DoQ), or always encrypted.
 - Telegram notifications (9 event types) in English or Russian, queued while the API is unreachable.
-- Access to the panel through your own VPS (reverse SSH tunnel).
+- Other programs' traffic can be left out of every policy (`bypass_user`).
 - Encrypted settings backup with a restore preview and rollback.
 - LuCI login protection with two-factor authentication (`luci-plugin-2fa`).
 - English and Russian interface.
@@ -164,7 +164,7 @@ On install and upgrade the package scripts set up cron jobs, reload the rules in
 | **Lists** | Large lists, ready-made categories and the catalogue. |
 | **Exits** | Exits and subscriptions: check, speed, export, editing. |
 | **Add exit** | An exit from a link, key or file; WARP registration. |
-| **Settings** | Check frequency, router DNS, Telegram, access through a VPS. |
+| **Settings** | Check frequency, router DNS, Telegram, logs. |
 | **Site check** | Where an address goes and why, whether it opens. |
 | **Traffic** | Statistics per device and per exit. |
 | **Backup** | Saving and restoring Detour's settings. |
@@ -190,6 +190,7 @@ config main 'main'
 	option dns 'tunnel'           # router DNS: off | tunnel | encrypted
 	option dns_policy 'vpn'       # policy carrying the router's DNS (tunnel mode)
 	option fw_mask '0x00ffff00'   # packet mark bits (policy + exit); change when pbr or mwan3 uses them
+	list bypass_user 'myapp'      # system users whose traffic no policy takes (other packages add their own)
 
 # WireGuard exit: the tunnel itself is in /etc/config/network (interface wg_pl)
 config exit 'pl'
@@ -283,7 +284,6 @@ detour warp-unregister <name>
 
 detour backup <file> <password file>
 detour restore <file> <password file> [--apply]
-detour sshtun keygen|pubkey|test|forget|status
 
 detour fw-start | fw-stop
 detour purge                      # remove every trace of Detour from nft, ip rule, routes
@@ -319,7 +319,7 @@ The daemon is also available over ubus: `ubus call detour status`.
 | `/etc/init.d/detour` | The `detourd` daemon, sing-box/Xray engines, `dnsproxy`. |
 | `/usr/sbin/detourd` | Daemon: exit checks, exit choice, events, notifications, the `detour` ubus object. Long actions run in the background without stopping the checks. |
 | `/usr/sbin/detour` | Command line. |
-| `/usr/libexec/detour/` | `fw` (routing only), `lists-update`, `sub-update`, `site-explain`, `sshtun`, `watchdog`, `warp-i1`. |
+| `/usr/libexec/detour/` | `fw` (routing only), `lists-update`, `sub-update`, `site-explain`, `watchdog`, `warp-i1`. |
 | `/usr/share/ucode/detour/` | ucode modules: settings (`core`), nft table (`nft`), routes (`net`), DNS (`dns`), engines (`engines`), links (`links`), WireGuard (`wgconf`), subscriptions (`subs`), WARP (`warp`, `warppick`), lists and memory (`listmem`), devices, traffic, site check, backups, notifications, login protection. |
 
 Cron jobs: the daemon watchdog every 2 minutes, list updates nightly, subscription updates hourly (each on its own schedule).
@@ -329,7 +329,7 @@ Cron jobs: the daemon watchdog every 2 minutes, list updates nightly, subscripti
 | Path | Contents | Survives reboot |
 |---|---|---|
 | `/etc/config/detour` | All settings (UCI). | yes, and sysupgrade |
-| `/etc/detour/` | Proxy exit configs, WARP registrations, VPS tunnel keys, list snapshots, traffic history, the settings saved before a restore. | yes, and sysupgrade |
+| `/etc/detour/` | Proxy exit configs, WARP registrations, list snapshots, traffic history, the settings saved before a restore. | yes, and sysupgrade |
 | `/tmp/detour/` | Live state, list data, generated engine configs, notification queue. | no |
 
 Secrets (keys, passwords, the bot token, subscription URLs) are stored in files with mode 600 and never appear on process command lines, in the log or on LuCI pages.

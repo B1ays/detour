@@ -191,7 +191,7 @@ export function render(cfg, active, opts) {
 	// 9. router's own traffic (type route: routing is redone after the mark change)
 	add(sprintf('add rule %s output meta mark & %s != 0 return comment "underlay 0x10000000 + nfqws 0x40000000"', T, hex(M_SKIP)));
 	for (let u in opts.skip_uid ?? [])
-		add(sprintf('add rule %s output meta skuid %d return comment "always direct (DNS fallback, notifications)"', T, u));
+		add(sprintf('add rule %s output meta skuid %d return comment "always direct (DNS fallback, notifications, bypass_user)"', T, u));
 	// sockets bound to an exit device (health probes, notifications via a tunnel) already chose their path
 	add(sprintf('add rule %s output oifname @exit_devs return comment "bound to an exit device"', T));
 	add(sprintf('add rule %s output meta mark & %s != 0 return', T, hex(K.both)));

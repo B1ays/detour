@@ -5,7 +5,6 @@
 			"ubus": {
 				"detour": [
 					"status",
-					"sshtun_status",
 					"exits_info",
 					"sub_state",
 					"traffic",
@@ -69,9 +68,6 @@
 					"backup_restore",
 					"lists_update",
 					"sub_update",
-					"sshtun_keygen",
-					"sshtun_test",
-					"sshtun_forget",
 					"exit_check",
 					"sub_check",
 					"exit_remove",

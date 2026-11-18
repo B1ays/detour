@@ -334,9 +334,6 @@ msgstr[0] "%d регистрация WARP"
 msgstr[1] "%d регистрации WARP"
 msgstr[2] "%d регистраций WARP"
 
-msgid "the panel tunnel key"
-msgstr "ключ туннеля к панели"
-
 msgid "traffic history: %d month"
 msgid_plural "traffic history: %d months"
 msgstr[0] "история трафика: %d месяц"
@@ -1294,9 +1291,6 @@ msgstr "Ошибка"
 msgid "Switch the VPN off?\n\nAll traffic will go directly through your provider - also the sites, devices and lists of your policies. Nothing is blocked while it is off: the kill-switch is off too."
 msgstr "Выключить VPN?\n\nВесь трафик пойдёт напрямую через провайдера — в том числе сайты, устройства и списки ваших политик. Пока VPN выключен, ничего не блокируется: kill-switch тоже выключен."
 
-msgid "The panel through your VPS stops too: if you are connected through it now, you lose this page."
-msgstr "Панель через ваш VPS тоже остановится: если вы сейчас зашли через неё, эта страница станет недоступна."
-
 msgid "VPN is on"
 msgstr "VPN включён"
 
@@ -1798,66 +1792,6 @@ msgstr "Сохранено: %s (%s)."
 msgid "Download the logs (.tar.gz)"
 msgstr "Скачать логи (.tar.gz)"
 
-msgid "State:"
-msgstr "Состояние:"
-
-msgid "connected"
-msgstr "подключено"
-
-msgid "connecting…"
-msgstr "подключается…"
-
-msgid "not running (check the connection first)"
-msgstr "не запущено (сначала проверьте подключение)"
-
-msgid "Leads to:"
-msgstr "Ведёт на:"
-
-msgid "(LuCI over HTTPS: the VPS sees nothing)"
-msgstr "(LuCI по HTTPS: VPS ничего не видит)"
-
-msgid "(LuCI over HTTP: the VPS can see the pages - enable HTTPS in uhttpd)"
-msgstr "(LuCI по HTTP: VPS может видеть страницы — включите HTTPS в uhttpd)"
-
-msgid "Router key - put it into ~/.ssh/authorized_keys of the user on the VPS:"
-msgstr "Ключ роутера — добавьте его в ~/.ssh/authorized_keys пользователя на VPS:"
-
-msgid "No router key yet."
-msgstr "Ключа роутера пока нет."
-
-msgid "Server key:"
-msgstr "Ключ сервера:"
-
-msgid "Compare with ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub on the VPS."
-msgstr "Сверьте с выводом ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub на VPS."
-
-msgid "Last: %s"
-msgstr "Последнее: %s"
-
-msgid "Key ready."
-msgstr "Ключ создан."
-
-msgid "Create router key"
-msgstr "Создать ключ роутера"
-
-msgid "The VPS accepted the key and gave the port. Server key %s recorded; from now on it must not change."
-msgstr "VPS принял ключ и выделил порт. Ключ сервера %s запомнен; дальше он не должен меняться."
-
-msgid "Check the connection"
-msgstr "Проверить подключение"
-
-msgid "Forget the server key? The tunnel stops; the next check accepts whatever key the server shows."
-msgstr "Забыть ключ сервера? Туннель остановится; при следующей проверке будет принят тот ключ, который покажет сервер."
-
-msgid "Server key forgotten."
-msgstr "Ключ сервера забыт."
-
-msgid "Forget the server key"
-msgstr "Забыть ключ сервера"
-
-msgid "Save the settings above before checking."
-msgstr "Перед проверкой сохраните настройки выше."
-
 msgid "Detour settings"
 msgstr "Настройки Detour"
 
@@ -1992,33 +1926,6 @@ msgstr "Только если api.telegram.org у вас заблокирова�
 
 msgid "http(s) address"
 msgstr "адрес http(s)"
-
-msgid "The panel through your own VPS (SSH)"
-msgstr "Панель через свой VPS (SSH)"
-
-msgid "Open LuCI from outside without a public address and without opening ports: the router itself connects to your server over SSH and holds a port there that leads to LuCI at home. The connection always goes directly, around the policies. Then open https://127.0.0.1:PORT through ssh -L on your computer, or https://VPS:PORT when the port is public (PORT is the port on the VPS below)."
-msgstr "Открывайте LuCI снаружи без белого адреса и без проброса портов: роутер сам подключается к вашему серверу по SSH и держит на нём порт, который ведёт на LuCI дома. Соединение всегда идёт напрямую, мимо политик. Затем откройте https://127.0.0.1:ПОРТ через ssh -L на своём компьютере или https://VPS:ПОРТ, если порт открыт для всех (ПОРТ — порт на VPS ниже)."
-
-msgid "SSH port"
-msgstr "Порт SSH"
-
-msgid "User"
-msgstr "Пользователь"
-
-msgid "Letters, digits, . _ -"
-msgstr "Буквы, цифры, . _ -"
-
-msgid "Port on the VPS"
-msgstr "Порт на VPS"
-
-msgid "Listen on all addresses of the VPS"
-msgstr "Слушать на всех адресах VPS"
-
-msgid "Otherwise only on 127.0.0.1 of the VPS (reach it with ssh -L). Needs GatewayPorts clientspecified in sshd_config."
-msgstr "Иначе только на 127.0.0.1 VPS (доступ через ssh -L). Нужно GatewayPorts clientspecified в sshd_config."
-
-msgid "Key and state"
-msgstr "Ключ и состояние"
 
 msgid "Detour logs"
 msgstr "Логи Detour"
@@ -2265,9 +2172,6 @@ msgstr "изменение выхода"
 
 msgid "another server for an exit"
 msgstr "другой сервер для выхода"
-
-msgid "panel through a VPS"
-msgstr "панель через VPS"
 
 msgid "collect the logs"
 msgstr "собрать журналы"

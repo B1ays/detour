@@ -95,7 +95,6 @@ for z in $(cut -d' ' -f1 /tmp/t13.zones); do
 done
 same /tmp/t13.files /tmp/t13.n4 && ok "files of /etc/detour are as they were" || bad "files differ: $(delta /tmp/t13.files /tmp/t13.n4)"
 [ ! -e /etc/detour/junk.txt ] && ok "a stray file is gone" || bad "junk.txt stays"
-[ "$(ls -l /etc/detour/sshtun/id_ed25519 2>/dev/null | awk '{print $3}')" = dtssh ] && ok "the panel tunnel key belongs to dtssh" || bad "sshtun owner: $(ls -l /etc/detour/sshtun)"
 [ -n "$H0" ] || bad "no exit was healthy before the test"
 waitfor x "covers" 120 && ok "the exits work again: $H0" || bad "healthy: $(healthy), before: $H0"
 [ -s /etc/detour/before-restore.bin ] && ok "the previous settings were saved" || bad "no before-restore file"

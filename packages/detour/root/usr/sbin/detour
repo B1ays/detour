@@ -162,26 +162,6 @@ case 'lists-mem': {
 	printf('%.J
 ', listmem.budget()); exit(0);
 }
-case 'sshtun': {
-	// detour sshtun keygen|pubkey|test|forget|status - the panel tunnel to a VPS (/usr/libexec/detour/sshtun)
-	const v = ARGV[1];
-	if (index([ 'keygen', 'pubkey', 'test', 'forget', 'status' ], v) < 0) { warn('usage: detour sshtun keygen|pubkey|test|forget|status
-'); exit(2); }
-	const st = () => { try { return json(core.run('/bin/sh /usr/libexec/detour/sshtun status').out); } catch (e) { return {}; } };
-	if (v == 'status') { printf('%.J
-', st()); exit(0); }
-	const r = core.run('/bin/sh /usr/libexec/detour/sshtun ' + v + ' 2>&1');
-	const out = trim(r.out);
-	let res;
-	if (v == 'test') res = (out == 'ok') ? { ok: true, host_fp: st().host_fp } : { error: out };
-	else if (v == 'keygen' || v == 'pubkey') res = (r.code == 0 && length(out)) ? { pubkey: out } : { error: out || 'no key' };
-	else res = { ok: true, message: out };
-	// the tunnel instance starts only once the server key is known (test) and stops when it is forgotten
-	if ((v == 'test' && res.ok) || v == 'forget') core.run('/etc/init.d/detour start');
-	printf('%.J
-', res);
-	exit(res.error ? 1 : 0);
-}
 case 'exit-info': printf('%.J\n', exitui.info()); break;
 case 'logs-archive': {
 	// detour logs-archive: everything for a diagnosis in one .tar.gz (logs.uc), secrets masked

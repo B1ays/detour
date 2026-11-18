@@ -774,7 +774,7 @@ function rates() {
 const S = { ubus_rpc_session: '' };
 // every call into the verbose log (status and the other read-only polls of the pages too: a page left open
 // would fill the log with them, so those are left out)
-const QUIET = { status: true, exits_info: true, traffic: true, rates: true, devices: true, sshtun_status: true, dns_log: true, sub_state: true, pkg_job: true, catalog_names: true };
+const QUIET = { status: true, exits_info: true, traffic: true, rates: true, devices: true, dns_log: true, sub_state: true, pkg_job: true, catalog_names: true };
 // (a function of its own per method: a closure made in the loop would see the loop's last name)
 function logged_call(name, call) {
 	return function(req) {
@@ -842,10 +842,6 @@ conn.publish('detour', logged({
 	rates:           { call: () => rates(), args: { ...S } },
 	traffic:         { call: (req) => traffic.report(index([ 'day', 'days3', 'week', 'month', 'year' ], req.args.period) >= 0 ? req.args.period : 'day'), args: { period: '', ...S } },
 	exit_set_via:    { call: (req) => cli_job(req, [ 'exit-set-via', req.args.name, length(req.args.via ?? '') ? req.args.via : '-' ], true), args: { name: '', via: '', ...S } },
-	sshtun_status:   { call: () => { try { return json(core.run('/bin/sh /usr/libexec/detour/sshtun status').out); } catch (e) { return { error: 'no status' }; } }, args: { ...S } },
-	sshtun_keygen:   { call: (req) => cli_job(req, [ 'sshtun', 'keygen' ]), args: { ...S } },
-	sshtun_test:     { call: (req) => cli_job(req, [ 'sshtun', 'test' ]), args: { ...S } },
-	sshtun_forget:   { call: (req) => cli_job(req, [ 'sshtun', 'forget' ]), args: { ...S } },
 	// LuCI "Components": the packages Detour uses; an action runs detached (see pkgs.uc), LuCI follows pkg_job
 	pkg_list:        { call: () => pkgs.list(), args: { ...S } },
 	pkg_job:         { call: () => ({ job: pkgs.job() }), args: { ...S } },

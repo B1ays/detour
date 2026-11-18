@@ -83,9 +83,7 @@ return view.extend({
 		const box = E('input', { 'type': 'checkbox', 'checked': on ? '' : null });
 		box.addEventListener('change', function() {
 			if (!box.checked) {
-				let t = _('Switch the VPN off?\n\nAll traffic will go directly through your provider - also the sites, devices and lists of your policies. Nothing is blocked while it is off: the kill-switch is off too.');
-				if (uci.get('detour', 'sshtun', 'enabled') == '1')
-					t += '\n\n' + _('The panel through your VPS stops too: if you are connected through it now, you lose this page.');
+				const t = _('Switch the VPN off?\n\nAll traffic will go directly through your provider - also the sites, devices and lists of your policies. Nothing is blocked while it is off: the kill-switch is off too.');
 				if (!confirm(t)) { box.checked = true; return; }
 			}
 			uci.set('detour', 'main', 'enabled', box.checked ? '1' : '0');

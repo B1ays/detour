@@ -152,7 +152,6 @@ return view.extend({
 					N_(b.devices || 0, '%d device name', '%d device names').format(b.devices || 0),
 					b.notify ? _('Telegram notifications') : null,
 					b.warp ? N_(b.warp, '%d WARP registration', '%d WARP registrations').format(b.warp) : null,
-					b.panel_tunnel_key ? _('the panel tunnel key') : null,
 					(b.traffic_months || []).length ? N_(b.traffic_months.length, 'traffic history: %d month', 'traffic history: %d months').format(b.traffic_months.length) : null
 				].filter(function(x) { return x; }).join(', ') ]),
 				E('div', { 'class': 'detour-muted', 'style': 'margin-top:.5em' }, _('What is on the router now goes away - exits: %s; policies: %s; lists: %s. Device names the router already has stay.').format(names(now.exits), names(now.policies), names(now.lists)))

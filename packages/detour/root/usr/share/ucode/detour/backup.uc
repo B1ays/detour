@@ -1,7 +1,7 @@
 // Backup and restore of Detour's own settings (LuCI "Add" -> "Backup", CLI "detour backup|restore").
 //
-// What is Detour's: /etc/config/detour, the files in /etc/detour (engines' outbounds, WARP registrations, the
-// panel tunnel's key, list snapshots and local parts, pins, traffic history), the netifd interfaces of the
+// What is Detour's: /etc/config/detour, the files in /etc/detour (engines' outbounds, WARP registrations,
+// list snapshots and local parts, pins, traffic history), the netifd interfaces of the
 // exits with their WireGuard/AmneziaWG peers, the exits' membership in the VPN firewall zone, and the DHCP
 // reservations / names of the devices (the policies and the Devices page name devices by MAC).
 // Never whole network/firewall/dhcp files: a restore must not touch LAN, WAN or anything else of the router.
@@ -241,7 +241,6 @@ export function preview(o) {
 			subscriptions: length(labels(b, 'subscription')),
 			notify: notify && (notify.tg_chat || notify.tg_token) ? 'Telegram' : null,
 			devices: length(o.hosts), traffic_months: sort(files),
-			panel_tunnel_key: !!fs.access(o.dir + '/files/sshtun/id_ed25519'),
 			warp: length(fs.glob(o.dir + '/files/warp/*.json') ?? []),
 		},
 		replaced: { exits: labels(c, 'exit'), policies: labels(c, 'policy'), lists: labels(c, 'list') },
@@ -323,7 +322,7 @@ export function apply(o, pwfile) {
 	run(sprintf('rm -f %s/ruleset.good %s/dom.save', PERSIST, PERSIST));   // they describe the old rules
 	run(sprintf('cd %s/files && for f in * .[!.]*; do [ -e "$f" ] && [ "$f" != traffic ] && cp -a "$f" %s/; done', src, PERSIST));
 	merge_traffic(src + '/files/traffic');
-	run(sprintf('chown -R dtssh %s/sshtun 2>/dev/null; chmod -R go-rwx %s/sshtun %s/engines %s/warp 2>/dev/null', PERSIST, PERSIST, PERSIST, PERSIST));
+	run(sprintf('chmod -R go-rwx %s/engines %s/warp 2>/dev/null', PERSIST, PERSIST));
 
 	// 5. the config itself, migrated to this version; the LAN bridge is this router's, not the backup's
 	const lan_dev = cursor().get('detour', 'main', 'lan_dev');

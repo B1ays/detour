@@ -41,13 +41,17 @@ export function active_map(cfg, fresh) {
 
 export function save_active(m) { fs.mkdir(core.RUN); core.write_json(ACTIVE, m); };
 
-// system users whose traffic always goes direct (never classified): the DNS fallback resolver and
-// the direct attempt of notifications ("VPN is down" must not run into the dead tunnel), the panel tunnel
+// system users whose traffic always goes direct (never classified): the DNS fallback resolver, the direct
+// attempt of notifications ("VPN is down" must not run into the dead tunnel), and whoever main.bypass_user
+// names - other packages put their own users there (owrt-extras vps-panel: its tunnel to the VPS)
 export function skip_uid(cfg) {
 	const out = [];
-	if ((cfg.main.dns == 'tunnel' || cfg.main.dns == 'encrypted') && core.uid_of('dnsproxy') != null) push(out, core.uid_of('dnsproxy'));
-	if (core.uid_of('dtnotify') != null) push(out, core.uid_of('dtnotify'));
-	if (core.uid_of('dtssh') != null) push(out, core.uid_of('dtssh'));   // the panel tunnel to a VPS (sshtun)
+	const add = (u) => { const id = core.uid_of(u); if (id != null && index(out, id) < 0) push(out, id); };
+	if (cfg.main.dns == 'tunnel' || cfg.main.dns == 'encrypted') add('dnsproxy');
+	add('dtnotify');
+	let extra = cursor().get('detour', 'main', 'bypass_user') ?? [];
+	if (type(extra) != 'array') extra = split(trim(extra), /[ \t]+/);
+	for (let u in extra) if (match(u, /^[a-z_][a-z0-9_-]*$/)) add(u);
 	return out;
 };
 
