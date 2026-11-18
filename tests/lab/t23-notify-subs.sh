@@ -16,12 +16,14 @@ cleanup() {
 	for s in usub usub_sub usub_sub_eng l_bad; do uci -q delete detour.$s; done
 	uci -q delete network.usub_sub; for z in vpn detour; do uci -q del_list firewall.$z.network=usub_sub; done
 	uci -q delete detour.notify
+	uci -q delete detour.main.urltest_url
 	uci commit; rm -f /etc/detour/engines/usub_sub.* /tmp/detour/subs/usub.* /tmp/detour/lists/l_bad.*
 	curl -s --data-binary '' $S/set/userinfo >/dev/null
 	ubus call detour reload >/dev/null
 }
 cleanup
 uci -q batch <<'U'
+set detour.main.urltest_url=http://10.0.2.2:8768/generate_204
 set detour.notify=notify
 set detour.notify.enabled=1
 set detour.notify.tg_token=123456:LABTOKEN_not_a_real_token_xxxxxxxxxxx

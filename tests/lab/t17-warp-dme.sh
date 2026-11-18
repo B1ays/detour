@@ -34,6 +34,9 @@ detour warp-register wd api=http://10.0.2.2:8767/v0a2158 peer=$SPUB port=51820 >
 CPUB=$(jsonfilter -i /etc/detour/warp/wd.json -e '@.pub')
 for N in 3 4; do ip netns exec ex$N wg set wgex peer "$CPUB" allowed-ips 0.0.0.0/0; done
 uci set network.wd.nohostroute=1; uci commit network; ifup wd; sleep 4
+# the host route the first start put via WAN (right for a real WARP server) is not taken back by netifd of 25.12
+# when nohostroute is set afterwards: it would send the lab server's traffic to WAN
+for N in 3 4; do ip route del 10.199.$N.2 dev eth1 2>/dev/null; done
 uci set detour.main.warp_trace=http://198.51.100.80/cdn-cgi/trace
 uci set detour.main.warp_hosts=10.199.4.2; uci set detour.main.warp_ports=51820; uci set detour.main.warp_check=3600
 uci commit detour; reload_config; sleep 3

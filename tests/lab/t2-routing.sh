@@ -57,6 +57,14 @@ conntrack -F >/dev/null 2>&1
 
 echo "== A. policy subnet -> warp (exit1), nothing via WAN"
 expect "1.1.1.1 via exit1" "$(meas)" "200 1 0 0"
+# seen now and then right after a fresh boot ("000 1 0 0": into exit1, no answer back): what the path looked like
+if [ $FAIL = 1 ]; then
+	echo "  -- diag: wgx1"; wg show wgx1 | grep -E 'endpoint|handshake|transfer'
+	echo "  -- diag: routes"; ip route | grep -E '10\.199|10\.200|via 10\.0\.2\.2'; ip rule | grep -i detour
+	echo "  -- diag: ex1"; ip netns exec ex1 curl -s -m 6 -o /dev/null -w 'ex1 -> 1.1.1.1: %{http_code}\n' https://1.1.1.1/
+	echo "  -- diag: flows"; conntrack -L -d 1.1.1.1 2>/dev/null | head -5
+	echo "  -- diag: again"; expect "1.1.1.1 via exit1 (second try)" "$(meas)" "200 1 0 0"
+fi
 
 echo "== B. domain via dnsmasq nftset; AAAA suppressed"
 A=$(cl "nslookup ifconfig.me 192.168.1.1" | awk '/^Address: [0-9.]+$/{print $2}' | head -n1)

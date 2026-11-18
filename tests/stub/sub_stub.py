@@ -2,6 +2,7 @@
 POST /set/links  body: share links, one per line   POST /set/json  body: a sing-box config
 GET  /sub/<token>/b64   -> base64 of the links        GET /sub/<token>/json -> the sing-box config
 GET  /log               -> requests (path, user-agent, x-hwid)
+GET  /generate_204      -> 204, not logged: the servers' check URL in the lab (no dependence on the internet)
 POST /set/userinfo  body: a subscription-userinfo value (empty = none); the answers then carry it and
                     profile-update-interval: 12
 Run: python tests/stub/sub_stub.py 8768
@@ -43,6 +44,11 @@ class H(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == '/log':
             self._send(200, json.dumps(LOG).encode(), 'application/json')
+            return
+        if self.path == '/generate_204':
+            self.send_response(204)
+            self.send_header('Content-Length', '0')
+            self.end_headers()
             return
         LOG.append({'path': self.path, 'ua': self.headers.get('User-Agent'), 'hwid': self.headers.get('x-hwid')})
         if self.path.startswith('/redir/'):

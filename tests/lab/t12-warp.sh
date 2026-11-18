@@ -26,6 +26,9 @@ ls -l /etc/detour/warp/warp1.json | grep -q '^-rw-------' && ok "registration sa
 ps w | grep -v grep | grep -q "$(jsonfilter -i /etc/detour/warp/warp1.json -e '@.token')" && bad "token visible in ps" || ok "token not on any command line"
 # lab only: the "WARP server" sits next to the router (vex3), not behind WAN - no netifd host route via WAN
 uci set network.warp1.nohostroute=1; uci commit network; ifup warp1; sleep 3
+# the host route the first start put via WAN (right for a real WARP server) is not taken back by netifd of 25.12
+# when nohostroute is set afterwards: it would send the lab server's traffic to WAN
+ip route del 10.199.3.2 dev eth1 2>/dev/null
 # the lab server learns the new client key (a real WARP server knows it from the registration)
 CPUB=$(jsonfilter -i /etc/detour/warp/warp1.json -e '@.pub')
 ip netns exec ex3 wg set wgex peer "$(cat $D/rt3.pub)" remove 2>/dev/null
