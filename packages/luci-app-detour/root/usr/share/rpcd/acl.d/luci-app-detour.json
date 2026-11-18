@@ -46,6 +46,9 @@
 				"/tmp/detour-backup.bin": [
 					"read"
 				],
+				"/tmp/detour-logs.tar.gz": [
+					"read"
+				],
 				"/etc/detour/before-restore.bin": [
 					"read"
 				]
@@ -86,7 +89,9 @@
 					"dns_watch",
 					"dns_watch_stop",
 					"catalog_refresh",
-					"pkg_run"
+					"pkg_run",
+					"log_level",
+					"logs_archive"
 				]
 			},
 			"uci": [

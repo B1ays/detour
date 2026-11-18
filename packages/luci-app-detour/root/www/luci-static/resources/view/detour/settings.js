@@ -3,6 +3,7 @@
 'require form';
 'require uci';
 'require rpc';
+'require fs';
 'require detour.pkg as pkg';
 
 // Text from the router (names of exits and servers come from subscriptions and links) never becomes HTML:
@@ -17,6 +18,8 @@ const callTunStatus = rpc.declare({ object: 'detour', method: 'sshtun_status' })
 const callTunKeygen = rpc.declare({ object: 'detour', method: 'sshtun_keygen' });
 const callTunTest = rpc.declare({ object: 'detour', method: 'sshtun_test' });
 const callTunForget = rpc.declare({ object: 'detour', method: 'sshtun_forget' });
+const callLogLevel = rpc.declare({ object: 'detour', method: 'log_level', params: [ 'level' ] });
+const callLogsArchive = rpc.declare({ object: 'detour', method: 'logs_archive' });
 
 // a list option shown as checkboxes, one per line: the theme's multi-select cuts long names to a few letters
 const CheckList = form.MultiValue.extend({
@@ -41,6 +44,47 @@ const CheckList = form.MultiValue.extend({
 return view.extend({
 	load: function() {
 		return Promise.all([ uci.load('detour'), L.resolveDefault(callTunStatus(), {}), L.resolveDefault(callStatus(), {}) ]);
+	},
+
+	// "Log": the level (set at once through the daemon: verbose ends by itself after 24 h) and the archive of logs
+	logInfo: function(st) {
+		const box = E('div');
+		const state = E('div', { 'class': 'cbi-value-description' });
+		const kb = function(n) { return n < 1024 ? '%d B'.format(n) : (n < 1048576 ? '%.0f KB'.format(n / 1024) : '%.1f MB'.format(n / 1048576)); };
+		const show = function(l) {
+			l = l || {};
+			sel.value = l.level == 'verbose' ? 'verbose' : 'normal';
+			state.textContent = (l.level == 'verbose' && l.until)
+				? _('Verbose until %s; the log takes %s.').format(new Date(l.until * 1000).toLocaleString(), kb(l.size || 0))
+				: (l.size ? _('Normal; a verbose log of %s from before is kept until the router restarts.').format(kb(l.size)) : _('Normal level.'));
+		};
+		const sel = E('select', { 'class': 'cbi-input-select', 'change': function() {
+			sel.disabled = true;
+			return callLogLevel(sel.value).then(function(r) {
+				if (!r || r.error) box.replaceChildren(E('div', { 'class': 'alert-message warning' }, (r && r.error) || _('No answer from the router')));
+				else box.replaceChildren();
+				show(r);
+			}).finally(function() { sel.disabled = false; });
+		} }, [ E('option', { 'value': 'normal' }, _('Normal level')), E('option', { 'value': 'verbose' }, _('Verbose level')) ]);
+		const bGet = E('button', { 'class': 'btn cbi-button-action', 'click': function(ev) {
+			ev.preventDefault();
+			bGet.disabled = true;
+			box.replaceChildren(E('em', {}, _('Collecting the logs…')));
+			return callLogsArchive().then(function(r) {
+				if (!r || r.error || !r.path) throw new Error((r && r.error) || _('No answer from the router'));
+				return fs.read_direct(r.path, 'blob').then(function(blob) {
+					const a = E('a', { 'href': URL.createObjectURL(blob), 'download': r.name || 'detour-logs.tar.gz', 'style': 'display:none' });
+					document.body.appendChild(a);
+					a.click();
+					setTimeout(function() { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+					box.replaceChildren(E('div', { 'class': 'alert-message success' }, _('Saved: %s (%s).').format(r.name, kb(r.size || blob.size))));
+				});
+			}).catch(function(e) {
+				box.replaceChildren(E('div', { 'class': 'alert-message warning' }, e.message || String(e)));
+			}).finally(function() { bGet.disabled = false; });
+		} }, _('Download the logs (.tar.gz)'));
+		show(st);
+		return E('div', {}, [ sel, state, E('div', { 'style': 'margin-top:.5em' }, [ bGet ]), box ]);
 	},
 
 	// "The panel through your own VPS": key, server key check, state (sshtun.uc / ssh-tunnel.sh in stock)
@@ -196,6 +240,11 @@ return view.extend({
 			_('Otherwise only on 127.0.0.1 of the VPS (reach it with ssh -L). Needs GatewayPorts clientspecified in sshd_config.'));
 		o = s.option(form.DummyValue, '_tun', _('Key and state'));
 		o.renderWidget = function() { return self.tunInfo(tunStatus); };
+
+		s = m.section(form.NamedSection, 'main', 'main', _('Detour logs'),
+			_('The verbose level is only for diagnosing the system. It switches itself off after 24 hours.'));
+		o = s.option(form.DummyValue, '_log', _('Detour log level'));
+		o.renderWidget = function() { return self.logInfo((data[2] || {}).log); };
 
 		// detour.css: the last field of a card must not touch its bottom (Argon gives the node no padding)
 		return m.render().then(function(node) {

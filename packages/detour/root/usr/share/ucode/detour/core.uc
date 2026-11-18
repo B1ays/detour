@@ -78,9 +78,59 @@ export function is_private6(a) {
 export const RULE_PRIO_BASE = 11000;
 export const UNREACH_METRIC = 4278198272;
 
+// ---- secrets out of whatever is written down (the verbose log, the archive of logs) ----
+// by the name of the field or option (JSON "name": "v", name=v, UCI option/list name 'v'), then by shape:
+// share links, UUIDs, Telegram bot tokens, base64 keys, long tokens in URLs. Exit ids and addresses stay.
+const SECRET_NAMES = 'private_key|preshared_key|pre_shared_key|public_key|privateKey|publicKey|password|passwd|psk|' +
+	'token|tg_token|tg_chat|secret|key_root|uuid|shortId|short_id|pbk|sid|spx|spiderX|mldsa65Verify|reserved|auth|' +
+	'auth_str|obfs_password|license|client_id|access_token|refresh_token|id_token|encryption|seed';
+// "name": "v" / name=v / name='v' (uci show) / option name 'v' (uci export)
+const RE_NAMED = regexp('(' + SECRET_NAMES + ')("?[ \t]*[:=][ \t]*["\']?|[ \t]+\')([^"\' \t,}\n]+)', 'g');
+export function redact(s) {
+	if (s == null) return s;
+	s = '' + s;
+	s = replace(s, /(vless|vmess|trojan|ss|ssr|hy2|hysteria2?|tuic|wireguard|awg|socks5?|https?\+?[a-z]*)(:\/\/)([^@ \t\n'"]+)@/g,
+		(m, p, sep, cred) => p + sep + '***@');
+	s = replace(s, /(vless|vmess|trojan|ss|ssr|hy2|hysteria2?|tuic|wireguard|awg):\/\/[^ \t\n'"]+/g, (m, p) => p + '://***');
+	s = replace(s, RE_NAMED, (m, k, sep, v) => k + sep + '***');
+	s = replace(s, /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/g, '***');
+	s = replace(s, /[0-9]{6,12}:[A-Za-z0-9_-]{30,}/g, '***');
+	s = replace(s, /[A-Za-z0-9+\/]{42,43}=/g, '***');
+	// a URL's query values and long path parts (a subscription's or a list's token)
+	s = replace(s, /([?&][A-Za-z0-9_.-]+=)([^& \t\n'"#]{8,})/g, (m, k, v) => k + '***');
+	s = replace(s, /(\/)([A-Za-z0-9_-]{24,})(\/|[ \t\n'"?#]|$)/g, (m, a, v, b) => match(v, /^[0-9a-f]+$/) ? m : a + '***' + b);
+	return s;
+};
+
+// ---- the verbose log: on while the daemon keeps the flag file (main.log_level verbose, at most 24 h). Every writer
+// (the daemon, the CLI, the shell scripts via /usr/share/detour/log.sh) only appends; the daemon alone rotates.
+export const LOGDIR = RUN + '/log';
+export const VLOG = LOGDIR + '/detour.log';
+export const VFLAG = LOGDIR + '/on';
+let v_on = false, v_at = -1;
+export function verbose(fresh) {
+	const t = time();
+	if (fresh || t != v_at) { v_at = t; v_on = !!fs.access(VFLAG); }
+	return v_on;
+};
+function stamp() {
+	const l = localtime(time());
+	return sprintf('%04d-%02d-%02d %02d:%02d:%02d', l.year, l.mon, l.mday, l.hour, l.min, l.sec);
+}
+export function vlog(area, msg) {
+	if (!verbose()) return;
+	const f = fs.open(VLOG, 'a');
+	if (!f) return;
+	f.write(sprintf('%s [%s] %s\n', stamp(), area, replace(redact(msg), /\n/g, ' | ')));
+	f.close();
+};
+
 export function log(msg) {
 	system(['logger', '-t', 'detour', msg]);
 };
+
+// milliseconds of a monotonic clock (for durations in the verbose log)
+function ms() { const c = clock(true); return c ? c[0] * 1000 + int(c[1] / 1000000) : time() * 1000; }
 
 // single-quote for /bin/sh
 // a name that came from outside (a server's remark in a link, a subscription, a Clash or JSON config): no markup
@@ -96,11 +146,26 @@ export function shq(s) {
 };
 
 // run a shell command line, return { code, out }
+let run_seen = {};   // command -> [ its last outcome, how often it repeated since it was written ]
 export function run(cmd) {
+	const v = verbose(), t = v ? ms() : 0;
 	const p = fs.popen(cmd + ' 2>&1', 'r');
-	if (!p) return { code: -1, out: '' };
+	if (!p) { if (v) vlog('run', cmd + ' -> could not start'); return { code: -1, out: '' }; }
 	const out = p.read('all') ?? '';
 	const code = p.close();
+	if (v) {
+		// the same command with the same outcome as last time (the routes every probe cycle puts back) is counted,
+		// not written again: the log keeps what changed or failed, and how often the rest repeated
+		const o = trim(out), k = code + ':' + o;
+		const seen = run_seen[cmd];
+		if (seen && seen[0] == k) seen[1]++;
+		else {
+			if (length(keys(run_seen)) > 400) run_seen = {};
+			vlog('run', sprintf('%s -> %d (%d ms)%s%s', cmd, code, ms() - t, length(o) ? ': ' + substr(o, 0, 200) + (length(o) > 200 ? '…' : '') : '',
+				seen?.[1] ? sprintf(' [%d times the same before]', seen[1]) : ''));
+			run_seen[cmd] = [ k, 0 ];
+		}
+	}
 	return { code, out };
 };
 

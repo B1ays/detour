@@ -22,6 +22,7 @@
 # up to 12 h old, so "the source changed" and the data would disagree (as stock geo.sh does). The commit and
 # its date come from the GitHub API; when it does not answer, the branch is used as before.
 . /lib/functions.sh
+. /usr/share/detour/log.sh
 
 RUN=/tmp/detour/lists
 SNAP=/etc/detour/lists
@@ -97,6 +98,7 @@ ACCEPTED=0   # bytes the lists of this run have added (not yet seen in MemAvaila
 [ "$RESTORE" = 1 ] || rm -f "$RUN/.shas"   # the commits are asked once per run
 
 status() {  # status <list> <ok 0|1> <count> <kind> <target> <message> [the date of the source's commit]
+	vlog lists "$1: $([ "$2" = 1 ] && echo ok || echo failed), $3 lines, $4 -> $5: $6${7:+ (source of $7)}"
 	printf '{"name":"%s","ok":%s,"count":%d,"kind":"%s","target":"%s","ts":%d,"message":"%s","upstream":"%s"}\n' \
 		"$1" "$([ "$2" = 1 ] && echo true || echo false)" "${3:-0}" "$4" "$5" "$(date +%s)" "$(printf '%s' "$6" | tr -d '"\\\n')" "$(printf '%s' "$7" | tr -cd '0-9TZ:-')" > "$RUN/$1.status"
 }
@@ -144,6 +146,7 @@ fetch() {
 	local a=0 rc
 	while :; do
 		curl -fsSL -m 180 --retry 2 ${RAWMAX:+--max-filesize $RAWMAX} "$1" > "$2" 2>/dev/null; rc=$?
+		vlog lists "download $1 -> curl $rc, $(wc -c < "$2" 2>/dev/null || echo 0) bytes${RAWMAX:+ (at most $RAWMAX)}"
 		[ $rc = 0 ] && return 0
 		[ $rc = 63 ] && return 63
 		a=$((a + 1)); [ $a -ge 3 ] && return 1; sleep 5
@@ -187,7 +190,10 @@ handle_list() {
 		# no download: keep RAM data, else take the snapshot
 		[ -s "$RUN/$s.data" ] || { [ -s "$SNAP/$s.snap" ] && cp "$SNAP/$s.snap" "$RUN/$s.data" && cp "$SNAP/$s.kind" "$RUN/$s.kind" 2>/dev/null; }
 		[ -s "$RUN/$s.data" ] && echo "$s $tgt $(cat "$RUN/$s.kind" 2>/dev/null || echo cidr)" >> "$RUN/.targets"
-		[ "$RESTORE" = 1 ] && [ -s "$RUN/$s.data" ] && status "$s" 1 "$(wc -l < "$RUN/$s.data")" "$(cat "$RUN/$s.kind" 2>/dev/null)" "$tgt" "restored from snapshot"
+		# its state too, when it has none (boot; after a restore from a backup, which dropped them all, --missing
+		# loads the snapshots: without this the Lists page said "not loaded yet" of lists that work)
+		[ -s "$RUN/$s.data" ] && { [ "$RESTORE" = 1 ] || [ ! -e "$RUN/$s.status" ]; } && \
+			status "$s" 1 "$(wc -l < "$RUN/$s.data")" "$(cat "$RUN/$s.kind" 2>/dev/null)" "$tgt" "restored from snapshot"
 		return
 	fi
 	raw="$RUN/$s.raw"

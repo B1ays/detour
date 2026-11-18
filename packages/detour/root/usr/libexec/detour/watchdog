@@ -10,4 +10,6 @@ now=$(date +%s)
 up=$(cut -d. -f1 /proc/uptime)
 [ "$up" -lt 180 ] && exit 0
 logger -t detour "watchdog: heartbeat is $((now - hb)) s old, restarting the daemon"
+. /usr/share/detour/log.sh
+vlog watchdog "heartbeat $((now - hb)) s old, daemon restarted; uptime ${up} s, load $(cut -d" " -f1-3 /proc/loadavg)"
 /etc/init.d/detour restart

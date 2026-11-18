@@ -7,7 +7,7 @@
 import * as fs from 'fs';
 import * as uloop from 'uloop';
 import { cursor } from 'uci';
-import { log, RUN } from 'detour.core';
+import { log, vlog, RUN } from 'detour.core';
 import { _ } from 'detour.i18n';
 
 const QUEUE = RUN + '/outbox.json';
@@ -98,6 +98,7 @@ export function flush(paths, done_cb) {
 			const out = fs.readfile(ND + '/out') ?? '';
 			let resp = null;
 			try { resp = json(out); } catch (e) { }
+			vlog('notify', sprintf('via %s: HTTP %s%s', dev ?? 'direct', http || '-', resp?.description ? ' (' + resp.description + ')' : ''));
 			if (http == '200' && resp?.ok === true) {
 				const q2 = load_q(); shift(q2); save_q(q2);
 				busy = false;

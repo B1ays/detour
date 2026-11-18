@@ -63,6 +63,18 @@ echo "$r" | grep -q 'Access denied' && ok "read-only session cannot add exits" |
 r=$(curl -s http://127.0.0.1/ubus -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"call\",\"params\":[\"$RO\",\"detour\",\"backup_create\",{\"password\":\"lab-backup-pw\"}]}")
 echo "$r" | grep -q 'Access denied' && ok "read-only session cannot save a backup" || bad "ro backup: $r"
 
+echo "== the logs (Settings): level and the archive, as the page gets them"
+r=$(rpc log_level); echo "$r" | grep -q '"level"' && ok "log_level: $(echo "$r" | jsonfilter -e '@.result[1].level')" || bad "log_level: $r"
+r=$(rpc logs_archive); P=$(echo "$r" | jsonfilter -e '@.result[1].path')
+[ "$P" = /tmp/detour-logs.tar.gz ] && ok "logs_archive: $(echo "$r" | jsonfilter -e '@.result[1].name')" || bad "logs_archive: $r"
+n=$(curl -s http://127.0.0.1/cgi-bin/cgi-download -d "sessionid=$SID&path=$P&filename=x.tar.gz" | tar -tzf - 2>/dev/null | wc -l)
+[ "$n" -gt 10 ] && ok "downloaded through cgi-download: $n entries" || bad "download: $n entries"
+r=$(curl -s http://127.0.0.1/ubus -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"call\",\"params\":[\"$RO\",\"detour\",\"logs_archive\",{}]}")
+echo "$r" | grep -q 'Access denied' && ok "read-only session cannot collect the logs" || bad "ro logs: $r"
+n=$(curl -s http://127.0.0.1/cgi-bin/cgi-download -d "sessionid=$RO&path=$P&filename=x.tar.gz" | tar -tzf - 2>/dev/null | wc -l)
+[ "$n" = 0 ] && ok "nor download them" || bad "ro download: $n entries"
+rm -f $P
+
 echo "== cleanup"
 for s in lnk1 lnk1_eng lnk2 lnk2_eng tl_ui; do uci -q delete detour.$s; done; uci -q delete network.lnk1; uci -q delete network.lnk2; uci -q del_list firewall.vpn.network=lnk2
 uci -q del_list firewall.vpn.network=lnk1; uci -q delete detour.main.warp_api; uci -q delete detour.main.warp_peer; uci -q delete detour.main.warp_port

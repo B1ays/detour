@@ -1774,6 +1774,30 @@ msgstr "Добавить «напрямую»"
 msgid "Add blocking"
 msgstr "Добавить блокировку"
 
+msgid "Verbose until %s; the log takes %s."
+msgstr "Подробный до %s; логи занимают %s."
+
+msgid "Normal; a verbose log of %s from before is kept until the router restarts."
+msgstr "Стандартный; подробные логи, записанные раньше (%s), хранятся до перезагрузки роутера."
+
+msgid "Normal level."
+msgstr "Стандартный."
+
+msgid "Normal level"
+msgstr "Стандартный"
+
+msgid "Verbose level"
+msgstr "Подробный"
+
+msgid "Collecting the logs…"
+msgstr "Собираю логи…"
+
+msgid "Saved: %s (%s)."
+msgstr "Сохранено: %s (%s)."
+
+msgid "Download the logs (.tar.gz)"
+msgstr "Скачать логи (.tar.gz)"
+
 msgid "State:"
 msgstr "Состояние:"
 
@@ -1995,6 +2019,15 @@ msgstr "Иначе только на 127.0.0.1 VPS (доступ через ssh 
 
 msgid "Key and state"
 msgstr "Ключ и состояние"
+
+msgid "Detour logs"
+msgstr "Логи Detour"
+
+msgid "The verbose level is only for diagnosing the system. It switches itself off after 24 hours."
+msgstr "Подробный уровень нужен только для диагностики системы. Он автоматически отключается через 24 часа."
+
+msgid "Detour log level"
+msgstr "Уровень"
 
 msgid "Today"
 msgstr "Сегодня"
@@ -2236,6 +2269,9 @@ msgstr "другой сервер для выхода"
 msgid "panel through a VPS"
 msgstr "панель через VPS"
 
+msgid "collect the logs"
+msgstr "собрать журналы"
+
 msgid "Action «%s» from the panel: %s"
 msgstr "Действие «%s» из панели: %s"
 
@@ -2247,6 +2283,15 @@ msgstr "Конфигурация: %s"
 
 msgid "Two-factor login protection: %s"
 msgstr "Защита двухфакторного входа: %s"
+
+msgid "Verbose log switched on for %d h"
+msgstr "Подробный журнал включён на %d ч"
+
+msgid "Verbose log switched off"
+msgstr "Подробный журнал выключен"
+
+msgid "Verbose log: its time is over, the normal level again"
+msgstr "Подробный журнал: время вышло, снова стандартный уровень"
 
 msgid "policy %s has no exit - its traffic is blocked"
 msgstr "у политики %s нет выхода — её трафик блокируется"

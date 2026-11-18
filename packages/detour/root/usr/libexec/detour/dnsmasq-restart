@@ -27,12 +27,15 @@ fi
 [ -w /sys/fs/cgroup/cgroup.procs ] && echo $$ > /sys/fs/cgroup/cgroup.procs 2>/dev/null
 exec 8> /tmp/detour/.dnsmasq.lock
 command -v flock >/dev/null 2>&1 && flock 8
+. /usr/share/detour/log.sh
+vlog dns "dnsmasq restart"
 /etc/init.d/dnsmasq restart >/dev/null 2>&1
 if /etc/init.d/dnsmasq enabled; then   # switched off by the owner: not ours to start
 	i=0
 	while ! pidof dnsmasq >/dev/null && [ $i -lt 15 ]; do sleep 1; i=$((i + 1)); done
 	if ! pidof dnsmasq >/dev/null; then
 		logger -t detour "dnsmasq did not come back after a restart - starting it again"
+		vlog dns "dnsmasq did not come back after the restart, started again"
 		/etc/init.d/dnsmasq start >/dev/null 2>&1
 	fi
 fi

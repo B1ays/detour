@@ -162,11 +162,14 @@ return baseclass.extend({
 			const act = { 'lists-update': _('update lists'), 'sub-update': _('update a subscription'), 'engine-add': _('add an exit from a link'),
 				'warp-register': _('register WARP'), 'warp-unregister': _('remove WARP'), 'import': _('import settings'),
 				'exit-remove': _('remove an exit'), 'exit-pick': _('choose a server of a subscription'), 'exit-config-set': _('edit an exit'),
-				'exit-set-link': _('another server for an exit'), 'sshtun': _('panel through a VPS') }[m[1]] || m[1];
+				'exit-set-link': _('another server for an exit'), 'sshtun': _('panel through a VPS'), 'logs-archive': _('collect the logs') }[m[1]] || m[1];
 			return _('Action «%s» from the panel: %s').format(act, m[2] == 'ok' ? _('done') : _('failed'));
 		}
 		if ((m = line.match(/^config: (.*)$/))) return _('Configuration: %s').format(this.configError(m[1], labels));
 		if ((m = line.match(/^2FA guard(?: error)?: (.*)$/))) return _('Two-factor login protection: %s').format(m[1]);
+		if ((m = line.match(/^verbose log on for (\d+) h$/))) return _('Verbose log switched on for %d h').format(+m[1]);
+		if (line == 'verbose log off') return _('Verbose log switched off');
+		if ((m = line.match(/^verbose log: .*back to the normal level$/))) return _('Verbose log: its time is over, the normal level again');
 		return line;
 	},
 

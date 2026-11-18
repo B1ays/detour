@@ -16,6 +16,7 @@ import * as backup from 'detour.backup';
 import * as exitui from 'detour.exitui';
 import * as exitadd from 'detour.exitadd';
 import * as listmem from 'detour.listmem';
+import * as logs from 'detour.logs';
 import * as fs from 'fs';
 
 const cmd = ARGV[0];
@@ -182,6 +183,12 @@ case 'sshtun': {
 	exit(res.error ? 1 : 0);
 }
 case 'exit-info': printf('%.J\n', exitui.info()); break;
+case 'logs-archive': {
+	// detour logs-archive: everything for a diagnosis in one .tar.gz (logs.uc), secrets masked
+	const r = logs.archive();
+	printf('%.J\n', r);
+	exit(r.error ? 1 : 0);
+}
 case 'exit-remove': {
 	// detour exit-remove <exit>: the exit with its engine, interface, peers, zone entry, subscription
 	const r = exitui.remove(ARGV[1]);

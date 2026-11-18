@@ -16,6 +16,8 @@ state() {   # state <running true|false> [code]
 	mv "$D/state.json.tmp" "$D/state.json"
 }
 T0=$(date +%s)
+. /usr/share/detour/log.sh
+vlog pkg "$act $pkgs: started"
 : > "$D/log"
 state true
 exec >> "$D/log" 2>&1
@@ -38,5 +40,6 @@ if [ "$rc" = 0 ] && [ "$act" != update ]; then
 else
 	[ "$rc" = 0 ] && echo "done" || echo "failed (code $rc)"
 fi
+vlog pkg "$act $pkgs: code $rc in $(( $(date +%s) - T0 )) s"
 state false "$rc"
 exit "$rc"

@@ -42,6 +42,14 @@ others > /tmp/t13.others
 fsum > /tmp/t13.files
 uci show firewall | sed -n 's/\.network=/ /p' > /tmp/t13.zones
 
+# a list with its snapshot on flash: after the restore its state must be back (the Lists page said "not loaded
+# yet" of every list a restore brought back from a snapshot)
+uci -q delete detour.t13l; uci set detour.t13l=list; uci set detour.t13l.policy=vpn; uci set detour.t13l.kind=cidr
+uci add_list detour.t13l.url=http://10.0.2.2:8765/tests/stub/lists/cidr.txt; uci set detour.t13l.min_lines=1; uci commit detour
+detour lists-update t13l >/dev/null 2>&1
+[ -s /etc/detour/lists/t13l.snap ] && ok "list t13l with its snapshot" || bad "no snapshot of t13l: $(cat /tmp/detour/lists/t13l.status 2>&1)"
+uci export detour > /tmp/t13.detour; fsum > /tmp/t13.files
+
 echo "== save"
 r=$(call backup_create short); echo "$r" | grep -q 'at least 8' && ok "a short password is refused" || bad "short: $r"
 r=$(call backup_create)
@@ -91,6 +99,8 @@ same /tmp/t13.files /tmp/t13.n4 && ok "files of /etc/detour are as they were" ||
 [ -n "$H0" ] || bad "no exit was healthy before the test"
 waitfor x "covers" 120 && ok "the exits work again: $H0" || bad "healthy: $(healthy), before: $H0"
 [ -s /etc/detour/before-restore.bin ] && ok "the previous settings were saved" || bad "no before-restore file"
+waitfor true "jsonfilter -i /tmp/detour/lists/t13l.status -e '@.ok' 2>/dev/null" 60 && ok "the list's state is back: $(jsonfilter -i /tmp/detour/lists/t13l.status -e '@.message')" || bad "list state after the restore: $(ls /tmp/detour/lists/ | grep t13l | tr '
+' ' ')"
 
 echo "== undo: the saved previous settings restore the changed state"
 cp /etc/detour/before-restore.bin /tmp/detour-restore.bin
@@ -152,4 +162,5 @@ for f in /etc/detour/traffic/$M.json /tmp/detour/traffic/$M.json; do [ -e $f ] &
 for s in $(uci show network | sed -n "s/^network\.\(@wireguard_wgx2\[[0-9]*\]\)\.description='t13anon'/\1/p" | sort -r); do uci delete network.$s; done
 uci commit network; /etc/init.d/network reload
 rm -rf $W /tmp/t13.* /tmp/detour-backup.bin /tmp/detour-restore.bin /etc/detour/before-restore.bin
+uci -q delete detour.t13l; uci commit detour; rm -f /etc/detour/lists/t13l.* /tmp/detour/lists/t13l.*; ubus call detour reload >/dev/null
 echo "RESULT: $([ $FAIL = 0 ] && echo PASS || echo FAIL)"

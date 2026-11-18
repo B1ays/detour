@@ -45,6 +45,48 @@ function ev(msg) {
 	push(events, sprintf('%d %s', time(), msg));
 	if (length(events) > 50) shift(events);
 	core.log(msg);
+	core.vlog('event', msg);
+}
+
+// ---- the level of the log: main.log_level 'verbose' holds main.log_until (24 h); the flag file is what every writer
+// looks at. Past the time: back to normal (UCI written with libuci: no procd reload trigger, no loop).
+const LOG_HOURS = 24, LOG_MAX = 1048576;
+function log_sync() {
+	const c = cursor();
+	let lvl = c.get('detour', 'main', 'log_level') ?? 'normal';
+	const until = int(c.get('detour', 'main', 'log_until') ?? 0);
+	if (lvl == 'verbose' && (!until || time() >= until)) {
+		c.delete('detour', 'main', 'log_level'); c.delete('detour', 'main', 'log_until'); c.commit('detour');
+		lvl = 'normal';
+		ev(until ? sprintf('verbose log: %d h passed, back to the normal level', LOG_HOURS) : 'verbose log: no end time set, back to the normal level');
+	}
+	fs.mkdir(core.RUN); fs.mkdir(core.LOGDIR);
+	if (lvl == 'verbose') { if (!fs.access(core.VFLAG)) fs.writefile(core.VFLAG, sprintf('%d
+', until)); }
+	else fs.unlink(core.VFLAG);
+	// one writer rotates: the others only append
+	const st = fs.stat(core.VLOG);
+	if (st && st.size > LOG_MAX) fs.rename(core.VLOG, core.VLOG + '.1');
+	return { level: lvl, until: lvl == 'verbose' ? until : null };
+}
+function log_state() {
+	const st = log_sync();
+	const sz = (f) => fs.stat(f)?.size ?? 0;
+	st.size = sz(core.VLOG) + sz(core.VLOG + '.1');
+	return st;
+}
+function set_log_level(level) {
+	if (level != 'verbose' && level != 'normal') return { error: 'level: normal or verbose' };
+	const c = cursor();
+	if (level == 'normal') ev('verbose log off');   // the last line of the verbose log
+	if (level == 'verbose') { c.set('detour', 'main', 'log_level', 'verbose'); c.set('detour', 'main', 'log_until', '' + (time() + LOG_HOURS * 3600)); }
+	else { c.delete('detour', 'main', 'log_level'); c.delete('detour', 'main', 'log_until'); }
+	c.commit('detour');
+	fs.unlink(core.VFLAG);
+	const st = log_state();
+	core.verbose(true);
+	if (level == 'verbose') ev(sprintf('verbose log on for %d h', LOG_HOURS));
+	return st;
 }
 
 function exit_name(id) { return core.exit_by_id(cfg, id)?.name ?? ('exit' + id); }
@@ -153,8 +195,14 @@ function probe(e) {
 	// one probe of an exit at a time: a slow answer must not be counted twice by the probes started after it
 	if (!cmd || !e.enabled || probing[e.name]) return;
 	probing[e.name] = true;
+	const t_start = clock(true);
 	const proc = uloop.process(cmd[0], slice(cmd, 1), {}, function(code) {
 		delete probing[e.name];
+		if (core.verbose()) {
+			const t = clock(true);
+			core.vlog('probe', sprintf('%s via %s: %s -> %s (%d ms)', e.name, e.device, e.probe, code == 0 ? 'ok' : 'failed, code ' + code,
+				(t[0] - t_start[0]) * 1000 + int((t[1] - t_start[1]) / 1000000)));
+		}
 		const h = health[e.name] ??= { ok: false, fails: 0, seen: false };
 		const was = h.ok && h.fails < cfg.main.fails;
 		h.seen = true;
@@ -181,6 +229,7 @@ function guard() {
 }
 
 function load_all(reason) {
+	log_sync();
 	cfg = core.load();
 	off = !cfg.main.enabled;
 	if (off) {
@@ -277,7 +326,7 @@ function status() {
 			block: p.block, action: p.block ? 'block' : (p.direct ? 'direct' : 'vpn'), on_down: p.on_down, direct: !!opened[p.name] });
 	return { version: core.VERSION, uptime: time() - t0, exits: ex, policies: pol, blocked: nft.counter_blocked(), dns: dns_mode ?? cfg.main.dns,
 		dnsproxy: !!fs.access('/usr/bin/dnsproxy'),
-		switches, last_switch, engines: engines.list(), lists: lists_status(), lists_memory: listmem.budget(), subscriptions: lists_status('subs'), auth: auth.status(), notify_queued: notify.queued(), wan: watch.wan_down() ? 'down' : 'up', notify_quiet: watch.quiet(), errors: apply_errors, events, extip };
+		switches, last_switch, engines: engines.list(), lists: lists_status(), lists_memory: listmem.budget(), subscriptions: lists_status('subs'), auth: auth.status(), notify_queued: notify.queued(), wan: watch.wan_down() ? 'down' : 'up', notify_quiet: watch.quiet(), errors: apply_errors, events, extip, log: log_state() };
 }
 
 function do_pin(pol, ex) {
@@ -723,7 +772,30 @@ function rates() {
 }
 
 const S = { ubus_rpc_session: '' };
-conn.publish('detour', {
+// every call into the verbose log (status and the other read-only polls of the pages too: a page left open
+// would fill the log with them, so those are left out)
+const QUIET = { status: true, exits_info: true, traffic: true, rates: true, devices: true, sshtun_status: true, dns_log: true, sub_state: true, pkg_job: true, catalog_names: true };
+// (a function of its own per method: a closure made in the loop would see the loop's last name)
+function logged_call(name, call) {
+	return function(req) {
+		if (!core.verbose()) return call(req);
+		const a = {};
+		for (let k, v in req.args ?? {}) if (k != 'ubus_rpc_session') a[k] = v;
+		const t = clock(true);
+		const r = call(req);
+		const d = clock(true);
+		core.vlog('ubus', sprintf('%s %J -> %s (%d ms)', name, a,
+			r == null ? 'deferred' : (type(r) == 'object' && r.error ? 'error: ' + r.error : 'ok'),
+			(d[0] - t[0]) * 1000 + int((d[1] - t[1]) / 1000000)));
+		return r;
+	};
+}
+function logged(methods) {
+	for (let name, m in methods)
+		if (!QUIET[name]) m.call = logged_call(name, m.call);
+	return methods;
+}
+conn.publish('detour', logged({
 	status: { call: () => status(), args: { ...S } },
 	reload: { call: () => { const r = load_all('reload'); evaluate(); auth_state = guard(); return { ok: r.ok, errors: r.errors, auth: auth_state }; }, args: { ...S } },
 	pin:    { call: (req) => do_pin(req.args.policy, req.args.exit), args: { policy: '', exit: '', ...S } },
@@ -779,7 +851,10 @@ conn.publish('detour', {
 	pkg_job:         { call: () => ({ job: pkgs.job() }), args: { ...S } },
 	pkg_run:         { call: (req) => pkgs.start(req.args.action, req.args.packages), args: { action: '', packages: '', ...S } },
 	lists_update:    { call: (req) => cli_job(req, [ 'lists-update', ...(length(req.args.name ?? '') ? [ req.args.name ] : []) ]), args: { name: '', ...S } },
-});
+	// the log: its level (verbose ends by itself after 24 h) and an archive of everything for a diagnosis
+	log_level:       { call: (req) => length(req.args.level ?? '') ? set_log_level(req.args.level) : log_state(), args: { level: '', ...S } },
+	logs_archive:    { call: (req) => cli_job(req, [ 'logs-archive' ]), args: { ...S } },
+}));
 
 // netifd: put the exit route back on ifup (netifd does not restore routes in our tables)
 conn.listener('network.interface', function(t, data) {
@@ -808,10 +883,12 @@ function warp_check() {
 		if (!due) continue;
 		warp_busy = true;
 		warp_last[e.name] = time();
-		uloop.process('/usr/sbin/detour', [ 'warp-pick', e.name ], {}, function(code) {
+		// its answer is the file below; what it prints would go to the syslog through procd
+		uloop.process('/bin/sh', [ '-c', 'exec /usr/sbin/detour warp-pick ' + core.shq(e.name) + ' >/dev/null 2>&1' ], {}, function(code) {
 			warp_busy = false;
 			let r = null;
 			try { r = json(fs.readfile(sprintf('%s/warp-pick-%s.json', core.RUN, e.name))); } catch (x) { }
+			core.vlog('warp', sprintf('%s: check -> %s', e.name, r ? sprintf('%J', r) : 'no answer, code ' + code));
 			if (r?.moved) {
 				ev(sprintf('WARP %s moved to %s (colo %s, was %s)', e.name, r.endpoint, r.colo, r.from ?? '?'));
 				tell('switch', 'warp:' + e.name, sprintf(_('WARP %s moved to the Cloudflare point %s (it was %s)'), watch.q(e.label ?? e.name), r.colo, r.from ?? _('no answer')));
@@ -881,6 +958,7 @@ tick = uloop.timer(500, function() {
 let iptick;
 iptick = uloop.timer(20000, function() {
 	try { ip_watch(); } catch (x) { core.log('ip watch: ' + x); }
+	try { log_sync(); } catch (x) { core.log('log: ' + x); }
 	iptick.set(30000);
 });
 
