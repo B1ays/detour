@@ -1798,12 +1798,6 @@ msgstr "Настройки Detour"
 msgid "General settings"
 msgstr "Основное"
 
-msgid "Enabled"
-msgstr "Включено"
-
-msgid "Off: no policy works, all traffic goes directly through the provider."
-msgstr "Выключено — ни одна политика не работает, весь трафик идёт напрямую через провайдера."
-
 msgid "Check exits every (s)"
 msgstr "Проверять выходы каждые (с)"
 
@@ -1866,6 +1860,9 @@ msgstr "Адреса quic://, tls:// или https://, опрашиваются �
 
 msgid "Create a bot with @BotFather, paste its token, write /start to the bot and put your chat id here. Messages go through a working tunnel first, then directly; undelivered ones wait and are sent later."
 msgstr "Создайте бота у @BotFather, вставьте его токен, напишите боту /start и укажите здесь id чата. Сообщения идут сначала через рабочий туннель, потом напрямую; недоставленные ждут и отправляются позже."
+
+msgid "Enabled"
+msgstr "Включено"
 
 msgid "Bot token"
 msgstr "Токен бота"

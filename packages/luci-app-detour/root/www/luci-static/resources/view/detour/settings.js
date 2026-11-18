@@ -88,11 +88,8 @@ return view.extend({
 		const m = new form.Map('detour', _('Detour settings'));
 
 		let s = m.section(form.NamedSection, 'main', 'main', _('General settings'));
-		let o = s.option(form.Flag, 'enabled', _('Enabled'),
-			_('Off: no policy works, all traffic goes directly through the provider.'));
-		o.default = '1';
-
-		o = s.option(form.Value, 'probe_period', _('Check exits every (s)'),
+		// switching Detour on and off: only the switch on the Overview (it asks before switching off)
+		let o = s.option(form.Value, 'probe_period', _('Check exits every (s)'),
 			_('How often an exit is checked with a real request while it fails, has just started, or sends without getting answers. Shorter: a failure is noticed sooner.'));
 		o.datatype = 'range(1,60)';
 		o.placeholder = '2';
@@ -126,7 +123,7 @@ return view.extend({
 		o.value('off', _('Not managed (provider DNS)'));
 		o.value('tunnel', _('Through the tunnel'));
 		// encrypted needs dnsproxy (dnsmasq itself does not encrypt): not offered without it
-		const hasProxy = !!(data[2] || {}).dnsproxy;
+		const hasProxy = !!(data[1] || {}).dnsproxy;
 		o.value('encrypted', hasProxy ? _('Encrypted (DoH/DoT/DoQ), directly') : _('Encrypted (DoH/DoT/DoQ) - install the dnsproxy package first'));
 		o.default = 'off';
 		o.validate = function(section_id, v) { return (v != 'encrypted' || hasProxy) ? true : _('Encrypted DNS needs the dnsproxy package'); };

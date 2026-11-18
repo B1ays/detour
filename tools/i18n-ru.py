@@ -420,7 +420,6 @@ RU = {
 	'edit an exit': 'изменение выхода',
 	'another server for an exit': 'другой сервер для выхода',
 	'How many checks in a row must fail before a policy moves to its next exit. 2 with checks every 2 s: about 4-6 s.': 'Сколько проверок подряд должно не пройти, чтобы политика перешла на следующий выход. 2 при проверке раз в 2 с — примерно 4–6 с.',
-	'Off: no policy works, all traffic goes directly through the provider.': 'Выключено — ни одна политика не работает, весь трафик идёт напрямую через провайдера.',
 	'Overview': 'Обзор',
 	'Settings': 'Настройки',
 	# stage 1: import preview
