@@ -274,8 +274,22 @@ export function to_link(o, remark) {
 // "skip the certificate check" any more; sing-box has no XHTTP, no VLESS encryption and no ML-DSA Reality check.
 const XRAY_TYPES = [ 'vless', 'vmess', 'trojan', 'shadowsocks' ];
 
+// WebSocket starts with an HTTP/1.1 Upgrade: offered h2 in the ALPN, a server that speaks it (nginx in front) picks
+// h2 and the upgrade never comes (EOF). Neither engine leaves h2 out by itself, so the ALPN of a ws server goes to
+// both without it (the link and the export keep it as given); null: no ALPN at all
+function ws_alpn(o) {
+	const a = o?.tls?.alpn;
+	if (o?.transport?.type != 'ws' || type(a) != 'array') return a;
+	const rest = filter(a, (x) => x != 'h2');
+	return length(rest) ? rest : null;
+}
+
 export function singbox_why(o) {
 	if (o?.transport?.type == 'xhttp') return 'sing-box has no XHTTP transport';
+	// a gRPC serviceName starting with "/" is Xray's custom path ("/a/b" is the path /a/b, "|" adds TunMulti's
+	// name); sing-box always asks for "/<service_name>/Tun", so the server answers 404
+	if (o?.transport?.type == 'grpc' && substr(o.transport.service_name ?? '', 0, 1) == '/')
+		return 'sing-box has no custom gRPC path';
 	if (o?._x?.encryption) return 'sing-box has no VLESS encryption';
 	if (o?._x?.pqv) return 'sing-box has no ML-DSA check of Reality';
 	return null;
@@ -303,7 +317,7 @@ export function to_xray(o) {
 	}
 	else if (t.enabled) {
 		ss.security = 'tls';
-		ss.tlsSettings = { serverName: t.server_name, alpn: t.alpn, fingerprint: t.utls?.fingerprint };
+		ss.tlsSettings = { serverName: t.server_name, alpn: ws_alpn(o), fingerprint: t.utls?.fingerprint };
 	}
 	let settings;
 	if (o.type == 'vless')
@@ -374,8 +388,13 @@ export function from_xray(xo) {
 
 // the server in sing-box's own terms: what only Xray needs left out
 export function for_singbox(o) {
-	if (type(o) != 'object' || o._x == null) return o;
-	const c = { ...o };
-	delete c._x;
+	if (type(o) != 'object') return o;
+	let c = o;
+	if (c._x != null) { c = { ...c }; delete c._x; }
+	const a = ws_alpn(c);
+	if (a != c.tls?.alpn) {   // a ws server offering h2 (ws_alpn)
+		c = { ...c, tls: { ...c.tls } };
+		if (a) c.tls.alpn = a; else delete c.tls.alpn;
+	}
 	return c;
 };

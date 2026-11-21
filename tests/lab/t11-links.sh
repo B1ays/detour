@@ -40,6 +40,19 @@ H='hysteria2://pa@ss@hy.example:443?sni=sni.example&obfs=salamander&obfs-passwor
 chk "$H" '@.password' pa@ss
 chk "$H" '@.obfs.password' ob
 chk "$H" '@.tls.insecure' true
+# ws behind nginx: h2 in the ALPN kills the Upgrade, so sing-box gets the ALPN without it (the link keeps it)
+WA='vless://u@w.example:443?type=ws&security=tls&path=%2Fp&alpn=h2%2Chttp%2F1.1'
+chk "$WA" '@.tls.alpn[0]' h2
+v=$(ucode -L /usr/share/ucode -e 'import * as l from "detour.links"; print(join(",", l.for_singbox(l.parse(ARGV[0]).outbound).tls.alpn));' -- "$WA")
+[ "$v" = "http/1.1" ] && ok "ws: h2 left out of the sing-box ALPN" || bad "ws ALPN for sing-box: got '$v'"
+v=$(ucode -L /usr/share/ucode -e 'import * as l from "detour.links"; print(join(",", l.to_xray(l.parse(ARGV[0]).outbound).xray.streamSettings.tlsSettings.alpn));' -- "$WA")
+[ "$v" = "http/1.1" ] && ok "ws: h2 left out of the Xray ALPN" || bad "ws ALPN for Xray: got '$v'"
+# Xray's custom gRPC path ("/a/b") has no sing-box form: the server is left to Xray
+GP='trojan://p@g.example:443?type=grpc&security=tls&serviceName=%2F54584%2Fsvc'
+v=$(ucode -L /usr/share/ucode -e 'import * as l from "detour.links"; print(l.singbox_why(l.parse(ARGV[0]).outbound) ?? "none");' -- "$GP")
+[ "$v" = "sing-box has no custom gRPC path" ] && ok "grpc custom path needs Xray" || bad "grpc custom path: got '$v'"
+v=$(ucode -L /usr/share/ucode -e 'import * as l from "detour.links"; print(l.singbox_why(l.parse(ARGV[0]).outbound) ?? "none");' -- "$G")
+[ "$v" = "none" ] && ok "plain grpc serviceName stays on sing-box" || bad "plain grpc: got '$v'"
 detour link 'http://x' >/dev/null 2>&1 && bad "http:// accepted" || ok "unsupported scheme rejected"
 detour link 'vless://nouser' >/dev/null 2>&1 && bad "broken link accepted" || ok "broken link rejected"
 
