@@ -179,7 +179,7 @@ apk upgrade detour luci-app-detour
 ```
 config main 'main'
 	option enabled '1'            # главный выключатель: 0 = всё напрямую
-	option lan_dev 'br-lan'       # устройство домашней сети
+	option lan_dev 'br-lan'       # устройства домашней сети через пробел: 'br-lan awgsrv' — ещё и клиенты VPN-сервера на роутере
 	option probe_period '2'       # проверка неработающего выхода, секунды
 	option probe_idle '30'        # проверка работающего выхода без трафика, секунды
 	option fails '2'              # столько неудач подряд = выход упал

@@ -274,7 +274,7 @@ export function load(conf) {
 
 	const main = {
 		enabled: bool(m.enabled, true),
-		lan: as_list(m.lan_dev ?? 'br-lan'),
+		lan: words(m.lan_dev ?? 'br-lan'),   // an option of words ('br-lan awgsrv') or a list
 		probe_period: int(m.probe_period ?? 2) || 2,
 		// a working exit with no traffic is probed this often (its counters say the rest, see detourd probe_due)
 		probe_idle: int(m.probe_idle ?? 30) || 30,
@@ -299,6 +299,8 @@ export function load(conf) {
 	for (let d in main.lan)
 		if (!match(d, RE_IFNAME)) push(errors, sprintf('main: bad lan_dev "%s"', d));
 	main.lan = filter(main.lan, (d) => match(d, RE_IFNAME));
+	// no home network left would classify nothing - every policy silently off; the stock one instead
+	if (!length(main.lan)) main.lan = [ 'br-lan' ];
 	if (!match(main.dom_timeout, RE_TIMEOUT)) {
 		push(errors, sprintf('main: bad dom_timeout "%s" (like 6h, 30m, 1d), 6h is used', main.dom_timeout));
 		main.dom_timeout = '6h';

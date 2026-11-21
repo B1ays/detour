@@ -179,7 +179,7 @@ LuCI usually edits it, but the format is plain UCI:
 ```
 config main 'main'
 	option enabled '1'            # master switch: 0 = everything goes directly
-	option lan_dev 'br-lan'       # home network device
+	option lan_dev 'br-lan'       # home network devices, space-separated: 'br-lan awgsrv' takes the clients of a VPN server on the router too
 	option probe_period '2'       # check of an exit that is down, seconds
 	option probe_idle '30'        # check of a working idle exit, seconds
 	option fails '2'              # this many failures in a row = exit down
