@@ -38,6 +38,7 @@ let opened = {};          // policies with on_down 'direct' that go directly now
 let lists_busy = false, subs_busy = false;
 let apply_errors = [];    // the last apply's errors and warnings (config + nft + setup), shown in LuCI
 let pol_keys = null;      // what put flows under a policy at the last load (dst / device), see load_all
+let dom_keys = null;      // the single domains of each policy at the last load: one taken off has its addresses forgotten
 let off = false;          // main.enabled = 0 came with a reload: everything is taken down, the daemon idles until procd stops it
 let extip = { direct: null, exits: {} };   // the outside address seen directly and through each exit: { ip, loc, colo, ts } (Overview)
 
@@ -271,6 +272,18 @@ function load_all(reason) {
 	if (length(nd) || length(nm) || length(np) || length(ns) || length(nn)) ev(sprintf('new under a policy: %d destinations, %d devices, %d ports, %d sources, %d networks - their direct flows reset (%d)',
 		length(nd), length(nm), length(np), length(ns), length(nn), net.flush_unclassified(nd, nm, np, nsrc)));
 	if (res.dns_restart) dns.restart();
+	// domains taken off a policy (removed, moved, the policy switched off): their addresses leave its sets now, not
+	// after the set's timeout - unless a parent domain still keeps them there
+	const dk = dns.dom_keys(cfg), gone = [];
+	for (let k in dom_keys ?? {}) {
+		if (dk[k]) continue;
+		const sp = index(k, ' '), pid = substr(k, 0, sp), parts = split(substr(k, sp + 1), '.');
+		let kept = false;
+		for (let i = 1; i < length(parts) - 1; i++) if (dk[pid + ' ' + join('.', slice(parts, i))]) kept = true;
+		if (!kept) push(gone, k);
+	}
+	dom_keys = dk;
+	if (length(gone)) ev(sprintf('domains taken off a policy: %d, their addresses forgotten (%d)', length(gone), dns.forget(gone)));
 	apply_errors = res.errors;
 	// engines the init script could not start (it only tells its stderr): here they reach the log and LuCI
 	for (let e in engines.list()) {

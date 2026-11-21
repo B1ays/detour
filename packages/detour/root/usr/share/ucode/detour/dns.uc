@@ -4,7 +4,7 @@
 
 import * as fs from 'fs';
 import { cursor } from 'uci';
-import { run, RUN } from 'detour.core';
+import { run, shq, marks, pol_mark, RUN } from 'detour.core';
 
 export const SERVERS = RUN + '/dns.servers';
 const CONF = 'detour.conf';
@@ -177,4 +177,47 @@ export function prepare(cfg) {
 		if (p.name == cfg.main.dns_policy)
 			for (let s in cfg.main.dns_servers)
 				if (index(p.dst4, s) < 0) push(p.dst4, s);
+};
+
+// "<policy id> <domain>" of every domain a policy fills its dom sets for (single domains; "Block" has no set)
+export function dom_keys(cfg) {
+	const out = {};
+	for (let p in cfg.policies)
+		if (p.enabled && !p.block)
+			for (let d in p.domains) out[sprintf('%d %s', p.id, d)] = true;
+	return out;
+};
+
+// the addresses of a name now (through the router's dnsmasq)
+function addrs(host) {
+	const out = [];
+	for (let l in split(run(sprintf('nslookup %s 127.0.0.1 2>/dev/null', shq(host))).out, '\n')) {
+		const m = match(l, /^Address:?[ \t]+([0-9a-f.:]+)[ \t]*$/);
+		if (m && m[1] != '127.0.0.1' && m[1] != '::1' && index(out, m[1]) < 0) push(out, m[1]);
+	}
+	return out;
+}
+
+// Domains taken off a policy: the dom sets are never flushed (a flush would drop every address the policy's
+// lists learnt too), so what dnsmasq put there for them would keep the old way until the set's timeout (hours).
+// After dnsmasq restarted with the new config, the domain (and www.) is looked up again - its addresses leave
+// the old policy's sets, and its flows under that policy are dropped; where it moved, the same lookup fills the
+// new policy's set at once. Subdomains with other addresses (and rotated CDN addresses) still wait for the timeout.
+// gone: [ "<policy id> <domain>" ]; returns the number of addresses taken out
+export function forget(gone) {
+	const L = marks(), pmask = 0xff << L.shift;
+	let n = 0;
+	for (let k in slice(gone, 0, 32)) {
+		const sp = index(k, ' '), pid = int(substr(k, 0, sp)), d = substr(k, sp + 1);
+		for (let h in [ d, 'www.' + d ])
+			for (let ip in addrs(h)) {
+				const v6 = index(ip, ':') >= 0;
+				const set = sprintf('dom%d_p%d', v6 ? 6 : 4, pid);
+				if (run(sprintf('nft get element inet detour %s { %s }', set, ip)).code != 0) continue;
+				run(sprintf('nft destroy element inet detour %s { %s }', set, ip));
+				run(sprintf('conntrack -D -f %s -d %s -m 0x%x/0x%x', v6 ? 'ipv6' : 'ipv4', ip, pol_mark(pid), pmask));
+				n++;
+			}
+	}
+	return n;
 };

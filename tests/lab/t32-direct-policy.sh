@@ -81,6 +81,14 @@ grep -q "address=/example.com/" /tmp/dnsmasq.*.d/detour.conf && bad "AAAA suppre
 A=$(cl "nslookup example.com 192.168.1.1" | awk '/^Address: [0-9.]+$/{print $2}' | head -n1)
 [ -n "$A" ] && [ "$(inset dom4_p$DID $A)" = yes ] && ok "example.com ($A) in dom4_p$DID" || bad "dom4_p$DID: '$A'"
 
+echo "== the site taken off the policy: its addresses leave the set at once, not after the timeout"
+uci -q delete detour.tdir.domain; uci add_list detour.tdir.dst=192.0.2.1; uci commit detour
+reload
+[ "$(inset dom4_p$DID $A)" = no ] && ok "$A no longer in dom4_p$DID" || bad "$A still in dom4_p$DID"
+R=$(ubus call detour site_explain '{"target":"example.com"}')
+[ "$(echo "$R" | jsonfilter -e '@.goes.policy')" != tdir ] && ok "the check no longer names the policy" || bad "site_explain: $(echo "$R" | head -c 300)"
+logread | tail -30 | grep -q 'domains taken off a policy: 1' && ok "logged" || bad "no log line"
+
 echo "== not a policy for the router's DNS, no 'no valid exit'"
 uci set detour.main.dns=tunnel; uci set detour.main.dns_policy=tdir; uci commit detour
 detour check 2>&1 | grep -q "dns_policy \"tdir\" is not a valid policy" && ok "dns_policy refuses a direct policy" || bad "dns_policy: $(detour check 2>&1 | head -3)"
