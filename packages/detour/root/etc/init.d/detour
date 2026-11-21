@@ -9,12 +9,17 @@ dnsproxy_instance() {
 	local dns port
 	config_get dns main dns off
 	[ "$dns" = tunnel ] || [ "$dns" = encrypted ] || return 0
-	[ -x /usr/bin/dnsproxy ] || return 0
+	# OpenWrt's package puts it in /usr/bin, GL.iNet's firmware in /usr/sbin (core.dnsproxy_bin)
+	local bin=/usr/bin/dnsproxy
+	[ -x $bin ] || bin=/usr/sbin/dnsproxy
+	[ -x $bin ] || return 0
+	# the user OpenWrt's package makes; a dnsproxy without it (GL.iNet's) gets it here
+	user_exists dnsproxy || { local g=$(group_add_next dnsproxy); user_add dnsproxy "$g" "$g" dnsproxy /var/run /bin/false; }
 	grep -q '^dnsproxy:' /etc/passwd || return 0
 	config_get port main dns_fallback_port 5354
 	procd_open_instance dnsfb
 	# runs as user "dnsproxy": its traffic is exempt from policy routing (meta skuid), goes direct
-	procd_set_param command /usr/bin/dnsproxy -l 127.0.0.1 -p "$port" --cache --upstream-mode=parallel
+	procd_set_param command $bin -l 127.0.0.1 -p "$port" --cache --upstream-mode=parallel
 	local up bs got=
 	config_get up main dns_fallback
 	[ -n "$up" ] || up="quic://dns.adguard-dns.com tls://1.1.1.1 https://dns.google/dns-query"

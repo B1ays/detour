@@ -438,6 +438,12 @@ export function exit_by_id(cfg, id) {
 	return null;
 };
 
+// the dnsproxy binary: /usr/bin (OpenWrt's package), /usr/sbin (GL.iNet's firmware ships it there); null: none
+export function dnsproxy_bin() {
+	for (let p in [ '/usr/bin/dnsproxy', '/usr/sbin/dnsproxy' ]) if (fs.access(p, 'x')) return p;
+	return null;
+};
+
 // numeric uid of a system user, or null (nft resolves names at load time; a missing user breaks nft -f)
 export function uid_of(user) {
 	const pw = fs.readfile('/etc/passwd') ?? '';

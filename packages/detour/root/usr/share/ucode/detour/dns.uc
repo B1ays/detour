@@ -4,7 +4,7 @@
 
 import * as fs from 'fs';
 import { cursor } from 'uci';
-import { run, shq, marks, pol_mark, RUN } from 'detour.core';
+import { run, shq, marks, pol_mark, RUN, dnsproxy_bin } from 'detour.core';
 
 export const SERVERS = RUN + '/dns.servers';
 const CONF = 'detour.conf';
@@ -155,7 +155,7 @@ export function write_servers(cfg, mode) {
 	let L = [];
 	if (mode == 'fallback' || mode == 'encrypted') {
 		// the encrypted resolver (dnsproxy, direct); without it the provider's DNS, so names still resolve
-		if (fs.access('/usr/bin/dnsproxy')) push(L, sprintf('server=127.0.0.1#%d', cfg.main.dns_fallback_port));
+		if (dnsproxy_bin()) push(L, sprintf('server=127.0.0.1#%d', cfg.main.dns_fallback_port));
 		else for (let s in wan_dns()) push(L, 'server=' + s);
 	}
 	else

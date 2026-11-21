@@ -103,7 +103,7 @@ export function apply(cfg, active) {
 	}
 	// through the tunnel works on dnsmasq alone (dnsproxy only encrypts the fallback while its exits are down);
 	// encrypted needs dnsproxy - without it the router keeps the provider's DNS (LuCI does not offer it then)
-	if (cfg.main.dns == 'encrypted' && !fs.access('/usr/bin/dnsproxy'))
+	if (cfg.main.dns == 'encrypted' && !core.dnsproxy_bin())
 		push(errors, 'encrypted router DNS: dnsproxy is not installed - the router uses the provider DNS, unencrypted');
 	net.sync_rules(cfg);
 	net.discard6(true);

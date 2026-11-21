@@ -5,6 +5,8 @@ rm -f /etc/config/detour.apk-new
 # system user for notifications: its direct attempt is exempt from the policies (meta skuid)
 . /lib/functions.sh
 user_exists dtnotify || { g=$(group_add_next dtnotify); user_add dtnotify "$g" "$g" detour-notify /var/run /bin/false; }
+# a dnsproxy that came without its user (GL.iNet's firmware): Detour runs it as "dnsproxy"
+{ [ -x /usr/bin/dnsproxy ] || [ -x /usr/sbin/dnsproxy ]; } && ! user_exists dnsproxy && { g=$(group_add_next dnsproxy); user_add dnsproxy "$g" "$g" dnsproxy /var/run /bin/false; }
 # the panel through a VPS moved to its own package (owrt-extras vps-panel, set up anew there): its section, keys
 # and system user leave Detour
 if uci -q get detour.sshtun >/dev/null; then uci delete detour.sshtun; uci commit detour; fi
