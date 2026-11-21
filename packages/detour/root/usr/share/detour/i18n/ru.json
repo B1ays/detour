@@ -37,6 +37,7 @@
 	"only %s entries came (at least %s needed)": "пришло только %s записей (нужно не меньше %s)",
 	"the download is bigger than the memory holds (over %s MB)": "скачанное больше, чем помещается в память (больше %s МБ)",
 	"the engine cannot make its tunnel: the kernel module kmod-tun is missing": "движок не может создать туннель: нет модуля ядра kmod-tun",
+	"the engine chosen for it is not installed": "выбранный для неё движок не установлен",
 	"the engine did not start: its tunnel device is missing": "движок не запустился: нет его туннельного устройства",
 	"the provider did not answer": "провайдер не ответил",
 	"the server answers neither directly nor through another exit": "сервер не отвечает ни напрямую, ни через другой выход",

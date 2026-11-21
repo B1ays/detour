@@ -445,29 +445,47 @@ function exit_check(req) {
 	});
 }
 
-// a subscription's sing-box control API (engines.api_conf): which server the automatic group uses and the
-// delays it measured; "check" one server without switching. Deferred: curl to 127.0.0.1, short timeouts.
+// a subscription's group (engines.api_conf): which server the automatic choice uses and the delays measured;
+// "check" one server without switching. sing-box: its clash API; Xray: "xray api bi" for the balancer's choice (no
+// delays) and its check inbound (user sN = server N). Deferred: to 127.0.0.1, short timeouts.
 let api_seq = 0;
-function sub_api(req, path, timeout, done) {
-	if (!match(req.args.name ?? '', /^[a-z][a-z0-9_]*$/)) return { error: 'no automatic server group for ' + (req.args.name ?? '') };
-	const eng = req.args.name + '_eng';
-	const port = engines.api_port(eng);
-	if (!port) return { error: 'no automatic server group for ' + (req.args.name ?? '') };
+function sub_group(req) {
+	if (!match(req.args.name ?? '', /^[a-z][a-z0-9_]*$/)) return null;
+	return engines.api_info(req.args.name + '_eng');
+}
+function sub_run(req, cmd, done) {
 	req.defer();
+	uloop.process('/bin/sh', [ '-c', cmd ], {}, function() { req.reply(done()); });
+}
+function sub_api(req, a, path, timeout, done) {
 	const f = sprintf('%s/api-%s-%d', core.RUN, req.args.name, ++api_seq);   // answers of parallel checks never share a file
 	const cmd = sprintf("curl -s -m %d -K %s -o %s.body -w '%%{http_code}' 'http://127.0.0.1:%d%s' > %s.code 2>/dev/null",
-		timeout, core.shq(engines.api_file(eng)), f, port, path, f);
-	uloop.process('/bin/sh', [ '-c', cmd ], {}, function() {
+		timeout, core.shq(engines.api_file(req.args.name + '_eng')), f, a.port, path, f);
+	sub_run(req, cmd, function() {
 		const http = trim(fs.readfile(f + '.code') ?? '');
 		let body = null;
 		try { body = json(fs.readfile(f + '.body') ?? 'null'); } catch (e) { }
 		fs.unlink(f + '.code'); fs.unlink(f + '.body');
-		req.reply(done(http, body));
+		return done(http, body);
 	});
 }
 
 function sub_state(req) {
-	return sub_api(req, '/proxies', 4, function(http, b) {
+	const a = sub_group(req);
+	if (!a) return { error: 'no automatic server group for ' + (req.args.name ?? '') };
+	if (a.engine == 'xray') {
+		const f = sprintf('%s/api-%s-%d', core.RUN, req.args.name, ++api_seq);
+		return sub_run(req, sprintf("xray api bi --server=127.0.0.1:%d -t 3 -json out > %s 2>/dev/null", a.port, f), function() {
+			let b = null;
+			try { b = json(fs.readfile(f) ?? 'null'); } catch (e) { }
+			fs.unlink(f);
+			const t = b?.balancer?.override?.target ?? b?.balancer?.principleTarget?.tag?.[0];
+			if (!b?.balancer) return { error: 'the engine does not answer' };
+			const m = match(t ?? '', /^s([0-9]+)$/);
+			return { now: m ? int(m[1]) - 1 : null, delays: {} };
+		});
+	}
+	return sub_api(req, a, '/proxies', 4, function(http, b) {
 		if (http != '200' || type(b?.proxies) != 'object') return { error: 'the engine does not answer' };
 		const out = { now: null, delays: {} };
 		const m = match(b.proxies.out?.now ?? '', /^s([0-9]+)$/);
@@ -485,8 +503,23 @@ function sub_state(req) {
 function sub_check(req) {
 	const i = int(req.args.index ?? -1);
 	if (i < 0 || i > 999) return { error: 'bad server index' };
+	const a = sub_group(req);
+	if (!a) return { error: 'no automatic server group for ' + (req.args.name ?? '') };
 	const url = cursor().get('detour', 'main', 'urltest_url') ?? 'https://www.gstatic.com/generate_204';
-	return sub_api(req, sprintf('/proxies/s%d/delay?timeout=6000&url=%s', i + 1, replace(url, /[^A-Za-z0-9._~:\/-]/g, (c) => sprintf('%%%02X', ord(c)))), 9,
+	if (a.engine == 'xray') {
+		if (!a.socks) return { error: 'no automatic server group for ' + req.args.name };
+		// a request through the check inbound as user sN: that server only; the password in a file, not argv
+		const f = sprintf('%s/api-%s-%d', core.RUN, req.args.name, ++api_seq);
+		fs.writefile(f + '.k', ''); fs.chmod(f + '.k', 0600);
+		fs.writefile(f + '.k', sprintf('proxy = "socks5h://127.0.0.1:%d"\nproxy-user = "s%d:%s"\nurl = "%s"\n', a.socks, i + 1, a.secret, replace(url, '"', '%22')));
+		return sub_run(req, sprintf("curl -s -m 8 -K %s -o /dev/null -w '%%{http_code} %%{time_total}' > %s.code 2>/dev/null", f + '.k', f), function() {
+			const w = split(trim(fs.readfile(f + '.code') ?? ''), ' ');
+			fs.unlink(f + '.k'); fs.unlink(f + '.code');
+			if (match(w[0] ?? '', /^(200|204)$/)) return { ok: true, ms: int(+(w[1] ?? 0) * 1000) };
+			return { ok: false, error: 'no answer through this server' };
+		});
+	}
+	return sub_api(req, a, sprintf('/proxies/s%d/delay?timeout=6000&url=%s', i + 1, replace(url, /[^A-Za-z0-9._~:\/-]/g, (c) => sprintf('%%%02X', ord(c)))), 9,
 		function(http, b) {
 			if (http == '200' && b?.delay != null) return { ok: true, ms: b.delay };
 			return { ok: false, error: (http == '504' || http == '408' || http == '503') ? 'no answer through this server' : (b?.message ?? 'no answer') };

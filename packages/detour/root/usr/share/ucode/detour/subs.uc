@@ -5,8 +5,10 @@
 //     option hwid '…'                  # optional x-hwid (panels that count devices)
 //     option via 'warp1'               # optional: the servers are reached through another exit
 //     option max '30'
-// One exit per subscription: a sing-box engine whose servers form a urltest group (a working, fast one is
-// picked and re-checked). Formats: base64 or plain share links, a sing-box config (outbounds).
+//     option engine 'xray'             # singbox (default) | xray: what runs the servers
+// One exit per subscription: an engine whose servers form a group (a working, fast one is picked and
+// re-checked: sing-box urltest, Xray observatory + balancer). Formats: base64 or plain share links, a sing-box
+// config (outbounds). Each engine gets what it can run; the rest is skipped, saying why.
 'use strict';
 
 import * as fs from 'fs';
@@ -73,15 +75,32 @@ function url_target(url) {
 	return { private: priv, host, port, addr };
 }
 
-export function parse_body(body) {
+// -> the servers in the engine's own form: sing-box outbounds, or Xray ones (etype 'xray'); what the engine
+// cannot run is left out, saying why
+export function parse_body(body, etype) {
+	const xray = etype == 'xray';
 	body = trim(body ?? '');
 	let j = null;
 	if (substr(body, 0, 1) == '{' || substr(body, 0, 1) == '[') try { j = json(body); } catch (e) { }
 	const out = [], skipped = [], names = [];
+	// one server for the engine: sing-box takes it as it is (what only Xray reads dropped), Xray converted
+	const take = function(o, label) {
+		if (xray) {
+			const x = links.to_xray(o);
+			if (x.error) { push(skipped, sprintf('%s: %s', label ?? o.server, x.error)); return; }
+			push(out, x.xray);
+		}
+		else {
+			const why = links.singbox_why(o);
+			if (why) { push(skipped, sprintf('%s: %s, needs Xray', label ?? o.server, why)); return; }
+			push(out, links.for_singbox(o));
+		}
+		push(names, clean_label(label));
+	};
 	if (j) {
 		const list = (type(j) == 'array') ? j : (j.outbounds ?? []);
 		for (let o in list) {
-			if (type(o) == 'object' && index(PROXY_TYPES, o.type) >= 0) { delete o.detour; push(names, clean_label(o.tag)); push(out, o); }   // .detour: sing-box's own field (dial through another outbound), not this project
+			if (type(o) == 'object' && index(PROXY_TYPES, o.type) >= 0) { delete o.detour; take(o, o.tag); }   // .detour: sing-box's own field (dial through another outbound), not this project
 			else if (type(o) == 'object' && index([ 'direct', 'block', 'dns', 'selector', 'urltest' ], o.type) < 0) push(skipped, o.type);
 		}
 		return { outbounds: out, skipped, names };
@@ -97,11 +116,7 @@ export function parse_body(body) {
 		if (!length(l) || index(l, '://') < 0) continue;
 		const r = links.parse(l);
 		if (r.error) { push(skipped, r.error); continue; }
-		// a subscription runs on sing-box: a server only Xray runs (XHTTP, VLESS encryption) is left out, saying why
-		const why = links.singbox_why(r.outbound);
-		if (why) { push(skipped, sprintf('%s: %s, needs Xray', r.remark ?? r.outbound.server, why)); continue; }
-		push(names, clean_label(r.remark));
-		push(out, links.for_singbox(r.outbound));
+		take(r.outbound, r.remark);
 	}
 	return { outbounds: out, skipped, names };
 };
@@ -127,6 +142,13 @@ function update_locked(name) {
 	const url = s.url ?? '';
 	if (!match(url, /^https?:\/\/\S+$/)) { status(name, false, 0, 'bad URL', 'bad_url'); return { error: 'bad URL' }; }
 	if (s.via && c.get('detour', s.via) != 'exit') return { error: 'via: "' + s.via + '" is not an exit' };
+	// the engine that runs the servers: sing-box unless Xray is chosen; not installed - nothing changes
+	const etype = (s.engine == 'xray') ? 'xray' : 'singbox';
+	if (!fs.access(etype == 'xray' ? '/usr/bin/xray' : '/usr/bin/sing-box')) {
+		const msg = (etype == 'xray' ? 'xray-core' : 'sing-box') + ' is not installed';
+		status(name, false, 0, msg + ', previous servers kept', 'no_engine');
+		return { error: msg };
+	}
 
 	fs.mkdir(RUN); fs.mkdir(SDIR);
 	const k = sprintf('%s/%s.curl', SDIR, name);
@@ -167,31 +189,41 @@ function update_locked(name) {
 		log(sprintf('subscription %s: download failed, previous servers kept', name));
 		return { error: 'download failed' };
 	}
-	const p = parse_body(body);
+	const p = parse_body(body, etype);
 	const max = int(s.max ?? 30) || 30;
 	const outs = slice(p.outbounds, 0, max);
 	if (!length(outs)) { status(name, false, 0, 'no usable servers in the answer, previous servers kept', 'no_servers'); return { error: 'no usable servers' }; }
 	// the exit is "<name>_sub" (exits and subscriptions share the UCI namespace), its tun "<name>tun"
 	const xn = name + '_sub';
+	// the file and the engine type change together: the file is in the engine's own form
 	const f = engines.write_outbound(xn, outs);
 	// the servers' names for LuCI (and for a chosen server's key): not in the outbounds, sing-box takes no unknown fields
 	fs.writefile(engines.names_file(xn), sprintf('%J\n', slice(p.names, 0, max)));
 	let created = false;
 	if (c.get('detour', xn) != 'exit') {
 		if (c.get('network', xn)) return { error: xn + ' is already used by another interface' };
-		const e = engines.create_exit(xn, f, s.via, s.label ?? name, name + 'tun');
+		const e = engines.create_exit(xn, f, s.via, s.label ?? name, name + 'tun', etype);
 		if (e.error) return e;
 		created = true;
 	}
-	else if ((c.get('detour', xn + '_eng', 'via') ?? '') != (s.via ?? '')) {
-		if (s.via) c.set('detour', xn + '_eng', 'via', s.via); else c.delete('detour', xn + '_eng', 'via');
-		c.commit('detour');
+	else {
+		let changed = false;
+		if ((c.get('detour', xn + '_eng', 'via') ?? '') != (s.via ?? '')) {
+			if (s.via) c.set('detour', xn + '_eng', 'via', s.via); else c.delete('detour', xn + '_eng', 'via');
+			changed = true;
+		}
+		if ((c.get('detour', xn + '_eng', 'type') ?? 'singbox') != etype) {
+			c.set('detour', xn + '_eng', 'type', etype);
+			changed = true;
+			log(sprintf('subscription %s: now on %s', name, etype == 'xray' ? 'Xray' : 'sing-box'));
+		}
+		if (changed) c.commit('detour');
 	}
 	status(name, true, length(outs), sprintf('%d servers%s', length(outs), length(p.skipped) ? sprintf(', %d skipped', length(p.skipped)) : ''), 'updated', length(p.skipped), info ?? {});
 	log(sprintf('subscription %s: %d servers', name, length(outs)));
 	// procd restarts the engine when its generated config changed (procd "file" param)
 	run('/etc/init.d/detour reload');
-	return { name, exit: xn, servers: length(outs), skipped: length(p.skipped), created };
+	return { name, exit: xn, engine: etype, servers: length(outs), skipped: length(p.skipped), created };
 }
 
 export function update(name) {

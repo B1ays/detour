@@ -967,6 +967,9 @@ msgstr "обновлено %s"
 msgid "updates every %s"
 msgstr "обновляется раз в %s"
 
+msgid "The engine chosen for this subscription is not installed - the previous servers are kept."
+msgstr "Движок, выбранный для этой подписки, не установлен — остаются прежние серверы."
+
 msgid "The last update failed - the previous servers are kept."
 msgstr "Последнее обновление не удалось — оставлены прежние серверы."
 
@@ -1036,6 +1039,9 @@ msgstr "Подключаться к серверам"
 msgid "Through another exit when the provider blocks these servers."
 msgstr "Через другой выход, когда провайдер блокирует эти серверы."
 
+msgid "What runs the servers. sing-box by default; Xray also runs XHTTP and servers sing-box cannot connect to. Servers the engine cannot run are skipped."
+msgstr "Чем запускаются серверы. По умолчанию sing-box; Xray умеет ещё XHTTP и серверы, к которым sing-box не подключается. Серверы, которые движок не умеет запускать, пропускаются."
+
 msgid "Present as app (User-Agent)"
 msgstr "Представляться приложением (User-Agent)"
 
@@ -1062,6 +1068,9 @@ msgstr "Внутреннее имя: a-z, 0-9, _, начинается с бук
 
 msgid "This name is already used"
 msgstr "Это имя уже занято"
+
+msgid "Xray is not installed: install it here or choose sing-box."
+msgstr "Xray не установлен: установите его здесь или выберите sing-box."
 
 msgid "Exits"
 msgstr "Выходы"

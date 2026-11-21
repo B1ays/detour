@@ -104,7 +104,7 @@ flowchart LR
 | `detour` | всегда | Маршрутизация, демон, командная строка. |
 | `luci-app-detour` | для веб-интерфейса | Страницы в LuCI. |
 | `sing-box` | для прокси-выходов и подписок | Движок прокси. |
-| `xray-core` | для выходов на Xray | Второй движок (XHTTP, конфиги Xray, ключи `vpn://`). |
+| `xray-core` | для выходов и подписок на Xray | Второй движок (XHTTP, конфиги Xray, ключи `vpn://`). |
 | `kmod-amneziawg`, `amneziawg-tools` | для AmneziaWG и маскировки WARP | Модуль ядра и утилиты. |
 | `dnsproxy` | только для шифрованного DNS | Резолвер DoH/DoT/DoQ. DNS через туннель работает на одном dnsmasq; dnsproxy лишь шифрует его запасной вариант, пока выходы не работают. |
 | `ucode-mod-zlib` | для ключей `vpn://` | Распаковка ключа. |
@@ -247,6 +247,7 @@ config subscription 'prov'
 	option url 'https://…'        # секрет: не попадает в журнал
 	option interval '12'          # часы; по умолчанию — как советует провайдер, иначе 24
 	option via 'pl'               # необязательно
+	option engine 'xray'          # singbox (по умолчанию) | xray: чем запускаются серверы
 
 config notify 'notify'
 	option enabled '1'

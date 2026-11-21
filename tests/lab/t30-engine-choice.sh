@@ -1,7 +1,8 @@
 #!/bin/sh
 # One server, two engines: a link both sing-box and Xray run is added on the engine chosen (by default on
 # sing-box, as before); an XHTTP link (Xray only) becomes an Xray exit; what an engine cannot run is told, not
-# written; a subscription leaves XHTTP servers out, saying why; another server for an exit from a link keeps the
+# written; a subscription on sing-box leaves XHTTP servers out, saying why, on Xray it runs them (a balancer over
+# the servers, its choice and a check of one server for LuCI); another server for an exit from a link keeps the
 # exit's engine when it can and moves it when it must. Everything comes up healthy against a real Xray server
 # (VLESS over XHTTP and over WebSocket) in netns ex2.
 FAIL=0; ok() { echo "  ok   $*"; }; bad() { echo "  FAIL $*"; FAIL=1; }
@@ -14,7 +15,8 @@ D=/etc/enodia-lab; umask 077
 
 ip netns list | grep -q '^ex2 ' || lab tests/lab/l2-exit.sh 2 >/dev/null 2>&1
 cleanup() {
-	for n in tx1 tx2 tx3 tx4 tx5; do [ "$(uci -q get detour.$n)" = exit ] && detour exit-remove $n >/dev/null 2>&1; done
+	for n in tx1 tx2 tx3 tx4 tx5 txs_sub; do [ "$(uci -q get detour.$n)" = exit ] && detour exit-remove $n >/dev/null 2>&1; done
+	uci -q delete detour.txs; uci commit detour
 	kill $(cat $T/xs.pid 2>/dev/null) 2>/dev/null
 	for p in $(pgrep -f xray-t30.json); do kill $p; done
 }
@@ -83,6 +85,38 @@ healthy tx2 && ok "tx2 healthy on Xray" || bad "tx2 not healthy after the move"
 echo "== a subscription leaves XHTTP servers out, saying why"
 R=$(ucode -L /usr/share/ucode -e 'import * as s from "detour.subs"; const r = s.parse_body(ARGV[0]); print(length(r.outbounds), " ", join("|", r.skipped));' -- "$(printf '%s\n%s' "$WS" "$XH")")
 case "$R" in "1 t30-xhttp: sing-box has no XHTTP transport, needs Xray") ok "subscription: 1 server, XHTTP skipped with the reason";; *) bad "subs: $R";; esac
+HY="hysteria2://pw@10.199.2.2:8447?sni=x.example#t30-hy2"
+R=$(ucode -L /usr/share/ucode -e 'import * as s from "detour.subs"; const r = s.parse_body(ARGV[0], "xray"); print(length(r.outbounds), " ", join(",", map(r.outbounds, (o) => o.protocol + "/" + o.streamSettings.network)), " ", join("|", r.skipped));' -- "$(printf '%s\n%s\n%s' "$WS" "$XH" "$HY")")
+case "$R" in "2 vless/ws,vless/xhttp t30-hy2: Xray runs here only VLESS, VMess, Trojan and Shadowsocks") ok "subscription on Xray: WS and XHTTP in Xray form, Hysteria2 skipped with the reason";; *) bad "subs xray: $R";; esac
+
+echo "== a subscription on Xray: one exit, a balancer over its servers, healthy; back to sing-box"
+SS=http://10.0.2.2:8768
+printf '%s\n%s\n' "$WS" "$XH" > $T/l.txt; curl -s --data-binary @$T/l.txt $SS/set/links >/dev/null
+uci -q batch <<U
+set detour.txs=subscription
+set detour.txs.url=$SS/sub/T30/b64
+set detour.txs.allow_private=1
+set detour.txs.engine=xray
+commit detour
+U
+R=$(detour sub-update txs)
+echo "$R" | grep -q '"servers": 2' && [ "$(etype txs_sub)" = xray ] && ok "subscription on Xray: 2 servers, an Xray engine" || bad "txs: $R"
+reload_config; sleep 5
+X=/tmp/detour/engines/txs_sub_eng.json
+[ "$(jsonfilter -i $X -e '@.routing.balancers[0].strategy.type')" = leastPing ] && [ "$(jsonfilter -i $X -e '@.routing.rules[0].balancerTag')" = out ] \
+	&& ok "balancer leastPing, the tunnel's traffic goes to it" || bad "balancer: $(jsonfilter -i $X -e '@.routing')"
+[ "$(jsonfilter -i $X -e '@.outbounds[*].streamSettings.sockopt.mark' | sort -u | wc -l)" = 1 ] && [ "$(jsonfilter -i $X -e '@.outbounds[1].streamSettings.sockopt.mark')" != "" ] \
+	&& ok "every server carries the underlay mark" || bad "marks"
+xray run -test -c $X >/dev/null 2>&1 && ok "Xray accepts it" || bad "xray -test: $(xray run -test -c $X 2>&1 | tail -1)"
+healthy txs_sub 90 && ok "txs (Xray balancer) healthy" || bad "txs not healthy"
+R=$(ubus call detour sub_state '{"name":"txs_sub"}'); echo "$R" | grep -q '"now": [01]' && ok "the group says which server it uses" || bad "sub_state: $R"
+R=$(ubus call detour sub_check '{"name":"txs_sub","index":1}'); echo "$R" | grep -q '"ok": true' && ok "one server checked through the check inbound" || bad "sub_check: $R"
+ps w | grep -v grep | grep 'xray run' | grep -q -- "-c $X" && ok "Xray runs it" || bad "no xray process"
+uci -q delete detour.txs.engine; uci commit detour
+R=$(detour sub-update txs)
+echo "$R" | grep -q '"servers": 1' && [ "$(etype txs_sub)" = singbox ] && ok "back on sing-box: 1 server, XHTTP skipped" || bad "txs back: $R"
+grep -q streamSettings /etc/detour/engines/txs_sub.json && bad "an Xray form left in a sing-box file" || ok "the file is in sing-box form again"
+healthy txs_sub 90 && ok "txs healthy on sing-box" || bad "txs not healthy on sing-box"
 
 echo "== cleanup"
 cleanup

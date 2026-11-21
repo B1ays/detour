@@ -92,6 +92,7 @@ export function info() {
 			const outs = outbounds_of(e.outbound);
 			const sub = sub_of(c, n);
 			if (sub) {
+				x.sub_engine = x.kind;   // the engine that runs it now (the chosen one comes with the next update)
 				x.kind = 'subscription';
 				x.subscription = sub;
 				x.pick = e.pick ?? null;

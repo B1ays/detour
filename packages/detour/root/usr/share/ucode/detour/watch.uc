@@ -60,6 +60,7 @@ function sub_reason(st) {
 		no_servers: _('no suitable servers in the answer'),
 		bad_url: _('wrong subscription address'),
 		private: _('the subscription address points into the local network'),
+		no_engine: _('the engine chosen for it is not installed'),
 	}[st.code] ?? st.message;
 }
 

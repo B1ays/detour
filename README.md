@@ -104,7 +104,7 @@ flowchart LR
 | `detour` | always | Routing, daemon, command line. |
 | `luci-app-detour` | for the web interface | LuCI pages. |
 | `sing-box` | for proxy exits and subscriptions | Proxy engine. |
-| `xray-core` | for Xray exits | Second engine (XHTTP, Xray configs, `vpn://` keys). |
+| `xray-core` | for Xray exits and subscriptions | Second engine (XHTTP, Xray configs, `vpn://` keys). |
 | `kmod-amneziawg`, `amneziawg-tools` | for AmneziaWG and WARP obfuscation | Kernel module and tools. |
 | `dnsproxy` | only for encrypted DNS | DoH/DoT/DoQ resolver. DNS through the tunnel works on dnsmasq alone; dnsproxy only encrypts its fallback while the exits are down. |
 | `ucode-mod-zlib` | for `vpn://` keys | Key decompression. |
@@ -247,6 +247,7 @@ config subscription 'prov'
 	option url 'https://…'        # a secret: never logged
 	option interval '12'          # hours; default: as the provider advises, else 24
 	option via 'pl'               # optional
+	option engine 'xray'          # singbox (default) | xray: what runs the servers
 
 config notify 'notify'
 	option enabled '1'

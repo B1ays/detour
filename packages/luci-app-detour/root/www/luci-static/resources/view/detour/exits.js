@@ -370,11 +370,14 @@ return view.extend({
 		const head = [];
 		const n = (x.servers || []).length;
 		head.push(E('div', {}, [ E('strong', {}, N_(n, '%d server', '%d servers').format(n)),
+			' · ' + (x.sub_engine == 'xray' ? 'Xray' : 'sing-box'),
 			st.ts ? ' · ' + _('updated %s').format(fmtTime(st.ts)) : '',
 			' · ' + _('updates every %s').format(this.intervalText(x.sub_interval || 24)) ]));
 		const usage = this.usageText(x.sub_info);
 		if (usage) head.push(usage);
-		if (st.ok === false) head.push(note(_('The last update failed - the previous servers are kept.'), 'warning'));
+		if (st.code == 'no_engine')
+			head.push(pkg.offer(/xray/.test(st.message || '') ? 'xray' : 'singbox', _('The engine chosen for this subscription is not installed - the previous servers are kept.')));
+		else if (st.ok === false) head.push(note(_('The last update failed - the previous servers are kept.'), 'warning'));
 		if (x.via) head.push(E('div', {}, _('Connects to its servers through «%s».').format(x.via_label || x.via)));
 		const nowLine = E('div', {});
 		head.push(nowLine);
@@ -470,7 +473,10 @@ return view.extend({
 				return E('option', { 'value': String(h), 'selected': (+(s && s.interval || 24) == h) ? '' : null }, this.intervalText(h));
 			}, this)),
 			ua: E('input', { 'class': 'cbi-input-text', 'value': (s && s.user_agent) || '', 'placeholder': 'v2rayNG/1.10.0' }),
-			hwid: E('input', { 'class': 'cbi-input-text', 'value': (s && s.hwid) || '' })
+			hwid: E('input', { 'class': 'cbi-input-text', 'value': (s && s.hwid) || '' }),
+			engine: E('select', { 'class': 'cbi-input-select' }, [ [ 'singbox', 'sing-box' ], [ 'xray', 'Xray' ] ].map(function(e) {
+				return E('option', { 'value': e[0], 'selected': (((s && s.engine) || 'singbox') == e[0]) ? '' : null }, e[1]);
+			}))
 		};
 		f.via = this.viaSelect(x || { name: '' }, (s && s.via) || '', by);
 		f.rows = [
@@ -478,6 +484,7 @@ return view.extend({
 			row(_('Subscription address'), f.url, _('The link your VPN provider gives for apps. Kept secret: shown only here, never logged.')),
 			row(_('Update every'), f.interval),
 			row(_('Connect to the servers'), f.via, _('Through another exit when the provider blocks these servers.')),
+			row(_('Engine'), f.engine, _('What runs the servers. sing-box by default; Xray also runs XHTTP and servers sing-box cannot connect to. Servers the engine cannot run are skipped.')),
 			row(_('Present as app (User-Agent)'), f.ua, _('Some providers give servers only to certain apps (Happ, v2rayNG…). Empty: v2rayNG.')),
 			row(_('Device id (x-hwid)'), f.hwid, _('Only if your provider counts devices.'))
 		];
@@ -492,6 +499,7 @@ return view.extend({
 		set('via', f.via.value);
 		set('user_agent', f.ua.value.trim());
 		set('hwid', f.hwid.value.trim());
+		set('engine', f.engine.value == 'singbox' ? '' : f.engine.value);
 	},
 
 	editSub: function(x, by) {
@@ -510,16 +518,24 @@ return view.extend({
 		const self = this;
 		const name = E('input', { 'class': 'cbi-input-text', 'placeholder': 'provider', 'maxlength': 11 });
 		const f = this.subFields(null, null, by);
-		modal(_('New subscription'), [ row(_('Internal name'), name, _('Latin letters, digits and _, up to 11; used in the configuration.')) ].concat(f.rows), function() {
+		modal(_('New subscription'), [ row(_('Internal name'), name, _('Latin letters, digits and _, up to 11; used in the configuration.')) ].concat(f.rows), function(box) {
 			const n = name.value.trim();
 			if (!/^[a-z][a-z0-9_]{0,10}$/.test(n)) throw new Error(_('Internal name: a-z, 0-9, _, starts with a letter, up to 11'));
 			if (uci.get('detour', n) || uci.get('network', n + '_sub')) throw new Error(_('This name is already used'));
 			if (!/^https?:\/\/\S+$/.test(f.url.value.trim())) throw new Error(_('The subscription address must start with http:// or https://'));
-			uci.add('detour', 'subscription', n);
-			self.saveSubFields(n, f);
-			return applyUci().then(function() { return callSubUpdate(n); }).then(function(r) {
-				if (!r || r.error) throw new Error((r && r.error) || _('No answer from the router'));
-				return true;
+			// Xray chosen but not installed: offered here - saved, the subscription would never get its exit
+			const engineOk = f.engine.value != 'xray' ? Promise.resolve(true) : L.resolveDefault(pkg.list(), null).then(function(r) {
+				const c = ((r && r.components) || []).filter(function(x) { return x.id == 'xray'; })[0];
+				return !c || !!c.installed;
+			});
+			return engineOk.then(function(ok) {
+				if (!ok) { box.replaceChildren(pkg.offer('xray', _('Xray is not installed: install it here or choose sing-box.'))); return false; }
+				uci.add('detour', 'subscription', n);
+				self.saveSubFields(n, f);
+				return applyUci().then(function() { return callSubUpdate(n); }).then(function(r) {
+					if (!r || r.error) throw new Error((r && r.error) || _('No answer from the router'));
+					return true;
+				});
 			});
 		}, _('Add'));
 	},

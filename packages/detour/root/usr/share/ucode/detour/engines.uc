@@ -120,9 +120,10 @@ export function list() {
 	return out;
 };
 
-// A group of servers (a subscription) gets sing-box's control API on 127.0.0.1, behind a secret: which server
-// the group chose and each server's delay, without switching. Its address and secret are written as a curl
-// config (mode 600) - the secret never shows on a command line.
+// A group of servers (a subscription) gets a control API on 127.0.0.1: which server the group chose and each
+// server's delay, without switching. sing-box: its clash API behind a secret, written as a curl config (mode 600) -
+// the secret never shows on a command line. Xray: its own API (the balancer's choice, "xray api bi") and a SOCKS
+// inbound whose user "sN" leaves through server N only (a check of one server), password = the same secret.
 export function api_file(engine) { return sprintf('%s/%s.api', DIR, engine); };
 function api_conf(e) {
 	fs.mkdir(RUN); fs.mkdir(DIR);
@@ -138,14 +139,25 @@ function api_conf(e) {
 		if (!match(secret ?? '', /^[0-9a-f]{32}$/)) return null;
 	}
 	const f = api_file(e.name);
+	// Xray's check inbound: the ports after the API ones (19100..19599)
+	const socks = (e.type == 'xray') ? 19600 + e.idx % 500 : null;
 	fs.writefile(f + '.tmp', ''); fs.chmod(f + '.tmp', 0600);
-	fs.writefile(f + '.tmp', sprintf('header = "Authorization: Bearer %s"\n# url http://127.0.0.1:%d\n', secret, port));
+	fs.writefile(f + '.tmp', sprintf('header = "Authorization: Bearer %s"\n# url http://127.0.0.1:%d\n', secret, port) +
+		(socks ? sprintf('# engine xray\n# socks 127.0.0.1:%d\n', socks) : ''));
 	fs.rename(f + '.tmp', f);
-	return { external_controller: sprintf('127.0.0.1:%d', port), secret };
+	return { external_controller: sprintf('127.0.0.1:%d', port), secret, port, socks };
 }
 export function api_port(engine) {
 	const m = match(fs.readfile(api_file(engine)) ?? '', /# url http:\/\/127\.0\.0\.1:([0-9]+)/);
 	return m ? int(m[1]) : null;
+};
+// the API of a group: { engine: singbox | xray, port, socks (Xray), secret } | null
+export function api_info(engine) {
+	const t = fs.readfile(api_file(engine)) ?? '';
+	const p = match(t, /# url http:\/\/127\.0\.0\.1:([0-9]+)/), s = match(t, /Bearer ([0-9a-f]{32})/);
+	if (!p || !s) return null;
+	const k = match(t, /# socks 127\.0\.0\.1:([0-9]+)/);
+	return { engine: match(t, /# engine xray/) ? 'xray' : 'singbox', port: int(p[1]), socks: k ? int(k[1]) : null, secret: s[1] };
 };
 
 function read_outbound(e) {
@@ -164,35 +176,33 @@ function read_outbound(e) {
 export function render(e) {
 	const r = read_outbound(e);
 	if (r.error) return r;
-	const o = r.o;
-	o.tag = 'out';
-	let cfg;
 	if (e.via && !e.via_dev) return { error: 'via: "' + e.via + '" is not an exit' };
+	// several servers (a subscription): a group picks a working, fast one and keeps checking. One server chosen
+	// in LuCI (option pick = its key): only that one; a key that is gone after an update falls back to the group
+	let all = r.all;
+	if (e.pick) {
+		let names = [];
+		try { names = json(fs.readfile(names_file(replace(e.name, /_eng$/, ''))) ?? '[]'); } catch (x) { }
+		const hit = filter(map(all, (x, i) => [ x, i ]), (p) => server_key(p[0], names[p[1]]) == e.pick);
+		if (length(hit)) all = [ hit[0][0] ];
+	}
+	const group = length(all) > 1;
+	const url = cursor().get('detour', 'main', 'urltest_url') ?? 'https://www.gstatic.com/generate_204';
+	const api = group ? api_conf(e) : null;
+	if (!group) fs.unlink(api_file(e.name));   // no group, no API: LuCI then knows there is nothing to ask
+	let cfg;
 	if (e.type == 'singbox') {
-		// several servers (a subscription): each one dials with the underlay mark / via, a urltest
-		// group picks a working, fast one and keeps checking
+		// each server dials with the underlay mark / via; a urltest group over them
 		const outs = [];
-		// a subscription with one server chosen in LuCI (option pick = its key): only that one; a key that
-		// is gone after an update falls back to the automatic group
-		let all = r.all;
-		if (e.pick) {
-			let names = [];
-			try { names = json(fs.readfile(names_file(replace(e.name, /_eng$/, ''))) ?? '[]'); } catch (x) { }
-			const hit = filter(map(all, (x, i) => [ x, i ]), (p) => server_key(p[0], names[p[1]]) == e.pick);
-			if (length(hit)) all = [ hit[0][0] ];
-		}
 		for (let i, x0 in all) {
 			const x = links.for_singbox(x0);   // what only Xray reads (links.uc "_x") is an error to sing-box
-			x.tag = (length(all) > 1) ? sprintf('s%d', i + 1) : 'out';
+			x.tag = group ? sprintf('s%d', i + 1) : 'out';
 			x.routing_mark = M_UNDERLAY;
 			if (e.via_dev) x.bind_interface = e.via_dev;
 			push(outs, x);
 		}
-		if (length(outs) > 1)
-			push(outs, { type: 'urltest', tag: 'out', outbounds: map(outs, (x) => x.tag),
-				url: cursor().get('detour', 'main', 'urltest_url') ?? 'https://www.gstatic.com/generate_204',
-				interval: '3m', tolerance: 100 });
-		const api = (length(outs) > 1) ? api_conf(e) : null;
+		if (group)
+			push(outs, { type: 'urltest', tag: 'out', outbounds: map(outs, (x) => x.tag), url, interval: '3m', tolerance: 100 });
 		cfg = {
 			log: { level: 'warn' },
 			inbounds: [ { type: 'tun', tag: 'tun-in', interface_name: e.device,
@@ -201,18 +211,42 @@ export function render(e) {
 			outbounds: outs,
 			route: { final: 'out', auto_detect_interface: false }
 		};
-		if (api) cfg.experimental = { clash_api: api };
+		if (api) cfg.experimental = { clash_api: { external_controller: api.external_controller, secret: api.secret } };
 	}
 	else {
-		o.streamSettings ??= {};
-		o.streamSettings.sockopt ??= {};
-		o.streamSettings.sockopt.mark = M_UNDERLAY;
-		if (e.via_dev) o.streamSettings.sockopt.interface = e.via_dev;
+		// every server with the underlay mark (its own traffic, the observatory's probes too) / via
+		const outs = [];
+		for (let i, x0 in all) {
+			const x = json(sprintf('%J', x0));
+			x.tag = group ? sprintf('s%d', i + 1) : 'out';
+			x.streamSettings ??= {};
+			x.streamSettings.sockopt ??= {};
+			x.streamSettings.sockopt.mark = M_UNDERLAY;
+			if (e.via_dev) x.streamSettings.sockopt.interface = e.via_dev;
+			push(outs, x);
+		}
 		cfg = {
 			log: { loglevel: 'warning' },
 			inbounds: [ { tag: 'tun-in', protocol: 'tun', settings: { name: e.device, MTU: 1400 } } ],
-			outbounds: [ o ]
+			outbounds: outs
 		};
+		if (group) {
+			// the observatory measures every server, the balancer takes the fastest that answers (the first
+			// while nothing has been measured); the tunnel's traffic goes to the balancer
+			const tags = map(outs, (x) => x.tag);
+			cfg.observatory = { subjectSelector: tags, probeUrl: url, probeInterval: '3m', enableConcurrency: true };
+			cfg.routing = {
+				balancers: [ { tag: 'out', selector: tags, strategy: { type: 'leastPing' }, fallbackTag: tags[0] } ],
+				rules: [ { type: 'field', inboundTag: [ 'tun-in' ], balancerTag: 'out' } ]
+			};
+			if (api) {
+				cfg.api = { tag: 'api', listen: sprintf('127.0.0.1:%d', api.port), services: [ 'RoutingService' ] };
+				push(cfg.inbounds, { tag: 'check', listen: '127.0.0.1', port: api.socks, protocol: 'socks',
+					settings: { auth: 'password', udp: false, accounts: map(tags, (t) => ({ user: t, pass: api.secret })) } });
+				for (let t in tags)
+					push(cfg.routing.rules, { type: 'field', inboundTag: [ 'check' ], user: [ t ], outboundTag: t });
+			}
+		}
 	}
 	return { config: cfg };
 };
