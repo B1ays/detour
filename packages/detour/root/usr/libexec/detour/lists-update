@@ -286,16 +286,21 @@ for dir in $dirs; do
 		drc=0; [ "${DIRECTP#* $tgt }" != "$DIRECTP" ] && drc=1
 		set4=dom4_$tgt; set6=dom6_$tgt; [ "$drc" = 1 ] && set6=""
 		blk=0; [ "${BLOCKP#* $tgt }" != "$BLOCKP" ] && blk=1
+		# up to 40 names a line, and never more than 900 characters of them: dnsmasq 2.92 (GL.iNet's firmware) reads
+		# a line into 1024 bytes and takes a longer one for a bad option - it then does not start at all (no DNS for
+		# the whole network); 2.93 reads longer lines
 		awk -v s4="$set4" -v s6="$set6" -v blk="$blk" -v direct="$drc" '
-			{ d[++n] = $0 }
-			END {
-				for (i = 1; i <= n; i += 40) {
-					l = d[i]; for (j = i + 1; j < i + 40 && j <= n; j++) l = l "/" d[j]
-					if (blk) { printf "address=/%s/\n", l; continue }
-					printf "nftset=/%s/4#inet#detour#%s%s\n", l, s4, (s6 != "" ? ",6#inet#detour#" s6 : "")
-					if (!direct) printf "address=/%s/100::\n", l   # AAAA -> the discard prefix (see dns.uc)
-				}
-			}' "$RUN/$s.data" > "$out.tmp"
+			function emit(l) {
+				if (blk) { printf "address=/%s/\n", l; return }
+				printf "nftset=/%s/4#inet#detour#%s%s\n", l, s4, (s6 != "" ? ",6#inet#detour#" s6 : "")
+				if (!direct) printf "address=/%s/100::\n", l   # AAAA -> the discard prefix (see dns.uc)
+			}
+			length($0) == 0 || length($0) > 253 { next }
+			{
+				if (k > 0 && (k >= 40 || length(l) + 1 + length($0) > 900)) { emit(l); k = 0 }
+				l = k ? l "/" $0 : $0; k++
+			}
+			END { if (k) emit(l) }' "$RUN/$s.data" > "$out.tmp"
 		if cmp -s "$out.tmp" "$out"; then rm -f "$out.tmp"; else mv "$out.tmp" "$out"; changed=1; fi
 	done < "$RUN/.targets"
 	for f in "$dir"/detour-list-*.conf; do

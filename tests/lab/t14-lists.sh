@@ -13,7 +13,7 @@ st() { jsonfilter -i /tmp/detour/lists/$1.status -e "@.$2" 2>/dev/null; }
 i=0; while pgrep -f /usr/libexec/detour/lists-update >/dev/null && [ $i -lt 300 ]; do sleep 2; i=$((i+2)); done
 inset() { nft get element inet detour $1 "{ $2 }" >/dev/null 2>&1 && echo yes || echo no; }
 txb() { cat /sys/class/net/$1/statistics/tx_bytes 2>/dev/null || echo 0; }
-cleanup() { for s in tl_cidr tl_dom tl_dir tl_short tl_big tl_geo tl_v2 tdirect; do uci -q delete detour.$s; done; uci commit detour; rm -f /etc/detour/lists/big.txt; }
+cleanup() { for s in tl_cidr tl_dom tl_dir tl_short tl_big tl_geo tl_v2 tl_long tdirect; do uci -q delete detour.$s; done; uci commit detour; rm -f /etc/detour/lists/big.txt; }
 cleanup
 # a "Directly" policy (action direct) with a free id: its list goes to lst4_p<id>
 DID=1; while uci show detour | grep -q "\.id='$DID'$"; do DID=$((DID + 1)); done
@@ -89,4 +89,32 @@ echo "== removing lists cleans up"
 cleanup; reload_config; sleep 3; detour lists-update
 [ ! -e /etc/detour/lists/tl_cidr.snap ] && ! ls /tmp/dnsmasq.*.d/detour-list-*.conf >/dev/null 2>&1 && ok "snapshots and dnsmasq files removed" || bad "leftovers"
 [ "$(inset lst4_p1 8.8.8.8)" = no ] && ok "lst4_p1 emptied" || bad "lst4_p1 still filled"
+echo "== long names: dnsmasq lines stay under 1024 bytes (dnsmasq 2.92 refuses longer ones, 2.93 reads them), dnsmasq keeps running"
+uci -q batch <<U
+set detour.tl_long=list
+set detour.tl_long.policy=vpn
+add_list detour.tl_long.url=$B/long.txt
+commit detour
+U
+reload_config
+waitfor true "st tl_long ok" 60 && ok "long-name list downloaded ($(st tl_long count) names)" || bad "tl_long: $(cat /tmp/detour/lists/tl_long.status 2>/dev/null)"
+LF=$(ls /tmp/dnsmasq*.d/detour-list-tl_long.conf 2>/dev/null | head -1)
+M=$(awk '{ if (length($0) > m) m = length($0) } END { print m + 0 }' $LF 2>/dev/null)
+[ -n "$LF" ] && [ "$M" -gt 0 ] && [ "$M" -lt 1000 ] && ok "longest line $M characters" || bad "longest line: $M ($LF)"
+sleep 3; pidof dnsmasq >/dev/null && ok "dnsmasq running with it" || bad "dnsmasq is down"
+N=$(grep '^nftset=' $LF | tr '/' '\n' | grep -c '^very-long-name')
+[ "$N" = 120 ] && [ "$(grep -c '^nftset=' $LF)" -gt 3 ] && ok "split over $(grep -c '^nftset=' $LF) nftset lines, all 120 names in them" || bad "names in nftset lines: $N"
+nslookup very-long-name-number-119-for-the-line-limit.example-domain-0.org 127.0.0.1 >/dev/null 2>&1; true
+uci -q delete detour.tl_long; uci commit detour
+
+echo "== a file of ours dnsmasq refuses: set aside, dnsmasq starts without it (the network keeps its DNS)"
+BD=$(ls -d /tmp/dnsmasq*.d | head -1)
+echo 'detour-test-not-an-option' > $BD/detour-list-tl_broken.conf   # refused by any dnsmasq
+/usr/libexec/detour/dnsmasq-restart
+pidof dnsmasq >/dev/null && ok "dnsmasq running after a restart with a refused file" || bad "dnsmasq down"
+[ ! -e $BD/detour-list-tl_broken.conf ] && [ -e /tmp/detour/dnsmasq-off/detour-list-tl_broken.conf ] && ok "the refused file set aside" || bad "refused file: $(ls $BD /tmp/detour/dnsmasq-off 2>&1 | tr '\n' ' ')"
+logread | grep -q "dnsmasq refuses $BD/detour-list-tl_broken.conf" && ok "the log says which" || bad "no log line"
+nslookup example.com 127.0.0.1 >/dev/null 2>&1 && ok "names resolve" || bad "no DNS"
+rm -rf /tmp/detour/dnsmasq-off
+
 echo "RESULT: $([ $FAIL = 0 ] && echo PASS || echo FAIL)"

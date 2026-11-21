@@ -21,9 +21,17 @@ export function confdirs() {
 	return out;
 };
 
-function chunks(list, n) {
+// up to n names a chunk, joined by "/" never longer than max characters: dnsmasq 2.92 reads a config line into
+// 1024 bytes and takes a longer one for a bad option - then it does not start at all (no DNS for the network)
+function chunks(list, n, max) {
 	const out = [];
-	for (let i = 0; i < length(list); i += n) push(out, slice(list, i, i + n));
+	let cur = [], len = 0;
+	for (let x in list) {
+		if (length(cur) && (length(cur) >= n || len + 1 + length(x) > (max ?? 900))) { push(out, cur); cur = []; len = 0; }
+		len += (length(cur) ? 1 : 0) + length(x);
+		push(cur, x);
+	}
+	if (length(cur)) push(out, cur);
 	return out;
 }
 

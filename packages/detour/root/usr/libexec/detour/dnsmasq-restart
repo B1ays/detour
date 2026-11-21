@@ -37,6 +37,25 @@ if /etc/init.d/dnsmasq enabled; then   # switched off by the owner: not ours to 
 		logger -t detour "dnsmasq did not come back after a restart - starting it again"
 		vlog dns "dnsmasq did not come back after the restart, started again"
 		/etc/init.d/dnsmasq start >/dev/null 2>&1
+		sleep 2
+	fi
+	# still down: a file of ours it refuses (seen: a list line over its 1024-byte limit) would keep the whole
+	# network without DNS - DNS matters more than domain policies. The files it refuses are set aside (all of
+	# ours when that is not enough), dnsmasq starts without them, and the log says which.
+	if ! pidof dnsmasq >/dev/null; then
+		off=/tmp/detour/dnsmasq-off; mkdir -p "$off"
+		for f in /tmp/dnsmasq*.d/detour*.conf; do
+			[ -e "$f" ] || continue
+			dnsmasq --test -C "$f" >/dev/null 2>&1 && continue
+			mv "$f" "$off/"; logger -t detour "dnsmasq refuses $f - set aside to $off, its domains are not in the policies"
+		done
+		/etc/init.d/dnsmasq start >/dev/null 2>&1; sleep 2
+		if ! pidof dnsmasq >/dev/null; then
+			for f in /tmp/dnsmasq*.d/detour*.conf; do [ -e "$f" ] && mv "$f" "$off/"; done
+			logger -t detour "dnsmasq does not start with Detour's DNS files - all set aside to $off"
+			/etc/init.d/dnsmasq start >/dev/null 2>&1
+		fi
+		vlog dns "dnsmasq did not start with our files - set aside to $off"
 	fi
 fi
 touch "$2"
