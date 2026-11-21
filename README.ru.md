@@ -374,6 +374,38 @@ GitHub Actions проверяет каждый push (`.github/workflows/ci.yml`:
 2. **Settings → Secrets and variables → Actions → New repository secret**: `APK_SIGNING_KEY`, содержимое `detour-release.key`.
 3. **Settings → Pages → Source: GitHub Actions**.
 
+Зеркало фида на своём сервере (необязательно): каждый релиз выкладывается и туда, через rsync по SSH, со своими
+`install.sh` и страницей, где указан адрес зеркала; пакеты, индекс и ключ — те же. В **Settings → Secrets and
+variables → Actions**:
+- переменные `MIRROR_URL` (адрес для роутеров, `https://feed.example.org/detour`), `MIRROR_TARGET`
+  (`deploy@feed.example.org:.` с `rrsync`, см. ниже; без него — полный путь,
+  `deploy@feed.example.org:/var/www/detour`), `MIRROR_PORT`, если SSH не на 22;
+- секреты `MIRROR_SSH_KEY` (отдельный закрытый ключ: `ssh-keygen -t ed25519 -N "" -f detour-mirror`) и
+  `MIRROR_KNOWN_HOSTS` (вывод `ssh-keyscan -p ПОРТ feed.example.org`, сверенный с отпечатком сервера).
+
+На сервере нужны `rsync` и обычная раздача этого каталога по HTTPS; в каталоге должен быть только фид — каждый
+релиз удаляет там всё, чего в фиде нет. Сначала загружаются пакеты, потом индекс, старые пакеты удаляются
+последними: роутер не получит индекс с пакетом, которого ещё нет.
+
+Пользователь, который может только загружать файлы через rsync в этот каталог (Debian/Ubuntu; `rrsync` идёт с
+rsync: `/usr/bin/rrsync`, либо пакет `rsync-rrsync`, либо `rpm -ql rsync | grep rrsync`):
+
+```sh
+useradd --system --create-home --shell /bin/sh deploy
+install -d -o deploy -g deploy -m 755 /var/www/detour
+install -d -o deploy -g deploy -m 700 /home/deploy/.ssh
+```
+
+`/home/deploy/.ssh/authorized_keys` (владелец `deploy`, права 600) — одна строка с `detour-mirror.pub`:
+
+```
+restrict,command="/usr/bin/rrsync /var/www/detour" ssh-ed25519 AAAA... detour-mirror
+```
+
+`restrict` отключает терминал и проброс портов, `command=` превращает любую команду клиента в rsync, запертый в
+`/var/www/detour`: пути считаются от него, поэтому `MIRROR_TARGET` заканчивается на `:.`. С SELinux (CentOS, Rocky,
+Alma) после этого восстановите метки, иначе sshd не прочитает ключ: `restorecon -Rv /home/deploy/.ssh /var/www/detour`.
+
 Релиз:
 
 ```sh

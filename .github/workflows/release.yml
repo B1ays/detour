@@ -3,6 +3,12 @@
 # from and upgrade with), the same files are attached to a GitHub release.
 # Needs once: the secret APK_SIGNING_KEY (the private ECDSA P-256 key, PEM) and Pages with
 # "Source: GitHub Actions". A custom Pages address: the repository variable PAGES_URL.
+# A mirror on your own server (optional, the job runs when MIRROR_URL is set): variables MIRROR_URL (the
+# address routers use, https://feed.example.org/detour), MIRROR_TARGET (rsync over SSH: user@host:/var/www/detour,
+# or user@host:. when the key is locked to that directory with rrsync - README), MIRROR_PORT (default 22); secrets
+# MIRROR_SSH_KEY (a private key allowed on the server) and MIRROR_KNOWN_HOSTS (ssh-keyscan -p PORT host, checked
+# against the server). The mirror's install.sh and page name the mirror; the packages, the index and the key are
+# the same files as on Pages.
 name: Release
 
 on:
@@ -55,22 +61,33 @@ jobs:
       - name: The site (feed, key, install script, page)
         env:
           PAGES_URL: ${{ vars.PAGES_URL }}
+          MIRROR_URL: ${{ vars.MIRROR_URL }}
         run: |
+          # site <dir> <feed url>: the same packages, index and key; install.sh and the page name <feed url>
+          site() {
+            mkdir "$1"
+            cp out/*.apk out/packages.adb "$1/"
+            cp out/detour.pem "$1/detour.pem"
+            sed "s#@FEED_URL@#$2#g" install.sh > "$1/install.sh"
+            sed -e "s#@FEED_URL@#$2#g" -e "s#@VERSION@#${{ steps.ver.outputs.version }}#g" \
+                -e "s#@REPO_URL@#$GITHUB_SERVER_URL/$GITHUB_REPOSITORY#g" tools/pages/index.html > "$1/index.html"
+            ls -l "$1"
+          }
           owner=$(echo "$GITHUB_REPOSITORY_OWNER" | tr 'A-Z' 'a-z')
           url=${PAGES_URL:-https://$owner.github.io/${GITHUB_REPOSITORY#*/}}
-          url=${url%/}
-          mkdir site
-          cp out/*.apk out/packages.adb site/
-          cp out/detour.pem site/detour.pem
-          sed "s#@FEED_URL@#$url#g" install.sh > site/install.sh
-          sed -e "s#@FEED_URL@#$url#g" -e "s#@VERSION@#${{ steps.ver.outputs.version }}#g" \
-              -e "s#@REPO_URL@#$GITHUB_SERVER_URL/$GITHUB_REPOSITORY#g" tools/pages/index.html > site/index.html
-          ls -l site
+          site site "${url%/}"
+          [ -z "$MIRROR_URL" ] || site mirror "${MIRROR_URL%/}"
 
       - uses: actions/upload-artifact@v4
         with:
           name: site
           path: site
+
+      - uses: actions/upload-artifact@v4
+        if: vars.MIRROR_URL != ''
+        with:
+          name: mirror
+          path: mirror
 
       - uses: actions/upload-pages-artifact@v3
         with:
@@ -85,6 +102,34 @@ jobs:
     steps:
       - id: deploy
         uses: actions/deploy-pages@v4
+
+  # the same feed on your own server: the packages first, then the index and the rest, the old packages last -
+  # a router never gets an index that names a package not there yet
+  mirror:
+    needs: [build, pages]
+    if: vars.MIRROR_URL != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: mirror
+          path: mirror
+      - name: Upload to the mirror
+        env:
+          MIRROR_TARGET: ${{ vars.MIRROR_TARGET }}
+          MIRROR_PORT: ${{ vars.MIRROR_PORT }}
+          MIRROR_SSH_KEY: ${{ secrets.MIRROR_SSH_KEY }}
+          MIRROR_KNOWN_HOSTS: ${{ secrets.MIRROR_KNOWN_HOSTS }}
+        run: |
+          for v in MIRROR_TARGET MIRROR_SSH_KEY MIRROR_KNOWN_HOSTS; do
+            eval "[ -n \"\$$v\" ]" || { echo "::error::$v is not set (needed with MIRROR_URL)"; exit 1; }
+          done
+          d="$RUNNER_TEMP/ssh"; mkdir -p "$d"; chmod 700 "$d"
+          ( umask 077; printf '%s\n' "$MIRROR_SSH_KEY" > "$d/key"; printf '%s\n' "$MIRROR_KNOWN_HOSTS" > "$d/known_hosts" )
+          ssh="ssh -p ${MIRROR_PORT:-22} -i $d/key -o IdentitiesOnly=yes -o UserKnownHostsFile=$d/known_hosts -o StrictHostKeyChecking=yes"
+          rsync -rt --chmod=D755,F644 -e "$ssh" --include='*.apk' --exclude='*' mirror/ "$MIRROR_TARGET/"
+          rsync -rt --chmod=D755,F644 -e "$ssh" --delete-after mirror/ "$MIRROR_TARGET/"
+          rm -rf "$d"
 
   release:
     needs: [build, pages]

@@ -375,6 +375,39 @@ Once per repository:
 2. **Settings → Secrets and variables → Actions → New repository secret**: `APK_SIGNING_KEY`, the contents of `detour-release.key`.
 3. **Settings → Pages → Source: GitHub Actions**.
 
+A mirror of the feed on your own server (optional): every release also goes there by rsync over SSH, with its own
+`install.sh` and page naming the mirror; the packages, the index and the key are the same. In **Settings → Secrets
+and variables → Actions**:
+- variables `MIRROR_URL` (the address routers use, `https://feed.example.org/detour`), `MIRROR_TARGET`
+  (`deploy@feed.example.org:.` with `rrsync`, below; without it the full path,
+  `deploy@feed.example.org:/var/www/detour`), `MIRROR_PORT` if SSH is not on 22;
+- secrets `MIRROR_SSH_KEY` (a private key of its own: `ssh-keygen -t ed25519 -N "" -f detour-mirror`) and
+  `MIRROR_KNOWN_HOSTS` (the output of `ssh-keyscan -p PORT feed.example.org`, compared with the server's
+  fingerprint).
+
+The server needs `rsync` and plain static HTTPS for that directory; the directory holds the feed only - every
+release deletes there what the feed does not have. The packages go up first, then the index, the old packages are
+removed last: a router never gets an index naming a package not there yet.
+
+A user that can only rsync into that directory (Debian/Ubuntu; `rrsync` comes with rsync: `/usr/bin/rrsync`, or
+the `rsync-rrsync` package, or `rpm -ql rsync | grep rrsync`):
+
+```sh
+useradd --system --create-home --shell /bin/sh deploy
+install -d -o deploy -g deploy -m 755 /var/www/detour
+install -d -o deploy -g deploy -m 700 /home/deploy/.ssh
+```
+
+`/home/deploy/.ssh/authorized_keys` (owner `deploy`, mode 600), one line with `detour-mirror.pub`:
+
+```
+restrict,command="/usr/bin/rrsync /var/www/detour" ssh-ed25519 AAAA... detour-mirror
+```
+
+`restrict` takes away the terminal and forwarding, `command=` turns whatever the client asks for into rsync locked
+in `/var/www/detour` - paths count from there, hence `MIRROR_TARGET` ending in `:.`. With SELinux (CentOS, Rocky,
+Alma) fix the labels afterwards, or sshd does not read the key: `restorecon -Rv /home/deploy/.ssh /var/www/detour`.
+
 A release:
 
 ```sh
