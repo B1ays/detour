@@ -22,22 +22,37 @@ vlog pkg "$act $pkgs: started"
 state true
 exec >> "$D/log" 2>&1
 
-rc=0; some=
+# apk update: a feed out of reach (one on a PC that is off, a mirror that is down) is a warning, not the end - the
+# others are read, and "apk upgrade" is told to go on without it (it refuses otherwise; "apk add" does not need it)
+refresh() {
+	out=$(apk update 2>&1); r=$?
+	printf '%s\n' "$out"
+	[ "$r" = 0 ] && return 0
+	down=$(printf '%s\n' "$out" | sed -n 's/^WARNING: updating and opening \([^ ]*\): .*/\1/p')
+	n=$(printf '%s\n' "$out" | sed -n 's/.*; \([0-9]*\) distinct packages available.*/\1/p')
+	[ -n "$down" ] && [ "${n:-0}" -gt 0 ] || return "$r"
+	miss=--force-missing-repositories
+	echo "out of reach now, their packages are not seen:"
+	printf '  %s\n' $down
+	return 0
+}
+
+rc=0; some=; miss=
 case "$act" in
-update)  apk update || rc=$? ;;
+update)  refresh || rc=$? ;;
 install)
-	if ! apk update; then rc=1
-	elif ! apk add $pkgs; then
+	if ! refresh; then rc=1
+	elif ! apk add $miss $pkgs; then
 		rc=1
 		# apk installs all or nothing: one package these repositories lack (a restore of a backup from another
 		# firmware: its kernel module, its tools) must not keep the others out - one by one, the result still failed
 		set -- $pkgs
 		if [ $# -gt 1 ]; then
 			echo "together they did not install - one by one:"
-			for p in $pkgs; do apk add "$p" && some=1; done
+			for p in $pkgs; do apk add $miss "$p" && some=1; done
 		fi
 	fi ;;
-upgrade) apk update && apk upgrade $pkgs || rc=$? ;;
+upgrade) refresh && apk upgrade $miss $pkgs || rc=$? ;;
 remove)  apk del $pkgs || rc=$? ;;
 *)       echo "unknown action: $act"; rc=2 ;;
 esac

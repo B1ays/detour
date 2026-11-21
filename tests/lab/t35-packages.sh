@@ -2,7 +2,7 @@
 # LuCI "Components" (detourd pkg_list / pkg_run / pkg_job, detour.pkgs, /usr/libexec/detour/pkg): the state of the
 # components from apk's index, an action detached from the daemon (it survives a restart of the daemon), a removal
 # and an install of a small package (qrencode), and what is refused: Detour itself, a package that is not Detour's,
-# a second action while one runs. Needs the internet of the lab (the OpenWrt repositories).
+# a second action while one runs, a feed out of reach. Needs the internet of the lab (the OpenWrt repositories).
 FAIL=0; ok() { echo "  ok   $*"; }; bad() { echo "  FAIL $*"; FAIL=1; }
 waitfor() { i=0; while [ $i -lt ${3:-15} ]; do [ "$(eval "$2")" = "$1" ] && return 0; sleep 1; i=$((i+1)); done; return 1; }
 c() { ubus -t 60 call detour "$@"; }
@@ -44,5 +44,21 @@ fi
 c pkg_run '{"action":"install","packages":"qrencode"}' >/dev/null
 waitfor false running 120 && [ "$(code)" = 0 ] && apk info -e qrencode >/dev/null && ok "installed" || bad "install: $(c pkg_job | head -c 400)"
 [ "$(comp qrencode installed)" = true ] && ok "now: installed" || bad "state after install"
+
+echo "== a feed out of reach (a PC's feed while the PC is off) does not stop the others"
+L=/etc/apk/repositories.d/customfeeds.list
+cp $L /tmp/t35-feeds
+trap 'cp /tmp/t35-feeds $L; rm -f /tmp/t35-feeds' EXIT
+echo http://127.0.0.1:9/feed/packages.adb >> $L
+c pkg_run '{"action":"update"}' >/dev/null
+waitfor false running 120 && [ "$(code)" = 0 ] && grep -q '127.0.0.1:9/feed' /tmp/detour/pkg/log && ok "update: done, the feed out of reach named" || bad "update: $(cat /tmp/detour/pkg/log | tail -5)"
+c pkg_run '{"action":"remove","packages":"qrencode"}' >/dev/null
+waitfor false running 60
+c pkg_run '{"action":"install","packages":"qrencode"}' >/dev/null
+waitfor false running 120 && [ "$(code)" = 0 ] && apk info -e qrencode >/dev/null && ok "install: done" || bad "install: $(tail -5 /tmp/detour/pkg/log)"
+c pkg_run '{"action":"upgrade","packages":"qrencode"}' >/dev/null
+waitfor false running 120 && [ "$(code)" = 0 ] && ! grep -q 'Not continuing' /tmp/detour/pkg/log && ok "upgrade: done" || bad "upgrade: $(tail -5 /tmp/detour/pkg/log)"
+cp /tmp/t35-feeds $L
+apk update -q >/dev/null 2>&1
 
 echo "RESULT: $([ $FAIL = 0 ] && echo PASS || echo FAIL)"
