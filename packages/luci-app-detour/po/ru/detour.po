@@ -247,6 +247,21 @@ msgstr "Файл копии повреждён или изменён — вос�
 msgid "nothing"
 msgstr "нет"
 
+msgid "the restored exits or DNS need it"
+msgstr "нужен восстановленным выходам или DNS"
+
+msgid "it was installed on the router of the backup"
+msgstr "был установлен на роутере, где сделан бэкап"
+
+msgid "(the repositories of this firmware do not have it: what needs it will not work)"
+msgstr "(в репозиториях этой прошивки его нет: то, чему он нужен, работать не будет)"
+
+msgid "(not enough space: it needs %s, %s is free)"
+msgstr "(не хватает места: нужно %s, свободно %s)"
+
+msgid "Installed after the restore (the router downloads them):"
+msgstr "После восстановления будут установлены (роутер скачает их):"
+
 msgid "The passwords differ."
 msgstr "Пароли не совпадают."
 
@@ -288,6 +303,24 @@ msgstr "Большие списки и подписки загрузятся в 
 
 msgid "The previous settings are kept on the router until it restarts, encrypted with the same password:"
 msgstr "Прежние настройки хранятся на роутере до перезагрузки, зашифрованные тем же паролем:"
+
+msgid "The components were not installed (%s): install them in Components - %s."
+msgstr "Компоненты не установлены (%s): установите их на странице «Компоненты» — %s."
+
+msgid "Installing the components: %s…"
+msgstr "Устанавливаются компоненты: %s…"
+
+msgid "Installing the components: %s"
+msgstr "Установка компонентов: %s"
+
+msgid "Components installed: %s. The exits that waited for them start now."
+msgstr "Компоненты установлены: %s. Выходы, которые их ждали, сейчас запустятся."
+
+msgid "Not installed: %s - see the log in Components. The other components are installed."
+msgstr "Не установлены: %s — журнал на странице «Компоненты». Остальные компоненты установлены."
+
+msgid "Not every component was installed: see the log in Components."
+msgstr "Установлены не все компоненты: журнал на странице «Компоненты»."
 
 msgid "The router did not answer in time (%s). The restore may still be running: open the Overview in a minute."
 msgstr "Роутер не ответил вовремя (%s). Восстановление может ещё идти: откройте «Обзор» через минуту."
@@ -342,9 +375,6 @@ msgstr[2] "история трафика: %d месяцев"
 
 msgid "What is on the router now goes away - exits: %s; policies: %s; lists: %s. Device names the router already has stay."
 msgstr "Текущие настройки будут удалены — выходы: %s; политики: %s; списки: %s. Имена устройств, которые уже есть на роутере, останутся."
-
-msgid "Not installed on this router: %s. The exits that need it will not work until it is installed."
-msgstr "На этом роутере не установлен %s. Выходы, которым он нужен, не заработают, пока его нет."
 
 msgid "Enter the password of the backup first."
 msgstr "Сначала введите пароль копии."

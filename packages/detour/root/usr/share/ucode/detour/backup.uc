@@ -11,12 +11,15 @@
 //
 // A restore replaces Detour's settings with the backup's (exits, policies, lists... of the router now go away),
 // after saving the current ones into BEFORE (encrypted with the same password) - so it can be undone.
+// The components (engines, AmneziaWG, dnsproxy...) the backup's router had and the ones its settings need are
+// installed after it (manifest.components; an older backup without them: what the settings need).
 'use strict';
 
 import * as fs from 'fs';
 import { cursor } from 'uci';
 import { run, shq, log, PERSIST, VERSION } from 'detour.core';
 import { ensure_zone } from 'detour.warp';
+import * as pkgs from 'detour.pkgs';
 
 export const FORMAT = 'detour-backup';
 export const FORMAT_V = 1;
@@ -97,7 +100,10 @@ export function create(out, pwfile) {
 	fs.writefile(d + '/dhcp.json', sprintf('%.J\n', hosts));
 	const count = {};
 	for (let t in [ 'exit', 'policy', 'list', 'subscription' ]) { count[t] = 0; c.foreach('detour', t, () => { count[t]++; }); }
-	const man = { format: FORMAT, format_v: FORMAT_V, version: VERSION, schema: int(m.schema ?? 0), created: time(), host, count };
+	// the components of this router (not Detour itself): a restore installs the ones the target router lacks
+	const inst = pkgs.installed();
+	const components = sort(map(filter(pkgs.COMPONENTS, (x) => !x.core && inst[x.id]), (x) => x.id));
+	const man = { format: FORMAT, format_v: FORMAT_V, version: VERSION, schema: int(m.schema ?? 0), created: time(), host, count, components };
 	fs.writefile(d + '/manifest.json', sprintf('%.J\n', man));
 	const s = run(sprintf('cd %s && find . -type f ! -name %s | sort | xargs sha256sum > %s', shq(d), SUMS, SUMS));
 	if (s.code != 0) { run('rm -rf ' + shq(d)); return { error: 'cannot checksum: ' + s.out }; }
@@ -219,14 +225,16 @@ function merge_traffic(dir) {
 	}
 }
 
-// what the target router does not have for the backup's exits (after a reflash: packages to install again)
-function missing_engines(o) {
-	const need = {};
-	o.cfg.foreach('detour', 'engine', (s) => { need[(s.type ?? 'singbox') == 'xray' ? 'xray-core' : 'sing-box'] = true; });
-	for (let s in o.net) if (s.opts?.proto == 'amneziawg') need['amneziawg'] = true;
-	const have = { 'sing-box': fs.access('/usr/bin/sing-box'), 'xray-core': fs.access('/usr/bin/xray'),
-		'amneziawg': fs.access('/lib/netifd/proto/amneziawg.sh') };
-	return filter(sort(keys(need)), (k) => !have[k]);
+// the components the target router lacks: [ { id, used } ] - used: the backup's settings need it (its exits, its
+// DNS), else the backup's router just had it
+function missing(o) {
+	const used = pkgs.needed(o.cfg, map(filter(o.net, (s) => s.type == 'interface'), (s) => s.opts?.proto));
+	const had = {};
+	for (let id in (type(o.man.components) == 'array') ? o.man.components : []) had[id] = true;
+	const have = pkgs.installed(), out = [];
+	for (let c in pkgs.COMPONENTS)
+		if (!c.core && (used[c.id] || had[c.id]) && !have[c.id]) push(out, { id: c.id, used: !!used[c.id] });
+	return out;
 }
 
 // what a restore would do, without secrets
@@ -245,7 +253,7 @@ export function preview(o) {
 		},
 		replaced: { exits: labels(c, 'exit'), policies: labels(c, 'policy'), lists: labels(c, 'list') },
 		conflicts: conflicts(c, o.net),
-		missing: missing_engines(o),
+		missing: missing(o),
 	};
 };
 
@@ -266,6 +274,7 @@ export function apply(o, pwfile) {
 	const c0 = cursor();
 	const cf = conflicts(c0, o.net);
 	if (length(cf)) return { error: 'the router already has network interfaces with these names (not Detour\'s): ' + join(', ', cf) };
+	const lack = missing(o);   // while the backup's config is where o.cfg reads it
 	// keep the backup's contents away from WORK/x: create() below uses WORK
 	const src = WORK + '/apply';
 	run(sprintf('rm -rf %s; mv %s %s', src, o.dir, src));
@@ -342,7 +351,17 @@ export function apply(o, pwfile) {
 	run('/etc/init.d/network reload; fw4 -q reload; /etc/init.d/detour reload');
 	log(sprintf('settings restored from a backup of %s (%s); the previous ones are in %s', o.man.host ?? '?',
 		o.man.created ? sprintf('%d', o.man.created) : '?', BEFORE));
+	// 7. the components the router lacks: installed by the detached package job (pkgs.start; it reloads Detour when
+	// done, and the exits that waited for an engine come up); LuCI follows it, the CLI tells
+	const r = { before: BEFORE };
+	if (length(lack)) {
+		const ids = map(lack, (x) => x.id), names = pkgs.packages_of(ids);
+		const j = length(names) ? pkgs.start('install', names) : null;
+		if (j?.error) r.install_error = j.error;
+		else if (j) r.installing = { components: ids, packages: names };
+		log(sprintf('restore: components %s: %s', join(', ', ids), j?.error ? 'not installed: ' + j.error : 'being installed'));
+	}
 	const n = o.man.count ?? {};
-	return { restored: { exits: n.exit ?? 0, policies: n.policy ?? 0, lists: n.list ?? 0, subscriptions: n.subscription ?? 0, devices: nh },
-		before: BEFORE };
+	r.restored = { exits: n.exit ?? 0, policies: n.policy ?? 0, lists: n.list ?? 0, subscriptions: n.subscription ?? 0, devices: nh };
+	return r;
 };

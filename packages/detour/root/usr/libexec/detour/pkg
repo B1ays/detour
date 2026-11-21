@@ -22,21 +22,34 @@ vlog pkg "$act $pkgs: started"
 state true
 exec >> "$D/log" 2>&1
 
-rc=0
+rc=0; some=
 case "$act" in
 update)  apk update || rc=$? ;;
-install) apk update && apk add $pkgs || rc=$? ;;
+install)
+	if ! apk update; then rc=1
+	elif ! apk add $pkgs; then
+		rc=1
+		# apk installs all or nothing: one package these repositories lack (a restore of a backup from another
+		# firmware: its kernel module, its tools) must not keep the others out - one by one, the result still failed
+		set -- $pkgs
+		if [ $# -gt 1 ]; then
+			echo "together they did not install - one by one:"
+			for p in $pkgs; do apk add "$p" && some=1; done
+		fi
+	fi ;;
 upgrade) apk update && apk upgrade $pkgs || rc=$? ;;
 remove)  apk del $pkgs || rc=$? ;;
 *)       echo "unknown action: $act"; rc=2 ;;
 esac
 
-if [ "$rc" = 0 ] && [ "$act" != update ]; then
+if { [ "$rc" = 0 ] || [ -n "$some" ]; } && [ "$act" != update ]; then
 	# LuCI forgets its menu and module caches (a LuCI package came or went)
 	rm -f /tmp/luci-indexcache* /tmp/luci-modulecache/* 2>/dev/null
-	# Detour sees a new or removed engine, dnsproxy, AmneziaWG at once (its own upgrade restarts it anyway)
-	case " $pkgs " in *" detour "*) ;; *) ubus call detour reload >/dev/null 2>&1 ;; esac
-	echo "done"
+	# Detour sees a new or removed engine, dnsproxy, AmneziaWG at once (its own upgrade restarts it anyway): the
+	# service's reload, not only the daemon's - the engines and dnsproxy are procd instances of the init script, and
+	# an engine whose binary was missing has none until the script runs again
+	case " $pkgs " in *" detour "*) ;; *) /etc/init.d/detour reload >/dev/null 2>&1 ;; esac
+	[ "$rc" = 0 ] && echo "done" || echo "failed (code $rc): some of them are installed"
 else
 	[ "$rc" = 0 ] && echo "done" || echo "failed (code $rc)"
 fi

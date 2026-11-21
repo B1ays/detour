@@ -84,6 +84,30 @@ function pwInput() { return E('input', { 'type': 'password', 'class': 'cbi-input
 
 function names(l) { return l && l.length ? l.join(', ') : _('nothing'); }
 
+// the components the router lacks for the backup (backup.uc missing: [ { id, used } ]): installed right after the
+// restore; what each takes, or why it may not install, comes from the router's package list
+function componentsBox(miss) {
+	if (!miss || !miss.length) return null;
+	const items = {};
+	const list = E('ul', {}, miss.map(function(m) {
+		items[m.id] = E('span');
+		return E('li', {}, [ pkg.title(m.id) + ' — ' + (m.used ? _('the restored exits or DNS need it') : _('it was installed on the router of the backup')) + ' ', items[m.id] ]);
+	}));
+	pkg.list().then(function(r) {
+		let left = r.space ? r.space.free : null;
+		miss.forEach(function(m) {
+			const c = (r.components || []).filter(function(x) { return x.id == m.id; })[0];
+			if (!c) return;
+			if (r.index_ts && !c.available)
+				return items[m.id].appendChild(E('span', { 'class': 'detour-bad' }, _('(the repositories of this firmware do not have it: what needs it will not work)')));
+			if (c.need && left != null && pkg.fits(c.need.add, { free: left }) === false)
+				return items[m.id].appendChild(E('span', { 'class': 'detour-bad' }, _('(not enough space: it needs %s, %s is free)').format(pkg.size(c.need.add), pkg.size(left))));
+			if (c.need) { left -= c.need.add; items[m.id].appendChild(E('span', { 'class': 'detour-muted' }, '(' + pkg.weight(c) + ')')); }
+		});
+	}).catch(function() {});
+	return E('div', { 'style': 'margin-top:.5em' }, [ E('strong', {}, _('Installed after the restore (the router downloads them):')), list ]);
+}
+
 return view.extend({
 	load: function() { return Promise.resolve(); },
 
@@ -121,6 +145,7 @@ return view.extend({
 		const info = E('div');
 		const bApply = E('button', { 'class': 'btn cbi-button-negative', 'style': 'display:none', 'click': function() {
 			if (!confirm(_('Replace the current Detour settings with the backup? The tunnels restart; for a few seconds the internet may pause.'))) return;
+			const lacking = (shown && shown.missing || []).map(function(m) { return pkg.title(m.id); });
 			busy(bApply, true);
 			return callRestore(pw.value).then(function(r) {
 				if (!r || r.error) return warnBox(box, r ? errText(r.error) : _('No answer from the router'));
@@ -130,17 +155,40 @@ return view.extend({
 				const bBefore = E('button', { 'class': 'btn', 'click': function() {
 					return download(BEFORE, fileName('before-restore', null)).catch(function(e) { ui.addNotification(null, E('p', e.message || String(e)), 'danger'); });
 				} }, _('Download the previous settings'));
+				const comp = E('div');
 				box.replaceChildren(E('div', { 'class': 'alert-message success' }, [
 					E('div', {}, _('Restored: %d exits, %d policies, %d lists, %d subscriptions, %d new device names.').format(n.exits || 0, n.policies || 0, n.lists || 0, n.subscriptions || 0, n.devices || 0)),
 					E('div', {}, _('Big lists and subscriptions load in the background over the next minutes.')),
+					comp,
 					E('div', {}, _('The previous settings are kept on the router until it restarts, encrypted with the same password:')),
 					E('div', { 'class': 'detour-actions' }, [ bBefore ]) ]));
+				// the components the router started installing: followed here, the page stays (no reload)
+				if (r.install_error)
+					comp.replaceChildren(E('strong', {}, _('The components were not installed (%s): install them in Components - %s.').format(r.install_error, lacking.join(', '))));
+				else if (r.installing) {
+					const what = (r.installing.components || []).map(function(id) { return pkg.title(id); }).join(', ');
+					comp.replaceChildren(E('em', {}, _('Installing the components: %s…').format(what)));
+					return pkg.follow(_('Installing the components: %s').format(what), function() {}).then(function(ok) {
+						if (ok) return comp.replaceChildren(E('strong', {}, _('Components installed: %s. The exits that waited for them start now.').format(what)));
+						// a failed install may still have installed some of them (one by one): name the ones that are not
+						return pkg.list().then(function(l) {
+							const not = (r.installing.components || []).filter(function(id) {
+								return !(l.components || []).some(function(c) { return c.id == id && c.installed; });
+							}).map(function(id) { return pkg.title(id); });
+							comp.replaceChildren(E('strong', {}, _('Not installed: %s - see the log in Components. The other components are installed.').format(not.join(', ') || what)));
+						}).catch(function() {
+							comp.replaceChildren(E('strong', {}, _('Not every component was installed: see the log in Components.')));
+						});
+					});
+				}
 			}).catch(function(e) {
 				warnBox(box, _('The router did not answer in time (%s). The restore may still be running: open the Overview in a minute.').format(e.message || String(e)));
 			}).finally(function() { busy(bApply, false); });
 		} }, _('Restore these settings'));
 
+		let shown = null;   // what the check of the chosen file said
 		const show = function(r) {
+			shown = r;
 			const m = r.manifest || {}, b = r.backup || {}, now = r.replaced || {};
 			const rows = [
 				E('div', {}, [ E('strong', {}, _('Backup:') + ' '), _('%s, router «%s», Detour %s').format(m.created ? new Date(m.created * 1000).toLocaleString() : '?', m.host || '?', m.version || '?') ]),
@@ -156,10 +204,8 @@ return view.extend({
 				].filter(function(x) { return x; }).join(', ') ]),
 				E('div', { 'class': 'detour-muted', 'style': 'margin-top:.5em' }, _('What is on the router now goes away - exits: %s; policies: %s; lists: %s. Device names the router already has stay.').format(names(now.exits), names(now.policies), names(now.lists)))
 			];
-			// the engines the backup's exits need: an offer to install each
-			(r.missing || []).forEach(function(p) {
-				rows.push(pkg.offer(p == 'xray-core' ? 'xray' : 'singbox', _('Not installed on this router: %s. The exits that need it will not work until it is installed.').format(p)));
-			});
+			const comps = componentsBox(r.missing);
+			if (comps) rows.push(comps);
 			info.replaceChildren(E('div', { 'class': 'detour-lines' }, rows));
 			if (r.conflicts && r.conflicts.length) {
 				warnBox(box, errText('the router already has network interfaces with these names (not Detour\'s): ' + r.conflicts.join(', ')));

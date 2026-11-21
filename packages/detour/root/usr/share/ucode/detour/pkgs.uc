@@ -49,6 +49,17 @@ function used_by(id) {
 	return out;
 }
 
+// the components a configuration needs: { id: true } - its engines, AmneziaWG exits, the router's encrypted DNS.
+// c: a cursor with the detour config; protos: the proto of every exit interface (a backup has them apart)
+export function needed(c, protos) {
+	const out = {};
+	c.foreach('detour', 'engine', (s) => { out[(s.type ?? 'singbox') == 'xray' ? 'xray' : 'singbox'] = true; });
+	if (index(protos ?? [], 'amneziawg') >= 0) out.awg = true;
+	const m = c.get('detour', 'main', 'dns');
+	if (m == 'encrypted' || m == 'tunnel') out.dnsproxy = true;
+	return out;
+};
+
 // the output of a command through a file: in the daemon a pipe read can be cut short by a signal (its probes'
 // processes end all the time), and a long apk answer then came back empty now and then
 let nout = 0;
@@ -85,6 +96,31 @@ function index_time() {
 		t = max(t, fs.stat(f)?.mtime ?? 0);
 	return t;
 }
+
+// the components that are installed now, by id (the core ones too): { id: true }; one "apk list", no network
+export function installed() {
+	const st = apk_state(names()), out = {};
+	for (let c in COMPONENTS) {
+		const inst = filter(c.pkgs, (n) => st[n]?.installed);
+		if (c.any ? length(inst) > 0 : length(inst) == length(c.pkgs)) out[c.id] = true;
+	}
+	return out;
+};
+
+// the packages that install these components: every missing package of one, or the first of an any-of one (the
+// index decides after "apk update", so the first name it knows, else the first name)
+export function packages_of(ids) {
+	const st = apk_state(names()), out = [];
+	for (let c in COMPONENTS) {
+		if (index(ids, c.id) < 0 || c.core) continue;
+		if (c.any) {
+			if (length(filter(c.pkgs, (n) => st[n]?.installed))) continue;
+			push(out, filter(c.pkgs, (n) => st[n]?.available || st[n]?.upgrade)[0] ?? c.pkgs[0]);
+		}
+		else for (let n in c.pkgs) if (!st[n]?.installed) push(out, n);
+	}
+	return out;
+};
 
 export function job() {
 	let s = null;

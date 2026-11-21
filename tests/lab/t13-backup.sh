@@ -149,6 +149,34 @@ grep -q '02:aa:bb:cc:dd:ef' /etc/detour/traffic/$M.json && ok "a day of this mon
 ubus call detour traffic '{"period":"month"}' | grep -q '02:aa:bb:cc:dd:ef' && ok "and shows in the report" || bad "report: no restored device"
 drop_day() { ucode -e 'let f=ARGV[0], d=json(fs.readfile(f)); delete d[ARGV[1]]; fs.writefile(f, sprintf("%J", d));' -l fs "$1" "$2"; }
 
+echo "== components: the restore installs what the router lacks"
+# /tmp/t13.bak was made with the lab's components; xray-core (the xr exit's engine) and qrencode (nothing needs it)
+# go, the restore must bring both back and the xr exit must work again
+running() { ubus call detour pkg_job | jsonfilter -e '@.job.running'; }
+rm -rf $W/x; mkdir -p $W/x; dec
+grep -q '"xray"' $W/x/manifest.json && grep -q '"qrencode"' $W/x/manifest.json && ok "the backup lists the router's components" || bad "manifest: $(grep -A12 components $W/x/manifest.json | tr -d '\n\t ')"
+apk del -q xray-core qrencode >/dev/null 2>&1
+apk info -e xray-core >/dev/null || apk info -e qrencode >/dev/null && bad "xray-core / qrencode not removed" || {
+	cp /tmp/t13.bak /tmp/detour-restore.bin
+	r=$(call backup_check)
+	[ "$(echo "$r" | jsonfilter -e '@.missing[@.id="xray"].used')" = true ] && [ "$(echo "$r" | jsonfilter -e '@.missing[@.id="qrencode"].used')" = false ] \
+		&& ok "the check names them: xray (the exits need it), qrencode (the backup's router had it)" || bad "missing: $(echo "$r" | jsonfilter -e '@.missing')"
+	# a backup of an older Detour (no components in it): what its settings need
+	rm -rf $W/x; mkdir -p $W/x; dec; ucode -e 'let f=ARGV[0], m=json(fs.readfile(f)); delete m.components; fs.writefile(f, sprintf("%.J\n", m));' -l fs $W/x/manifest.json; enc
+	r=$(call backup_check)
+	[ "$(echo "$r" | jsonfilter -e '@.missing[@.id="xray"].used')" = true ] && [ -z "$(echo "$r" | jsonfilter -e '@.missing[@.id="qrencode"].id')" ] \
+		&& ok "an older backup: what its settings need (xray), not more" || bad "older backup: $(echo "$r" | head -c 300)"
+	# the backup's router also had AmneziaWG, which the repositories of the lab's firmware do not have: the install
+	# fails as a whole, the others are installed all the same
+	rm -rf $W/x; mkdir -p $W/x; dec; ucode -e 'let f=ARGV[0], m=json(fs.readfile(f)); push(m.components, "awg"); fs.writefile(f, sprintf("%.J\n", m));' -l fs $W/x/manifest.json; enc
+	r=$(call backup_restore)
+	echo "$r" | jsonfilter -e '@.installing.packages' | grep -q xray-core && ok "the restore started installing: $(echo "$r" | jsonfilter -e '@.installing.packages' | tr -d '[]" ')" || bad "restore: $r"
+	waitfor false running 300 && [ "$(ubus call detour pkg_job | jsonfilter -e '@.job.code')" != 0 ] && ubus call detour pkg_job | jsonfilter -e '@.job.log' | grep -q 'one by one' \
+		&& ok "AmneziaWG is not there: the job failed, the others went one by one" || bad "install job: $(ubus call detour pkg_job | head -c 600)"
+	apk info -e xray-core >/dev/null && apk info -e qrencode >/dev/null && ok "xray-core and qrencode are installed again" || bad "not installed"
+	waitfor x "covers" 120 && ok "the exits work again: $(healthy)" || bad "healthy: $(healthy), before: $H0"
+}
+
 echo "== back to the start"
 uci import detour < /tmp/t13.detour; uci commit detour
 [ -e /tmp/t13.xr.json ] && [ ! -e /etc/detour/engines/xr.json ] && mv /tmp/t13.xr.json /etc/detour/engines/xr.json

@@ -83,6 +83,14 @@ return baseclass.extend({
 	// run an action and follow it in a dialog; resolves with true when it went well. done(): what to do after
 	// (default: reload the page - an installed component changes what the pages offer)
 	run: function(action, packages, title, done) {
+		return this.follow(title, done, callRun(action, packages.join(' ')).then(function(r) {
+			if (!r || r.error) throw new Error(errText((r && r.error) || _('No answer from the router')));
+		}));
+	},
+
+	// follow the package action that runs now (started here, or by the router - a restore of a backup) in a
+	// dialog; started: a promise that rejects when the action did not start
+	follow: function(title, done, started) {
 		const log = E('pre', { 'class': 'detour-log' }, '…');
 		const state = E('p', {}, E('em', {}, _('Running…')));
 		const close = E('button', { 'class': 'btn', 'disabled': '', 'click': function() {
@@ -90,8 +98,7 @@ return baseclass.extend({
 			if (done) done(); else window.location.reload();
 		} }, _('Close'));
 		ui.showModal(title, [ state, log, E('div', { 'class': 'right' }, [ close ]) ]);
-		return callRun(action, packages.join(' ')).then(function(r) {
-			if (!r || r.error) throw new Error(errText((r && r.error) || _('No answer from the router')));
+		return Promise.resolve(started).then(function() {
 			return new Promise(function(resolve) {
 				let misses = 0;
 				const tick = function() {

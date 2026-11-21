@@ -10,6 +10,9 @@ comp() { c pkg_list | jsonfilter -e "@.components[@.id=\"$1\"].$2"; }
 running() { c pkg_job | jsonfilter -e '@.job.running'; }
 code() { c pkg_job | jsonfilter -e '@.job.code'; }
 
+# the daemon may be starting (a test before this one restarted it)
+waitfor true "ubus call detour status >/dev/null 2>&1 && echo true" 60
+
 echo "== the components"
 [ "$(comp detour installed)" = true ] && [ "$(comp detour core)" = true ] && ok "Detour: installed, not removable" || bad "detour: $(c pkg_list | head -c 300)"
 [ "$(comp singbox installed)" = "$(apk info -e sing-box >/dev/null && echo true || echo false)" ] && ok "sing-box state matches apk" || bad "singbox state"
