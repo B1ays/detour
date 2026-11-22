@@ -163,10 +163,11 @@ return view.extend({
 		if (!what.length) what.push(E('em', {}, _('Nothing goes through it yet: add devices, networks, sites, addresses, ports or lists.')));
 
 		const bEdit = E('button', { 'class': 'btn cbi-button-action', 'click': function() { self.edit(p, hints, kind); } }, _('Edit'));
+		// the order changes here only; the router gets it with «Apply» (or with the next change applied)
 		const bUp = E('button', { 'class': 'btn', 'title': _('Checked earlier'), 'disabled': idx == 0 ? '' : null, 'click': function() {
-			uci.move('detour', name, all[idx - 1]['.name']); return applyUci(); } }, '↑ ' + _('Higher priority'));
+			self.move(name, all[idx - 1]['.name'], false); } }, '↑ ' + _('Higher priority'));
 		const bDown = E('button', { 'class': 'btn', 'title': _('Checked later'), 'disabled': idx == all.length - 1 ? '' : null, 'click': function() {
-			uci.move('detour', name, all[idx + 1]['.name'], true); return applyUci(); } }, '↓ ' + _('Lower priority'));
+			self.move(name, all[idx + 1]['.name'], true); } }, '↓ ' + _('Lower priority'));
 		const bToggle = E('button', { 'class': 'btn', 'click': function() { uci.set('detour', name, 'enabled', enabled ? '0' : '1'); return applyUci(); } },
 			enabled ? _('Turn off') : _('Turn on'));
 		const bRemove = E('button', { 'class': 'btn cbi-button-negative', 'click': function() { self.remove(p, lists); } }, _('Remove'));
@@ -356,19 +357,45 @@ return view.extend({
 		});
 	},
 
+	// a policy moved up or down: the cards in the new order, the order not applied yet - «Apply» or «Cancel»
+	move: function(name, other, after) {
+		uci.move('detour', name, other, after);
+		// moved back to where it was: nothing to apply
+		this.pending = this.order() != this.origOrder;
+		this.renderCards();
+	},
+
+	order: function() { return uci.sections('detour', 'policy').map(function(p) { return p['.name']; }).join(' '); },
+
+	renderCards: function() {
+		const self = this;
+		const all = uci.sections('detour', 'policy');
+		this.cards.replaceChildren(all.length
+			? E('div', { 'class': 'detour-cards' }, all.map(function(p, i) { return self.renderPolicy(p, i, all, self.st, self.hints); }))
+			: E('div', { 'class': 'detour-result' }, E('em', {}, _('No policies yet: everything goes directly.'))));
+		this.pendingBar.style.display = this.pending ? '' : 'none';
+	},
+
 	render: function(data) {
 		const self = this;
 		const st = data.status || {};
 		const hints = data.hints || {};
-		const all = uci.sections('detour', 'policy');
+		this.st = st; this.hints = hints; this.pending = false; this.origOrder = this.order();
+		this.cards = E('div');
+		// the page's own buttons below (Reset / Save / Apply, as on the other pages) take the new order
+		this.pendingBar = E('div', { 'class': 'alert-message warning', 'style': 'display:none' },
+			E('p', {}, _('The order of the policies has changed. It takes effect after «Apply».')));
+		// leaving the page with an order not applied: the browser asks
+		window.addEventListener('beforeunload', function(ev) { if (self.pending) { ev.preventDefault(); ev.returnValue = ''; } });
+		this.renderCards();
 		return E('div', {}, [
 			E('link', { 'rel': 'stylesheet', 'href': L.resource('detour/detour.css') + '?v=' + encodeURIComponent(L.env.resource_version || '') }),
 			E('h2', {}, _('Policies')),
 			E('div', { 'class': 'cbi-map-descr' }, _('A policy says where devices, sites, addresses, ports and lists go: through VPN exits, directly (never through a tunnel) or nowhere (blocked). Policies are checked from top to bottom, the first that matches takes the traffic; what matches none goes directly through your provider.')),
 			E('div', { 'class': 'cbi-section' }, [
 				E('div', { 'class': 'cbi-section-node detour-node' }, [
-					all.length ? E('div', { 'class': 'detour-cards' }, all.map(function(p, i) { return self.renderPolicy(p, i, all, st, hints); }))
-						: E('div', { 'class': 'detour-result' }, E('em', {}, _('No policies yet: everything goes directly.'))),
+					this.pendingBar,
+					this.cards,
 					E('div', { 'class': 'detour-actions' }, [ E('button', { 'class': 'btn cbi-button-add', 'click': function() { self.edit(null, hints); } }, _('Add policy')),
 						E('button', { 'class': 'btn', 'click': function() { self.edit(null, hints, 'direct'); } }, _('Add direct')),
 						E('button', { 'class': 'btn', 'click': function() { self.edit(null, hints, 'block'); } }, _('Add blocking')) ])
@@ -377,7 +404,20 @@ return view.extend({
 		]);
 	},
 
-	handleSave: null,
-	handleSaveApply: null,
-	handleReset: null
+	// the standard buttons of the page: «Save» keeps the new order among the unsaved changes, «Apply» applies
+	// it (with everything else not applied yet), «Reset» drops what is not saved yet, as on the other pages
+	handleSave: function() {
+		this.pending = false;
+		this.renderCards();
+		// the header's «Unsaved changes» counter, as after a form's «Save»
+		return uci.save().then(function() { if (ui.changes && ui.changes.init) ui.changes.init(); });
+	},
+	handleSaveApply: function(ev, mode) {
+		return this.handleSave(ev).then(function() { return ui.changes.apply(mode == '0'); });
+	},
+	handleReset: function() {
+		const self = this;
+		uci.unload('detour');
+		return uci.load('detour').then(function() { self.origOrder = self.order(); self.pending = false; self.renderCards(); });
+	}
 });

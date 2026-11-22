@@ -162,8 +162,7 @@ On install and upgrade the package scripts set up cron jobs, reload the rules in
 | **Policies** | Policies in check order: what they match and where it goes. |
 | **Devices** | Home network devices, where their internet goes, DNS log. |
 | **Lists** | Large lists, ready-made categories and the catalogue. |
-| **Exits** | Exits and subscriptions: check, speed, export, editing. |
-| **Add exit** | An exit from a link, key or file; WARP registration. |
+| **Exits** | Exits and subscriptions: check, speed, export, editing. Adding through one field: a subscription address, a link, a key, a config or a file; WARP registration. |
 | **Settings** | Check frequency, router DNS, Telegram, logs. |
 | **Site check** | Where an address goes and why, whether it opens. |
 | **Traffic** | Statistics per device and per exit. |

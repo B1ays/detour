@@ -4,219 +4,6 @@ msgstr ""
 "Language: ru\n"
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
 
-msgid "the scheme «%s» is not supported"
-msgstr "схема «%s» не поддерживается"
-
-msgid "the type «%s» is not supported"
-msgstr "тип «%s» не поддерживается"
-
-msgid "the transport «%s» is not supported"
-msgstr "транспорт «%s» не поддерживается"
-
-msgid "the name %s is already used, skipped"
-msgstr "имя %s уже занято, пропущено"
-
-msgid "%s: the %s package is not installed"
-msgstr "%s: не установлен пакет %s"
-
-msgid "the %s package is not installed"
-msgstr "не установлен пакет %s"
-
-msgid "%s refused the configuration: %s"
-msgstr "%s не принял настройки: %s"
-
-msgid "XHTTP runs only on Xray, and Xray cannot take this server"
-msgstr "XHTTP работает только на Xray, а этот сервер Xray принять не может"
-
-msgid "VLESS encryption runs only on Xray, and Xray cannot take this server"
-msgstr "Шифрование VLESS работает только на Xray, а этот сервер Xray принять не может"
-
-msgid "Reality with an ML-DSA key runs only on Xray, and Xray cannot take this server"
-msgstr "Reality с ключом ML-DSA работает только на Xray, а этот сервер Xray принять не может"
-
-msgid "this key needs the ucode-mod-zlib package"
-msgstr "для этого ключа нужен пакет ucode-mod-zlib"
-
-msgid "the vpn:// key has no AmneziaWG, WireGuard or Xray (other Amnezia protocols are not supported)"
-msgstr "в ключе vpn:// нет AmneziaWG, WireGuard или Xray (другие протоколы Amnezia не поддерживаются)"
-
-msgid "the vpn:// key could not be read"
-msgstr "ключ vpn:// не удалось прочитать"
-
-msgid "not a WireGuard config (keys or the server address missing)"
-msgstr "это не конфиг WireGuard (нет ключей или адреса сервера)"
-
-msgid "a key does not look like a WireGuard key"
-msgstr "ключ не похож на ключ WireGuard"
-
-msgid "the config has no IPv4 address"
-msgstr "в конфиге нет IPv4-адреса"
-
-msgid "nothing recognised: a link, a key, a WireGuard config, JSON or Clash YAML is expected"
-msgstr "ничего не распознано: нужна ссылка, ключ, конфиг WireGuard, JSON или YAML Clash"
-
-msgid "not a link"
-msgstr "не ссылка"
-
-msgid "not valid JSON"
-msgstr "неверный JSON"
-
-msgid "no proxy in this JSON"
-msgstr "в этом JSON нет прокси"
-
-msgid "the proxies list is empty"
-msgstr "список proxies пуст"
-
-msgid "empty"
-msgstr "пусто"
-
-msgid "nothing usable was chosen"
-msgstr "не выбрано ничего подходящего"
-
-msgid "the link could not be read"
-msgstr "ссылку не удалось прочитать"
-
-msgid "a proxy without a server or port"
-msgstr "прокси без сервера или порта"
-
-msgid "Proxy exits run on sing-box."
-msgstr "Прокси-выходы работают на sing-box."
-
-msgid "This exit runs only on Xray."
-msgstr "Этот выход работает только на Xray."
-
-msgid "Amnezia vpn:// keys need ucode-mod-zlib."
-msgstr "Для ключей Amnezia vpn:// нужен ucode-mod-zlib."
-
-msgid "No answer from the router"
-msgstr "Роутер не ответил"
-
-msgid "The file is too big for a config (over 256 KB)."
-msgstr "Файл слишком большой для конфига (больше 256 КБ)."
-
-msgid "Choose a file…"
-msgstr "Выбрать файл…"
-
-msgid "Paste a link, a key or a config first, or choose a file."
-msgstr "Сначала вставьте ссылку, ключ или конфиг либо выберите файл."
-
-msgid "Nothing here can become an exit."
-msgstr "Здесь нет ничего, что может стать выходом."
-
-msgid "There are %d servers here. Exits are added one at a time: paste one link or one config. For a set of servers from a provider use a subscription."
-msgstr "Здесь серверов: %d. Выходы добавляются по одному: вставьте одну ссылку или один конфиг. Для набора серверов от провайдера используйте подписку."
-
-msgid "Exit %s added. Put it into a policy on the Policies page."
-msgstr "Выход %s добавлен. Включите его в политику на странице «Политики»."
-
-msgid "Import"
-msgstr "Импорт"
-
-msgid "Exit from a link, a key or a file"
-msgstr "Выход из ссылки, ключа или файла"
-
-msgid "Paste one link (vless, vmess, trojan, ss, hysteria2, tuic, wireguard), an Amnezia vpn:// key, a WireGuard / AmneziaWG config, a sing-box or Xray JSON or a Clash YAML with one server - or choose such a file. Import shows what it is before it is added. Proxies run on sing-box or Xray: where both can, you choose; XHTTP only on Xray, HTTP/2, Hysteria2 and TUIC only on sing-box. WireGuard and AmneziaWG run on the router itself."
-msgstr "Вставьте одну ссылку (vless, vmess, trojan, ss, hysteria2, tuic, wireguard), ключ Amnezia vpn://, конфиг WireGuard / AmneziaWG, JSON sing-box или Xray либо Clash YAML с одним сервером — или выберите такой файл. «Импорт» покажет, что это, до того как выход будет добавлен. Прокси работают на sing-box или Xray: где подходят оба, выбираете вы; XHTTP — только Xray, HTTP/2, Hysteria2 и TUIC — только sing-box. WireGuard и AmneziaWG работают в самом роутере."
-
-msgid "Link, key or config"
-msgstr "Ссылка, ключ или конфиг"
-
-msgid "directly"
-msgstr "напрямую"
-
-msgid "through %s"
-msgstr "через %s"
-
-msgid "not installed"
-msgstr "не установлен"
-
-msgid "Internal name: Latin letters, digits and _, up to 11, starting with a letter."
-msgstr "Внутреннее имя: латинские буквы, цифры и _, до 11 знаков, начинается с буквы."
-
-msgid "Add"
-msgstr "Добавить"
-
-msgid "Protocol"
-msgstr "Протокол"
-
-msgid "Server"
-msgstr "Сервер"
-
-msgid "Runs on"
-msgstr "Работает на"
-
-msgid "the router itself (%s)"
-msgstr "самом роутере (%s)"
-
-msgid "Name"
-msgstr "Имя"
-
-msgid "How the exit is shown everywhere."
-msgstr "Как выход называется везде."
-
-msgid "Internal name"
-msgstr "Внутреннее имя"
-
-msgid "Latin letters, digits and _, up to 11; used in the configuration."
-msgstr "Латинские буквы, цифры и _, до 11 символов; используется в конфигурации."
-
-msgid "Engine"
-msgstr "Движок"
-
-msgid "Both engines can run this server."
-msgstr "Этот сервер могут обслуживать оба движка."
-
-msgid "Connect to the server"
-msgstr "Подключаться к серверу"
-
-msgid "Through another exit (for example WARP) when the server itself is blocked by the provider. If that exit fails, this one stops too - nothing goes directly."
-msgstr "Через другой выход (например, WARP), когда сам сервер заблокирован провайдером. Если тот выход упадёт, этот тоже остановится — напрямую ничего не пойдёт."
-
-msgid "Cancel"
-msgstr "Отмена"
-
-msgid "New exit «%s»"
-msgstr "Новый выход «%s»"
-
-msgid "WARP exit %s registered (address %s, server %s)."
-msgstr "Выход WARP %s зарегистрирован (адрес %s, сервер %s)."
-
-msgid "Register WARP"
-msgstr "Зарегистрировать WARP"
-
-msgid "AmneziaWG masking"
-msgstr "Маскировка AmneziaWG"
-
-msgid "Masking needs AmneziaWG."
-msgstr "Для маскировки нужен AmneziaWG."
-
-msgid "When plain WARP is blocked by the provider. Needs the AmneziaWG kernel module and openssl-util."
-msgstr "Когда провайдер блокирует обычный WARP. Нужны модуль ядра AmneziaWG и openssl-util."
-
-msgid "Remove WARP exit %s and its registration?"
-msgstr "Удалить выход WARP %s и его регистрацию?"
-
-msgid "Removed%s."
-msgstr "Удалено%s."
-
-msgid "(the registration could not be deleted at Cloudflare)"
-msgstr "(регистрацию у Cloudflare удалить не удалось)"
-
-msgid "Remove"
-msgstr "Удалить"
-
-msgid "Registered WARP exits"
-msgstr "Зарегистрированные выходы WARP"
-
-msgid "Cloudflare WARP"
-msgstr "Cloudflare WARP"
-
-msgid "Registers a new free WARP device at Cloudflare and adds it as an exit."
-msgstr "Регистрирует у Cloudflare новое бесплатное устройство WARP и добавляет его как выход."
-
-msgid "Add an exit"
-msgstr "Добавить выход"
-
 msgid "The password must be at least 8 characters."
 msgstr "Пароль — не короче 8 символов."
 
@@ -264,6 +51,9 @@ msgstr "После восстановления будут установлен�
 
 msgid "The passwords differ."
 msgstr "Пароли не совпадают."
+
+msgid "No answer from the router"
+msgstr "Роутер не ответил"
 
 msgid "The backup is saved: %d exits, %d policies, %d lists, %d subscriptions."
 msgstr "Копия сохранена: выходов — %d, политик — %d, списков — %d, подписок — %d."
@@ -580,6 +370,9 @@ msgstr "VPN (ни один выход не работает)"
 msgid "directly (exits down)"
 msgstr "напрямую (выходы не работают)"
 
+msgid "directly"
+msgstr "напрямую"
+
 msgid "as configured (by sites and lists)"
 msgstr "как настроено (по сайтам и спискам)"
 
@@ -600,6 +393,9 @@ msgstr "Имя устройства"
 
 msgid "Latin letters, digits and hyphens: the name is also given to the device in the local DNS (%s). Saving restarts the router's DNS for a few seconds."
 msgstr "Латинские буквы, цифры и дефисы: по этому имени устройство будет видно и в локальном DNS (%s). Сохранение на несколько секунд перезапускает DNS роутера."
+
+msgid "Cancel"
+msgstr "Отмена"
 
 msgid "Only Latin letters, digits and hyphens, up to 63."
 msgstr "Только латинские буквы, цифры и дефисы, до 63 знаков."
@@ -769,6 +565,9 @@ msgstr "Подключается к серверу через «%s»: если �
 msgid "Cloudflare WARP, point %s"
 msgstr "Cloudflare WARP, точка %s"
 
+msgid "Cloudflare WARP"
+msgstr "Cloudflare WARP"
+
 msgid "Last successful automatic check: %s"
 msgstr "Последняя удачная автоматическая проверка: %s"
 
@@ -816,6 +615,9 @@ msgstr "Выключить"
 
 msgid "Turn on"
 msgstr "Включить"
+
+msgid "Remove"
+msgstr "Удалить"
 
 msgid "Internal name: used in the configuration and the log"
 msgstr "Внутреннее имя: используется в конфигурации и журнале"
@@ -901,11 +703,20 @@ msgstr "Такой сервер правится в JSON ниже."
 msgid "Exit «%s»"
 msgstr "Выход «%s»"
 
+msgid "Name"
+msgstr "Имя"
+
 msgid "Shown in policies, on the overview and in notifications."
 msgstr "Показывается в политиках, на обзоре и в уведомлениях."
 
+msgid "Connect to the server"
+msgstr "Подключаться к серверу"
+
 msgid "Through another exit when the provider blocks this server (for example through WARP). If that exit stops, this one stops too - nothing goes directly."
 msgstr "Через другой выход, когда провайдер блокирует этот сервер (например, через WARP). Если тот выход остановится, этот тоже — напрямую ничего не пойдёт."
+
+msgid "Server"
+msgstr "Сервер"
 
 msgid "Another server from a link"
 msgstr "Другой сервер по ссылке"
@@ -1039,6 +850,9 @@ msgstr "Подключаться к серверам"
 msgid "Through another exit when the provider blocks these servers."
 msgstr "Через другой выход, когда провайдер блокирует эти серверы."
 
+msgid "Engine"
+msgstr "Движок"
+
 msgid "What runs the servers. sing-box by default; Xray also runs XHTTP and servers sing-box cannot connect to. Servers the engine cannot run are skipped."
 msgstr "Чем запускаются серверы. По умолчанию sing-box; Xray умеет ещё XHTTP и серверы, к которым sing-box не подключается. Серверы, которые движок не умеет запускать, пропускаются."
 
@@ -1063,6 +877,12 @@ msgstr "Адрес подписки должен начинаться с http://
 msgid "New subscription"
 msgstr "Новая подписка"
 
+msgid "Internal name"
+msgstr "Внутреннее имя"
+
+msgid "Latin letters, digits and _, up to 11; used in the configuration."
+msgstr "Латинские буквы, цифры и _, до 11 символов; используется в конфигурации."
+
 msgid "Internal name: a-z, 0-9, _, starts with a letter, up to 11"
 msgstr "Внутреннее имя: a-z, 0-9, _, начинается с буквы, до 11 символов"
 
@@ -1071,6 +891,12 @@ msgstr "Это имя уже занято"
 
 msgid "Xray is not installed: install it here or choose sing-box."
 msgstr "Xray не установлен: установите его здесь или выберите sing-box."
+
+msgid "Subscription %s added: %d servers."
+msgstr "Подписка %s добавлена: серверов — %d."
+
+msgid "Add"
+msgstr "Добавить"
 
 msgid "Exits"
 msgstr "Выходы"
@@ -1081,12 +907,6 @@ msgstr "Выход — это путь в интернет в обход про�
 msgid "No exits yet."
 msgstr "Выходов пока нет."
 
-msgid "Add an exit…"
-msgstr "Добавить выход…"
-
-msgid "from a link, a config file or WARP"
-msgstr "по ссылке, из файла конфигурации или WARP"
-
 msgid "Subscriptions"
 msgstr "Подписки"
 
@@ -1095,9 +915,6 @@ msgstr "Подписка — это адрес от VPN-провайдера, п
 
 msgid "No subscriptions yet."
 msgstr "Подписок пока нет."
-
-msgid "Add subscription"
-msgstr "Добавить подписку"
 
 msgid "download failed: %s"
 msgstr "не удалось скачать: %s"
@@ -1480,6 +1297,9 @@ msgstr "есть обновление"
 msgid "installed"
 msgstr "установлен"
 
+msgid "not installed"
+msgstr "не установлен"
+
 msgid "not in the repositories of this firmware"
 msgstr "нет в репозиториях этой прошивки"
 
@@ -1792,11 +1612,14 @@ msgstr "Нет свободного номера политики: не боль
 msgid "Directly"
 msgstr "Напрямую"
 
-msgid "A policy says where devices, sites, addresses, ports and lists go: through VPN exits, directly (never through a tunnel) or nowhere (blocked). Policies are checked from top to bottom, the first that matches takes the traffic; what matches none goes directly through your provider."
-msgstr "Политика определяет, куда идут устройства, сайты, адреса, порты и списки: через выходы VPN, напрямую (никогда через туннель) или никуда (блокировка). Политики проверяются сверху вниз, трафик забирает первая подходящая; то, что не подошло ни под одну, идёт напрямую через провайдера."
-
 msgid "No policies yet: everything goes directly."
 msgstr "Политик пока нет: всё идёт напрямую."
+
+msgid "The order of the policies has changed. It takes effect after «Apply»."
+msgstr "Порядок политик изменён. Он вступит в силу после нажатия «Применить»."
+
+msgid "A policy says where devices, sites, addresses, ports and lists go: through VPN exits, directly (never through a tunnel) or nowhere (blocked). Policies are checked from top to bottom, the first that matches takes the traffic; what matches none goes directly through your provider."
+msgstr "Политика определяет, куда идут устройства, сайты, адреса, порты и списки: через выходы VPN, напрямую (никогда через туннель) или никуда (блокировка). Политики проверяются сверху вниз, трафик забирает первая подходящая; то, что не подошло ни под одну, идёт напрямую через провайдера."
 
 msgid "Add policy"
 msgstr "Добавить политику"
@@ -1902,6 +1725,9 @@ msgstr "Запрашивается напрямую, не через тунне�
 
 msgid "Custom: the addresses below"
 msgstr "Свой: адреса ниже"
+
+msgid "Protocol"
+msgstr "Протокол"
 
 msgid "The ones %s has and dnsproxy speaks."
 msgstr "Те, что есть у %s и поддерживает dnsproxy."
@@ -2061,6 +1887,174 @@ msgstr "Трафик"
 
 msgid "How much each device downloaded and uploaded, and how much of it went through the VPN. Counted every 5 minutes; kept for a year."
 msgstr "Сколько скачало и отдало каждое устройство и сколько из этого прошло через VPN. Считается раз в 5 минут, хранится год."
+
+msgid "the scheme «%s» is not supported"
+msgstr "схема «%s» не поддерживается"
+
+msgid "the type «%s» is not supported"
+msgstr "тип «%s» не поддерживается"
+
+msgid "the transport «%s» is not supported"
+msgstr "транспорт «%s» не поддерживается"
+
+msgid "the name %s is already used, skipped"
+msgstr "имя %s уже занято, пропущено"
+
+msgid "%s: the %s package is not installed"
+msgstr "%s: не установлен пакет %s"
+
+msgid "the %s package is not installed"
+msgstr "не установлен пакет %s"
+
+msgid "%s refused the configuration: %s"
+msgstr "%s не принял настройки: %s"
+
+msgid "XHTTP runs only on Xray, and Xray cannot take this server"
+msgstr "XHTTP работает только на Xray, а этот сервер Xray принять не может"
+
+msgid "VLESS encryption runs only on Xray, and Xray cannot take this server"
+msgstr "Шифрование VLESS работает только на Xray, а этот сервер Xray принять не может"
+
+msgid "Reality with an ML-DSA key runs only on Xray, and Xray cannot take this server"
+msgstr "Reality с ключом ML-DSA работает только на Xray, а этот сервер Xray принять не может"
+
+msgid "this key needs the ucode-mod-zlib package"
+msgstr "для этого ключа нужен пакет ucode-mod-zlib"
+
+msgid "the vpn:// key has no AmneziaWG, WireGuard or Xray (other Amnezia protocols are not supported)"
+msgstr "в ключе vpn:// нет AmneziaWG, WireGuard или Xray (другие протоколы Amnezia не поддерживаются)"
+
+msgid "the vpn:// key could not be read"
+msgstr "ключ vpn:// не удалось прочитать"
+
+msgid "not a WireGuard config (keys or the server address missing)"
+msgstr "это не конфиг WireGuard (нет ключей или адреса сервера)"
+
+msgid "a key does not look like a WireGuard key"
+msgstr "ключ не похож на ключ WireGuard"
+
+msgid "the config has no IPv4 address"
+msgstr "в конфиге нет IPv4-адреса"
+
+msgid "nothing recognised: a link, a key, a WireGuard config, JSON or Clash YAML is expected"
+msgstr "ничего не распознано: нужна ссылка, ключ, конфиг WireGuard, JSON или YAML Clash"
+
+msgid "not a link"
+msgstr "не ссылка"
+
+msgid "not valid JSON"
+msgstr "неверный JSON"
+
+msgid "no proxy in this JSON"
+msgstr "в этом JSON нет прокси"
+
+msgid "the proxies list is empty"
+msgstr "список proxies пуст"
+
+msgid "empty"
+msgstr "пусто"
+
+msgid "nothing usable was chosen"
+msgstr "не выбрано ничего подходящего"
+
+msgid "the link could not be read"
+msgstr "ссылку не удалось прочитать"
+
+msgid "a proxy without a server or port"
+msgstr "прокси без сервера или порта"
+
+msgid "Proxy exits run on sing-box."
+msgstr "Прокси-выходы работают на sing-box."
+
+msgid "This exit runs only on Xray."
+msgstr "Этот выход работает только на Xray."
+
+msgid "Amnezia vpn:// keys need ucode-mod-zlib."
+msgstr "Для ключей Amnezia vpn:// нужен ucode-mod-zlib."
+
+msgid "subscription address"
+msgstr "адрес подписки"
+
+msgid "The file is too big for a config (over 256 KB)."
+msgstr "Файл слишком большой для конфига (больше 256 КБ)."
+
+msgid "Choose a file…"
+msgstr "Выбрать файл…"
+
+msgid "Paste a subscription address, a link, a key or a config first, or choose a file."
+msgstr "Сначала вставьте адрес подписки, ссылку, ключ или конфиг либо выберите файл."
+
+msgid "Nothing here can become an exit."
+msgstr "Здесь нет ничего, что может стать выходом."
+
+msgid "There are %d servers here. Exits are added one at a time: paste one link or one config. For a set of servers from a provider paste its subscription address (https://…)."
+msgstr "Здесь %d серверов. Выходы добавляются по одному: вставьте одну ссылку или один конфиг. Для набора серверов от провайдера вставьте адрес его подписки (https://…)."
+
+msgid "Exit %s added. Put it into a policy on the Policies page."
+msgstr "Выход %s добавлен. Включите его в политику на странице «Политики»."
+
+msgid "Add an exit or a subscription"
+msgstr "Добавить выход или подписку"
+
+msgid "Paste a subscription address from your VPN provider (https://…) - all of its servers become one exit. Or one server: a link (vless, vmess, trojan, ss, hysteria2, tuic, wireguard), an Amnezia vpn:// key, a WireGuard / AmneziaWG config, a sing-box or Xray JSON or a Clash YAML - or choose such a file. Before anything is added you see what it is. Proxies run on sing-box or Xray: where both can, you choose; XHTTP only on Xray, HTTP/2, Hysteria2 and TUIC only on sing-box. WireGuard and AmneziaWG run on the router itself."
+msgstr "Вставьте адрес подписки от VPN-провайдера (https://…) — все её серверы станут одним выходом. Или один сервер: ссылку (vless, vmess, trojan, ss, hysteria2, tuic, wireguard), ключ Amnezia vpn://, конфиг WireGuard / AmneziaWG, JSON sing-box или Xray либо Clash YAML — или выберите такой файл. Перед добавлением вы увидите, что это. Прокси работают на sing-box или Xray: где подходят оба, выбираете вы; XHTTP — только Xray, HTTP/2, Hysteria2 и TUIC — только sing-box. WireGuard и AmneziaWG работают на самом роутере."
+
+msgid "Address, link, key or config"
+msgstr "Адрес, ссылка, ключ или конфиг"
+
+msgid "through %s"
+msgstr "через %s"
+
+msgid "Internal name: Latin letters, digits and _, up to 11, starting with a letter."
+msgstr "Внутреннее имя: латинские буквы, цифры и _, до 11 знаков, начинается с буквы."
+
+msgid "Runs on"
+msgstr "Работает на"
+
+msgid "the router itself (%s)"
+msgstr "самом роутере (%s)"
+
+msgid "How the exit is shown everywhere."
+msgstr "Как выход называется везде."
+
+msgid "Both engines can run this server."
+msgstr "Этот сервер могут обслуживать оба движка."
+
+msgid "Through another exit (for example WARP) when the server itself is blocked by the provider. If that exit fails, this one stops too - nothing goes directly."
+msgstr "Через другой выход (например, WARP), когда сам сервер заблокирован провайдером. Если тот выход упадёт, этот тоже остановится — напрямую ничего не пойдёт."
+
+msgid "New exit «%s»"
+msgstr "Новый выход «%s»"
+
+msgid "WARP exit %s registered (address %s, server %s)."
+msgstr "Выход WARP %s зарегистрирован (адрес %s, сервер %s)."
+
+msgid "Register WARP"
+msgstr "Зарегистрировать WARP"
+
+msgid "AmneziaWG masking"
+msgstr "Маскировка AmneziaWG"
+
+msgid "Masking needs AmneziaWG."
+msgstr "Для маскировки нужен AmneziaWG."
+
+msgid "When plain WARP is blocked by the provider. Needs the AmneziaWG kernel module and openssl-util."
+msgstr "Когда провайдер блокирует обычный WARP. Нужны модуль ядра AmneziaWG и openssl-util."
+
+msgid "Remove WARP exit %s and its registration?"
+msgstr "Удалить выход WARP %s и его регистрацию?"
+
+msgid "Removed%s."
+msgstr "Удалено%s."
+
+msgid "(the registration could not be deleted at Cloudflare)"
+msgstr "(регистрацию у Cloudflare удалить не удалось)"
+
+msgid "Registered WARP exits"
+msgstr "Зарегистрированные выходы WARP"
+
+msgid "Registers a new free WARP device at Cloudflare and adds it as an exit."
+msgstr "Регистрирует у Cloudflare новое бесплатное устройство WARP и добавляет его как выход."
 
 msgid "Measuring…"
 msgstr "Измеряю…"

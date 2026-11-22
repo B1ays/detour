@@ -1,11 +1,14 @@
 'use strict';
-'require view';
+'require baseclass';
 'require ui';
 'require dom';
 'require rpc';
 'require uci';
 'require detour.pkg as pkg';
 
+// Adding on the Exits page: one field for everything a person has - an exit from a link, an Amnezia key, a
+// WireGuard config, a JSON or a Clash YAML (pasted or a file), or a provider's subscription address (http(s)://,
+// the Exits page opens its form) - and Cloudflare WARP registration.
 // Text from the router (names of exits and servers come from subscriptions and links) never becomes HTML:
 // LuCI's E() puts a string child in with innerHTML, here it always goes in as a text node.
 const E = function(tag, attr, data) {
@@ -86,15 +89,15 @@ function row(title, field, descr) {
 function actions(items) { return E('div', { 'class': 'detour-actions' }, items); }
 function resultBox() { return E('div', { 'class': 'detour-result' }); }
 
-return view.extend({
-	load: function() { return uci.load('detour'); },
-
-	// an exit from whatever a person has: a link, an Amnezia key, a WireGuard config, a JSON or a Clash YAML -
-	// pasted or from a file. One at a time: "Import" reads it, a dialog shows what it is and adds it when agreed.
-	renderLink: function() {
+return baseclass.extend({
+	// one field for an exit or a subscription: a single http(s):// address is a subscription (onSub(url) opens its
+	// form); anything else is an exit - a link, an Amnezia key, a WireGuard config, a JSON or a Clash YAML, pasted
+	// or from a file. One exit at a time: "Add" reads it, a dialog shows what it is and adds it when agreed;
+	// onDone(text) when something was added.
+	renderAdd: function(onSub, onDone) {
 		const self = this;
 		const text = E('textarea', { 'class': 'cbi-input-textarea detour-code', 'rows': 5, 'spellcheck': 'false',
-			'placeholder': 'vless://… ss://… trojan://… hysteria2://… tuic://… wireguard://… vpn://…\n[Interface] …\n{ "outbounds": … }\nproxies: …' });
+			'placeholder': 'https://… (' + _('subscription address') + ')\nvless://… ss://… trojan://… hysteria2://… tuic://… wireguard://… vpn://…\n[Interface] …\n{ "outbounds": … }\nproxies: …' });
 		let fileName = '';
 		const file = E('input', { 'type': 'file', 'accept': '.conf,.json,.yaml,.yml,.txt,text/*', 'style': 'display:none', 'change': function() {
 			const f = file.files[0];
@@ -108,7 +111,10 @@ return view.extend({
 		const box = resultBox();
 
 		const bImport = E('button', { 'class': 'btn cbi-button-action', 'click': function() {
-			if (!text.value.trim()) { box.replaceChildren(E('div', { 'class': 'alert-message warning' }, _('Paste a link, a key or a config first, or choose a file.'))); return; }
+			const t = text.value.trim();
+			if (!t) { box.replaceChildren(E('div', { 'class': 'alert-message warning' }, _('Paste a subscription address, a link, a key or a config first, or choose a file.'))); return; }
+			// one http(s):// address: a provider's subscription
+			if (/^https?:\/\/\S+$/.test(t)) { box.replaceChildren(); onSub(t, function() { text.value = ''; }); return; }
 			busy(bImport, true);
 			box.replaceChildren();
 			return callParse(text.value).then(function(r) {
@@ -128,23 +134,21 @@ return view.extend({
 				// one exit at a time: a list of servers is a subscription's work
 				if (usable.length > 1) {
 					box.replaceChildren(E('div', { 'class': 'alert-message warning' },
-						_('There are %d servers here. Exits are added one at a time: paste one link or one config. For a set of servers from a provider use a subscription.').format(usable.length)));
+						_('There are %d servers here. Exits are added one at a time: paste one link or one config. For a set of servers from a provider paste its subscription address (https://…).').format(usable.length)));
 					return;
 				}
 				self.confirmExit(text.value, usable[0], r.candidates[usable[0]], r.installed || {}, fileName, function(added) {
-					result(box, added, function(x) {
-						const names = (x.added || []).map(function(a) { return a.name; }).join(', ');
-						return E('div', {}, [ E('div', {}, _('Exit %s added. Put it into a policy on the Policies page.').format(names)),
-							(x.notes && x.notes.length) ? E('div', { 'class': 'detour-muted' }, x.notes.map(errText).join('; ')) : '' ]);
-					});
+					const names = (added.added || []).map(function(a) { return a.name; }).join(', ');
 					text.value = ''; fileName = '';
+					onDone(_('Exit %s added. Put it into a policy on the Policies page.').format(names) +
+						((added.notes && added.notes.length) ? ' (' + added.notes.map(errText).join('; ') + ')' : ''));
 				});
 			}).finally(function() { busy(bImport, false); });
-		} }, _('Import'));
+		} }, _('Add'));
 
-		return card(_('Exit from a link, a key or a file'),
-			_('Paste one link (vless, vmess, trojan, ss, hysteria2, tuic, wireguard), an Amnezia vpn:// key, a WireGuard / AmneziaWG config, a sing-box or Xray JSON or a Clash YAML with one server - or choose such a file. Import shows what it is before it is added. Proxies run on sing-box or Xray: where both can, you choose; XHTTP only on Xray, HTTP/2, Hysteria2 and TUIC only on sing-box. WireGuard and AmneziaWG run on the router itself.'), [
-			row(_('Link, key or config'), E('div', {}, [ text, E('div', { 'class': 'detour-actions detour-field-actions' }, [ bFile, file ]) ])),
+		return card(_('Add an exit or a subscription'),
+			_('Paste a subscription address from your VPN provider (https://…) - all of its servers become one exit. Or one server: a link (vless, vmess, trojan, ss, hysteria2, tuic, wireguard), an Amnezia vpn:// key, a WireGuard / AmneziaWG config, a sing-box or Xray JSON or a Clash YAML - or choose such a file. Before anything is added you see what it is. Proxies run on sing-box or Xray: where both can, you choose; XHTTP only on Xray, HTTP/2, Hysteria2 and TUIC only on sing-box. WireGuard and AmneziaWG run on the router itself.'), [
+			row(_('Address, link, key or config'), E('div', {}, [ text, E('div', { 'class': 'detour-actions detour-field-actions' }, [ bFile, file ]) ])),
 			actions([ bImport ]), box
 		]);
 	},
@@ -208,14 +212,15 @@ return view.extend({
 		ui.showModal(_('New exit «%s»').format(c.label || c.server), body);
 	},
 
-	renderWarp: function() {
+	renderWarp: function(onDone) {
 		const name = E('input', { 'class': 'cbi-input-text', 'placeholder': 'warp1', 'maxlength': 12 });
 		const awg = E('input', { 'type': 'checkbox', 'class': 'cbi-input-checkbox', 'checked': '' });
 		const box = resultBox();
 		const btn = E('button', { 'class': 'btn cbi-button-action', 'click': function() {
 			busy(btn, true);
 			return callWarpReg(name.value.trim(), awg.checked).then(function(r) {
-				result(box, r, function(x) { return _('WARP exit %s registered (address %s, server %s).').format(x.name, x.address, x.endpoint); });
+				if (!r || r.error) return result(box, r);
+				onDone(_('WARP exit %s registered (address %s, server %s).').format(r.name, r.address, r.endpoint));
 			}).finally(function() { busy(btn, false); });
 		} }, _('Register WARP'));
 		const body = [
@@ -231,22 +236,12 @@ return view.extend({
 				if (!sel.value || !confirm(_('Remove WARP exit %s and its registration?').format(sel.value))) return;
 				busy(btn2, true);
 				return callWarpDel(sel.value).then(function(r) {
-					result(box2, r, function(x) { return _('Removed%s.').format(x.deregistered ? '' : ' ' + _('(the registration could not be deleted at Cloudflare)')); });
+					if (!r || r.error) return result(box2, r);
+					onDone(_('Removed%s.').format(r.deregistered ? '' : ' ' + _('(the registration could not be deleted at Cloudflare)')));
 				}).finally(function() { busy(btn2, false); });
 			} }, _('Remove'));
 			body.push(row(_('Registered WARP exits'), sel), actions([ btn2 ]), box2);
 		}
 		return card(_('Cloudflare WARP'), _('Registers a new free WARP device at Cloudflare and adds it as an exit.'), body);
-	},
-
-	render: function() {
-		return E('div', {}, [
-			E('link', { 'rel': 'stylesheet', 'href': L.resource('detour/detour.css') + '?v=' + encodeURIComponent(L.env.resource_version || '') }),
-			E('h2', {}, _('Add an exit')), this.renderLink(), this.renderWarp()
-		]);
-	},
-
-	handleSave: null,
-	handleSaveApply: null,
-	handleReset: null
+	}
 });

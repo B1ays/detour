@@ -7,6 +7,7 @@
 'require dom';
 'require detour.outform as outform';
 'require detour.pkg as pkg';
+'require detour.addexit as addexit';
 
 // Text from the router (names of exits and servers come from subscriptions and links) never becomes HTML:
 // LuCI's E() puts a string child in with innerHTML, here it always goes in as a text node.
@@ -514,10 +515,17 @@ return view.extend({
 		});
 	},
 
-	addSub: function(by) {
+	// a new subscription; url: the address pasted into the add field (its name and title are made from its host)
+	addSub: function(by, url, added) {
 		const self = this;
-		const name = E('input', { 'class': 'cbi-input-text', 'placeholder': 'provider', 'maxlength': 11 });
+		const host = (/^https?:\/\/([^\/:?#@]+)/.exec(url || '') || [])[1] || '';
+		const parts = host.split('.').filter(function(x) { return x; });
+		// the provider's name in its domain: "sub.my-vpn.net" -> "my", "dot.ruslik31.me" -> "ruslik31"
+		const word = /^[0-9.]+$/.test(host) ? '' : String((parts.length > 1 ? parts[parts.length - 2] : parts[0]) || '').toLowerCase().split(/[^a-z0-9]+/)[0];
+		const name = E('input', { 'class': 'cbi-input-text', 'placeholder': 'provider', 'maxlength': 11,
+			'value': word ? addexit.freeName({}, word) : '' });
 		const f = this.subFields(null, null, by);
+		if (url) { f.url.value = url; f.label.value = word; }
 		modal(_('New subscription'), [ row(_('Internal name'), name, _('Latin letters, digits and _, up to 11; used in the configuration.')) ].concat(f.rows), function(box) {
 			const n = name.value.trim();
 			if (!/^[a-z][a-z0-9_]{0,10}$/.test(n)) throw new Error(_('Internal name: a-z, 0-9, _, starts with a letter, up to 11'));
@@ -534,10 +542,24 @@ return view.extend({
 				self.saveSubFields(n, f);
 				return applyUci().then(function() { return callSubUpdate(n); }).then(function(r) {
 					if (!r || r.error) throw new Error((r && r.error) || _('No answer from the router'));
+					if (added) added();
+					self.refresh(_('Subscription %s added: %d servers.').format(f.label.value.trim() || n, r.servers || 0));
 					return true;
 				});
 			});
 		}, _('Add'));
+	},
+
+	// after something was added or removed: the page again from the router's state, the message on top
+	refresh: function(text) {
+		const self = this;
+		if (text) ui.addNotification(null, E('p', {}, text), 'info');
+		uci.unload('detour'); uci.unload('network');
+		const old = this.root;   // render() sets this.root to the new page
+		return Promise.resolve(this.load()).then(function(data) {
+			const node = self.render(data);
+			if (old && old.parentNode) old.parentNode.replaceChild(node, old);
+		});
 	},
 
 	render: function(data) {
@@ -548,8 +570,9 @@ return view.extend({
 		const by = this.exitsBy(info);
 		const plain = info.exits.filter(function(x) { return x.kind != 'subscription'; });
 		const subs = info.exits.filter(function(x) { return x.kind == 'subscription'; });
+		const done = function(text) { return self.refresh(text); };
 
-		return E('div', {}, [
+		this.root = E('div', {}, [
 			E('link', { 'rel': 'stylesheet', 'href': L.resource('detour/detour.css') + '?v=' + encodeURIComponent(L.env.resource_version || '') }),
 			E('h2', {}, _('Exits')),
 			E('div', { 'class': 'cbi-map-descr' }, _('An exit is a way out to the internet other than your provider: a VPN server, WARP, a proxy. Policies send chosen traffic into exits. If an exit stops, its traffic is blocked or goes to the next exit of the policy - never directly.')),
@@ -557,11 +580,7 @@ return view.extend({
 				E('h3', {}, _('Exits')),
 				E('div', { 'class': 'cbi-section-node detour-node' }, [
 					plain.length ? E('div', { 'class': 'detour-cards' }, plain.map(function(x) { return self.renderExit(x, by); }))
-						: E('div', { 'class': 'detour-result' }, E('em', {}, _('No exits yet.'))),
-					E('div', { 'class': 'detour-actions' }, [
-						E('a', { 'class': 'btn cbi-button-add', 'href': L.url('admin/services/detour/add') }, _('Add an exit…')),
-						E('span', { 'class': 'detour-muted' }, _('from a link, a config file or WARP'))
-					])
+						: E('div', { 'class': 'detour-result' }, E('em', {}, _('No exits yet.')))
 				])
 			]),
 			E('div', { 'class': 'cbi-section' }, [
@@ -569,11 +588,14 @@ return view.extend({
 				E('div', { 'class': 'cbi-section-descr' }, _('A subscription is an address from your VPN provider that gives the current list of its servers. All of them form one exit: it picks a working server by itself, or you choose one.')),
 				E('div', { 'class': 'cbi-section-node detour-node' }, [
 					subs.length ? E('div', { 'class': 'detour-cards' }, subs.map(function(x) { return self.renderSub(x, by, subState); }))
-						: E('div', { 'class': 'detour-result' }, E('em', {}, _('No subscriptions yet.'))),
-					E('div', { 'class': 'detour-actions' }, [ E('button', { 'class': 'btn cbi-button-add', 'click': function() { self.addSub(by); } }, _('Add subscription')) ])
+						: E('div', { 'class': 'detour-result' }, E('em', {}, _('No subscriptions yet.')))
 				])
-			])
+			]),
+			// one field for both: a subscription address opens the subscription form, anything else becomes an exit
+			addexit.renderAdd(function(url, clear) { self.addSub(by, url, clear); }, done),
+			addexit.renderWarp(done)
 		]);
+		return this.root;
 	},
 
 	handleSave: null,
