@@ -163,10 +163,9 @@ On install and upgrade the package scripts set up cron jobs, reload the rules in
 | **Devices** | Home network devices, where their internet goes, DNS log. |
 | **Lists** | Large lists, ready-made categories and the catalogue. |
 | **Exits** | Exits and subscriptions: check, speed, export, editing. Adding through one field: a subscription address, a link, a key, a config or a file; WARP registration. |
-| **Settings** | Check frequency, router DNS, Telegram, logs. |
+| **Settings** | Check frequency, router DNS, Telegram, logs; last, the backup: saving and restoring Detour's settings. |
 | **Site check** | Where an address goes and why, whether it opens. |
 | **Traffic** | Statistics per device and per exit. |
-| **Backup** | Saving and restoring Detour's settings. |
 | **Components** | The packages Detour uses (sing-box, Xray, AmneziaWG, dnsproxy ...): install, update, remove - only these, never the rest of the firmware. Where a page needs one that is missing, it offers to install it. |
 
 Access is split into two ACL groups: `luci-app-detour` grants only viewing the state (Overview), `luci-app-detour-admin` grants the settings (including keys and tokens), the DNS log, backups and every action.

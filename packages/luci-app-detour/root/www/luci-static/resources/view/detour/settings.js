@@ -6,6 +6,7 @@
 'require rpc';
 'require fs';
 'require detour.pkg as pkg';
+'require detour.backupui as backupui';
 
 // Text from the router (names of exits and servers come from subscriptions and links) never becomes HTML:
 // LuCI's E() puts a string child in with innerHTML, here it always goes in as a text node.
@@ -221,6 +222,9 @@ return view.extend({
 		// detour.css: the last field of a card must not touch its bottom (Argon gives the node no padding)
 		return m.render().then(function(node) {
 			node.insertBefore(E('link', { 'rel': 'stylesheet', 'href': L.resource('detour/detour.css') + '?v=' + encodeURIComponent(L.env.resource_version || '') }), node.firstChild);
+			// the backup last: saving and restoring work at once with their own buttons, not with the page's Apply
+			node.appendChild(backupui.renderSave());
+			node.appendChild(backupui.renderRestore());
 			return node;
 		});
 	}

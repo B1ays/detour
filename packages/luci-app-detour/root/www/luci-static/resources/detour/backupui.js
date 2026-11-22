@@ -1,5 +1,5 @@
 'use strict';
-'require view';
+'require baseclass';
 'require rpc';
 'require ui';
 'require fs';
@@ -12,7 +12,7 @@ const E = function(tag, attr, data) {
 	return L.dom.create(tag, attr, (typeof data == 'string' || typeof data == 'number') ? [ data ] : data);
 };
 
-// Backup and restore of Detour's settings (backup.uc). The router writes the encrypted file, the browser
+// Backup and restore of Detour's settings (backup.uc), the last part of the Settings page. The router writes the encrypted file, the browser
 // downloads it (cgi-download); a restore uploads the file (cgi-upload), shows what it holds, then applies it.
 const OUT = '/tmp/detour-backup.bin';
 const IN = '/tmp/detour-restore.bin';
@@ -108,9 +108,7 @@ function componentsBox(miss) {
 	return E('div', { 'style': 'margin-top:.5em' }, [ E('strong', {}, _('Installed after the restore (the router downloads them):')), list ]);
 }
 
-return view.extend({
-	load: function() { return Promise.resolve(); },
-
+return baseclass.extend({
 	renderSave: function() {
 		const pw = pwInput(), pw2 = pwInput();
 		const box = E('div', { 'class': 'detour-result' });
@@ -232,16 +230,5 @@ return view.extend({
 			row(_('Password'), pw),
 			E('div', { 'class': 'detour-actions' }, [ bCheck, bApply ]), info, box
 		]);
-	},
-
-	render: function() {
-		return E('div', {}, [
-			E('link', { 'rel': 'stylesheet', 'href': L.resource('detour/detour.css') + '?v=' + encodeURIComponent(L.env.resource_version || '') }),
-			E('h2', {}, _('Backup')), this.renderSave(), this.renderRestore()
-		]);
-	},
-
-	handleSave: null,
-	handleSaveApply: null,
-	handleReset: null
+	}
 });
