@@ -4,186 +4,6 @@ msgstr ""
 "Language: ru\n"
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
 
-msgid "a local address (%s): never through a tunnel"
-msgstr "локальный адрес (%s): никогда через туннель"
-
-msgid "the device is in the policy %s"
-msgstr "устройство в политике %s"
-
-msgid "the address %s is in the policy %s"
-msgstr "адрес %s в политике %s"
-
-msgid "the site %s is in the policy %s"
-msgstr "сайт %s в политике %s"
-
-msgid "the list %s of the policy %s"
-msgstr "список %s политики %s"
-
-msgid "a site of the policy %s"
-msgstr "сайт политики %s"
-
-msgid "the port %s is in the policy %s"
-msgstr "порт %s в политике %s"
-
-msgid "Blocked by the policy %s."
-msgstr "Заблокирован политикой %s."
-
-msgid "Directly through your provider: the policy %s never sends it through a tunnel."
-msgstr "Напрямую через провайдера: политика %s никогда не отправляет это через туннель."
-
-msgid "Through the policy %s - but none of its exits works now, so directly (as chosen for it)."
-msgstr "Через политику %s — но сейчас ни один её выход не работает, поэтому напрямую (так для неё выбрано)."
-
-msgid "Through the policy %s, now via the exit «%s»."
-msgstr "Через политику %s, сейчас через выход «%s»."
-
-msgid "Through the policy %s; no exit works now - blocked."
-msgstr "Через политику %s; сейчас ни один выход не работает — заблокирован."
-
-msgid "Directly through your provider."
-msgstr "Напрямую через провайдера."
-
-msgid "Directly through your provider: no rule matches it."
-msgstr "Напрямую через провайдера: ни одно правило не подходит."
-
-msgid "opens (%d ms)"
-msgstr "открывается (%d мс)"
-
-msgid "the site refused (HTTP %d)"
-msgstr "сайт отказал (HTTP %d)"
-
-msgid "a provider's stub page instead of the site"
-msgstr "вместо сайта заглушка провайдера"
-
-msgid "the site answered with an error (HTTP %d)"
-msgstr "сайт ответил ошибкой (HTTP %d)"
-
-msgid "the name is not found"
-msgstr "имя не находится"
-
-msgid "the connection is refused"
-msgstr "соединение отклонено"
-
-msgid "no answer"
-msgstr "нет ответа"
-
-msgid "connected, but the TLS handshake never starts (cut by the site name)"
-msgstr "соединение есть, но рукопожатие TLS не начинается (режут по имени сайта)"
-
-msgid "started loading and froze"
-msgstr "начал загружаться и замер"
-
-msgid "the connection is reset"
-msgstr "соединение сброшено"
-
-msgid "a TLS or certificate error"
-msgstr "ошибка TLS или сертификата"
-
-msgid "failed"
-msgstr "не удалось"
-
-msgid "It opens directly: no VPN is needed for it."
-msgstr "Открывается напрямую: VPN для него не нужен."
-
-msgid "Directly it does not open, through the VPN it does: worth sending through the VPN."
-msgstr "Напрямую не открывается, через VPN — открывается: его стоит пускать через VPN."
-
-msgid "The site itself refuses visitors from Russia; through the VPN it opens."
-msgstr "Сайт сам не пускает посетителей из России; через VPN открывается."
-
-msgid "It opens neither directly nor through the VPN: the trouble seems to be the site itself."
-msgstr "Не открывается ни напрямую, ни через VPN: похоже, проблема в самом сайте."
-
-msgid "No working exit to compare with."
-msgstr "Нет работающего выхода для сравнения."
-
-msgid "The site answers «forbidden» both ways: it refuses automatic requests, the check cannot tell."
-msgstr "Сайт оба раза ответил «доступ запрещён»: он отказывает автоматическим запросам, проверка не может сказать."
-
-msgid "Send this address through"
-msgstr "Пускать этот адрес через"
-
-msgid "Send this site through"
-msgstr "Пускать этот сайт через"
-
-msgid "Never through a tunnel"
-msgstr "Никогда через туннель"
-
-msgid "Block"
-msgstr "Заблокировать"
-
-msgid "The address %s is added to the chosen rule."
-msgstr "Адрес %s добавляется в выбранное правило."
-
-msgid "The site %s (with its subdomains) is added to the chosen rule."
-msgstr "Сайт %s (с поддоменами) добавляется в выбранное правило."
-
-msgid "any device"
-msgstr "любое устройство"
-
-msgid "the one the rules choose"
-msgstr "стандартный для правил"
-
-msgid "Looking up the rules…"
-msgstr "Смотрю правила…"
-
-msgid "This is not a site name, an address or a link."
-msgstr "Это не имя сайта, не адрес и не ссылка."
-
-msgid "No answer from the router"
-msgstr "Роутер не ответил"
-
-msgid "Where it goes:"
-msgstr "Куда пойдёт:"
-
-msgid "The name gives: %s"
-msgstr "Имя даёт адреса: %s"
-
-msgid "The name gets «no such name» - the blocking does that."
-msgstr "На имя приходит «нет такого имени» — так работает блокировка."
-
-msgid "The name is not found."
-msgstr "Имя не находится."
-
-msgid "Why:"
-msgstr "Почему:"
-
-msgid "Also matched, but checked later - so they lose:"
-msgstr "Тоже подходят, но проверяются позже — поэтому не срабатывают:"
-
-msgid "Change it"
-msgstr "Изменить"
-
-msgid "Opening it directly and through an exit (up to 15 s)…"
-msgstr "Открываю напрямую и через выход (до 15 с)…"
-
-msgid "Directly:"
-msgstr "Напрямую:"
-
-msgid "Through «%s»:"
-msgstr "Через «%s»:"
-
-msgid "Check"
-msgstr "Проверить"
-
-msgid "Check a site"
-msgstr "Проверка сайта"
-
-msgid "Where a site or an address goes by your rules, and why; does it open directly and through the VPN. The router opens it itself, the same way a device would."
-msgstr "Куда идёт сайт или адрес по вашим правилам и почему; открывается ли он напрямую и через VPN. Роутер открывает его сам, так же, как это сделало бы устройство."
-
-msgid "Site or address"
-msgstr "Сайт или адрес"
-
-msgid "From the device"
-msgstr "С устройства"
-
-msgid "Rules for devices count only for the chosen one."
-msgstr "Правила для устройств учитываются только для выбранного."
-
-msgid "Compare through"
-msgstr "Сравнить через"
-
 msgid "blocked"
 msgstr "заблокирован"
 
@@ -316,8 +136,8 @@ msgstr "Служба Detour не запущена."
 msgid "Devices"
 msgstr "Устройства"
 
-msgid "The devices of your home network. For each: whether it is online, how it is connected, how much it downloaded today, where its internet goes, and what it asks for."
-msgstr "Устройства домашней сети: в сети ли, как подключено, сколько скачало сегодня, куда идёт его интернет и что оно запрашивает."
+msgid "The devices of your home network. For each: whether it is online, how it is connected, how much it downloaded and uploaded in the period chosen, where its internet goes, and what it asks for."
+msgstr "Устройства домашней сети. Для каждого: в сети ли оно, как подключено, сколько скачало и отдало за выбранный период, куда идёт его интернет и что оно запрашивает."
 
 msgid "Junk packets (Jc)"
 msgstr "Мусорные пакеты (Jc)"
@@ -391,6 +211,9 @@ msgstr "Замер напрямую, для сравнения…"
 msgid "%s Mbit/s"
 msgstr "%s Мбит/с"
 
+msgid "failed"
+msgstr "не удалось"
+
 msgid "Download speed: through the exit %s, directly %s."
 msgstr "Скорость загрузки: через выход %s, напрямую %s."
 
@@ -430,8 +253,14 @@ msgstr "точка Cloudflare %s"
 msgid "No answer through this exit (%s)."
 msgstr "Через этот выход нет ответа (%s)."
 
+msgid "No answer from the router"
+msgstr "Роутер не ответил"
+
 msgid "Finding out why…"
 msgstr "Выясняю причину…"
+
+msgid "Check"
+msgstr "Проверить"
 
 msgid "Share"
 msgstr "Поделиться"
@@ -627,6 +456,9 @@ msgstr "%d мс"
 
 msgid "only in the automatic mode"
 msgstr "только в режиме «Автоматически»"
+
+msgid "no answer"
+msgstr "нет ответа"
 
 msgid "A download through this server only; the subscription does not switch"
 msgstr "Скачивание только через этот сервер; подписка не переключается"
@@ -979,9 +811,6 @@ msgstr "Мбит/с"
 msgid "kbit/s"
 msgstr "кбит/с"
 
-msgid "Error"
-msgstr "Ошибка"
-
 msgid "Switch the VPN off?\n\nAll traffic will go directly through your provider - also the sites, devices and lists of your policies. Nothing is blocked while it is off: the kill-switch is off too."
 msgstr "Выключить VPN?\n\nВесь трафик пойдёт напрямую через провайдера — в том числе сайты, устройства и списки ваших политик. Пока VPN выключен, ничего не блокируется: kill-switch тоже выключен."
 
@@ -999,6 +828,12 @@ msgstr "Всё идёт напрямую через провайдера: без
 
 msgid "Cloudflare point: %s"
 msgstr "Точка Cloudflare: %s"
+
+msgid "Directly:"
+msgstr "Напрямую:"
+
+msgid "Through «%s»:"
+msgstr "Через «%s»:"
 
 msgid "All the traffic"
 msgstr "Весь трафик"
@@ -1024,33 +859,6 @@ msgstr "Загрузка"
 msgid "peak %s"
 msgstr "пик %s"
 
-msgid "Policy"
-msgstr "Политика"
-
-msgid "Active exit"
-msgstr "Текущий выход"
-
-msgid "Exits in order"
-msgstr "Выходы по порядку"
-
-msgid "Manual choice"
-msgstr "Ручной выбор"
-
-msgid "blocks"
-msgstr "блокирует"
-
-msgid "refused: %d"
-msgstr "отклонено: %d"
-
-msgid "Automatic"
-msgstr "Автоматически"
-
-msgid "none - goes directly"
-msgstr "нет — идёт напрямую"
-
-msgid "none - blocked"
-msgstr "нет — трафик заблокирован"
-
 msgid "Exit"
 msgstr "Выход"
 
@@ -1072,41 +880,20 @@ msgstr "Точка Cloudflare, на которую приходит туннел
 msgid "device state only"
 msgstr "только состояние устройства"
 
-msgid "not managed"
-msgstr "не управляется"
-
-msgid "through the tunnel"
-msgstr "через туннель"
-
-msgid "encrypted fallback (all exits down)"
-msgstr "резервный шифрованный (все выходы не работают)"
-
-msgid "encrypted (DoH/DoT/DoQ)"
-msgstr "шифрованный (DoH/DoT/DoQ)"
-
-msgid "Router DNS"
-msgstr "DNS роутера"
-
-msgid "Switches"
-msgstr "Переключений"
-
 msgid "Two-factor login"
 msgstr "Двухфакторный вход"
 
 msgid "password-only login over /ubus is open"
 msgstr "вход только по паролю через /ubus открыт"
 
-msgid "protected"
-msgstr "защищён"
-
 msgid "SSH"
 msgstr "SSH"
 
-msgid "password login only from the local network; elsewhere keys only"
-msgstr "вход по паролю только из локальной сети, снаружи — только по ключам"
-
 msgid "no SSH key for root: SSH from outside is impossible until you add one (System → Administration → SSH-Keys)"
 msgstr "у root нет ключа SSH: войти по SSH снаружи нельзя, пока вы его не добавите (Система → Управление → SSH-ключи)"
+
+msgid "Statistics"
+msgstr "Статистика"
 
 msgid "No events yet."
 msgstr "Событий пока нет."
@@ -1114,8 +901,8 @@ msgstr "Событий пока нет."
 msgid "Detour"
 msgstr "Detour"
 
-msgid "Policies"
-msgstr "Политики"
+msgid "By exit"
+msgstr "По выходам"
 
 msgid "Events"
 msgstr "События"
@@ -1294,6 +1081,9 @@ msgstr "Проверяется позже"
 msgid "Lower priority"
 msgstr "Ниже приоритет"
 
+msgid "blocks"
+msgstr "блокирует"
+
 msgid "Remove the policy «%s»?"
 msgstr "Удалить политику «%s»?"
 
@@ -1359,6 +1149,12 @@ msgstr "Если ни один выход не работает"
 
 msgid "Blocked is safer: nothing goes past the tunnel. Directly keeps things working without the VPN, but the provider sees this traffic."
 msgstr "Блокировать надёжнее: мимо туннеля ничего не уйдёт. «Напрямую» сохраняет работу без VPN, но провайдер видит этот трафик."
+
+msgid "Exit now"
+msgstr "Выход сейчас"
+
+msgid "Automatically: the first working exit in the order above. Chosen: that one while it works; when it fails, the others take over in the order above, and it is back when it works again."
+msgstr "Автоматически — первый работающий выход в порядке выше. Выбранный — он, пока работает; если он откажет, его заменят остальные в порядке выше, а когда заработает — трафик вернётся на него."
 
 msgid "What is blocked"
 msgstr "Что блокировать"
@@ -1450,6 +1246,9 @@ msgstr "Не удалось разобрать: %s"
 msgid "No free policy id: 250 policies is the limit"
 msgstr "Нет свободного номера политики: не больше 250 политик"
 
+msgid "Block"
+msgstr "Заблокировать"
+
 msgid "Directly"
 msgstr "Напрямую"
 
@@ -1458,6 +1257,9 @@ msgstr "Политик пока нет: всё идёт напрямую."
 
 msgid "The order of the policies has changed. It takes effect after «Apply»."
 msgstr "Порядок политик изменён. Он вступит в силу после нажатия «Применить»."
+
+msgid "Policies"
+msgstr "Политики"
 
 msgid "A policy says where devices, sites, addresses, ports and lists go: through VPN exits, directly (never through a tunnel) or nowhere (blocked). Policies are checked from top to bottom, the first that matches takes the traffic; what matches none goes directly through your provider."
 msgstr "Политика определяет, куда идут устройства, сайты, адреса, порты и списки: через выходы VPN, напрямую (никогда через туннель) или никуда (блокировка). Политики проверяются сверху вниз, трафик забирает первая подходящая; то, что не подошло ни под одну, идёт напрямую через провайдера."
@@ -1528,6 +1330,9 @@ msgstr "Меняйте, только если те же биты использ�
 msgid "0xffff shifted by whole bits: 0x0000ffff ... 0x0ffff000"
 msgstr "0xffff, сдвинутое на целое число битов: 0x0000ffff … 0x0ffff000"
 
+msgid "Router DNS"
+msgstr "DNS роутера"
+
 msgid "Through the tunnel: the router resolves names via the exits of the selected policy, so the provider does not see the queries. If all of its exits are down, it switches to an encrypted resolver (DoH/DoT/DoQ) directly; traffic of the policies stays blocked. Encrypted: the router always asks the encrypted resolvers directly, whatever the exits do."
 msgstr "Через туннель: роутер разрешает имена через выходы выбранной политики, и провайдер не видит запросов. Если все её выходы не работают, роутер переходит на шифрованный DNS (DoH/DoT/DoQ) напрямую; трафик политик остаётся заблокированным. Шифрованный: роутер всегда спрашивает шифрованные DNS-серверы напрямую, что бы ни происходило с выходами."
 
@@ -1551,6 +1356,9 @@ msgstr "Для зашифрованного DNS нужен пакет dnsproxy"
 
 msgid "Encrypted DNS needs dnsproxy."
 msgstr "Для зашифрованного DNS нужен dnsproxy."
+
+msgid "Policy"
+msgstr "Политика"
 
 msgid "Resolvers through the tunnel"
 msgstr "DNS-серверы через туннель"
@@ -1656,81 +1464,6 @@ msgstr "Подробный уровень нужен только для диа�
 
 msgid "Detour log level"
 msgstr "Уровень"
-
-msgid "Today"
-msgstr "Сегодня"
-
-msgid "3 days"
-msgstr "3 дня"
-
-msgid "7 days"
-msgstr "7 дней"
-
-msgid "30 days"
-msgstr "30 дней"
-
-msgid "12 months"
-msgstr "12 месяцев"
-
-msgid "nlbwmon is not installed: devices are not counted."
-msgstr "nlbwmon не установлен: трафик устройств не считается."
-
-msgid "nlbwmon is not running: devices are not counted now (System → Startup: nlbwmon)."
-msgstr "nlbwmon не запущен: трафик устройств сейчас не считается (Система → Автозапуск: nlbwmon)."
-
-msgid "Hardware flow offloading works on this router: some traffic may bypass the counting, the numbers by device can be too low."
-msgstr "На роутере работает аппаратное ускорение: часть трафика может пройти мимо учёта, цифры по устройствам бывают занижены."
-
-msgid "Counted since %s."
-msgstr "Считается с %s."
-
-msgid "Nothing counted yet: the first numbers appear within 5 minutes."
-msgstr "Пока ничего не посчитано: первые цифры появятся в течение 5 минут."
-
-msgid "Downloaded"
-msgstr "Скачано"
-
-msgid "Uploaded"
-msgstr "Отдано"
-
-msgid "Through VPN"
-msgstr "Через VPN"
-
-msgid "by month"
-msgstr "по месяцам"
-
-msgid "by day"
-msgstr "по дням"
-
-msgid "Today is a single point: the chart starts with the 3 days period."
-msgstr "За сегодня — одна точка: график начинается с периода «3 дня»."
-
-msgid "No device traffic in this period."
-msgstr "За этот период устройства ничего не передавали."
-
-msgid "Share of the traffic"
-msgstr "Доля"
-
-msgid "Nothing went through the exits in this period."
-msgstr "За этот период через выходы ничего не шло."
-
-msgid "(rides through «%s»: counted there too)"
-msgstr "(идёт через «%s»: учтён и там)"
-
-msgid "Through VPN and directly are counted from the tunnels: the router's own checks and downloads through a tunnel count as VPN, so the split is approximate."
-msgstr "Деление на «через VPN» и «напрямую» считается по туннелям: собственные проверки и загрузки роутера через туннель тоже попадают в VPN, поэтому оно приблизительное."
-
-msgid "By device"
-msgstr "По устройствам"
-
-msgid "By exit"
-msgstr "По выходам"
-
-msgid "Traffic"
-msgstr "Трафик"
-
-msgid "How much each device downloaded and uploaded, and how much of it went through the VPN. Counted every 5 minutes; kept for a year."
-msgstr "Сколько скачало и отдало каждое устройство и сколько из этого прошло через VPN. Считается раз в 5 минут, хранится год."
 
 msgid "the scheme «%s» is not supported"
 msgstr "схема «%s» не поддерживается"
@@ -2424,6 +2157,222 @@ msgstr "(список пакетов ещё не загружался: «Ком�
 
 msgid "Install the component %s"
 msgstr "Установить %s"
+
+msgid "a local address (%s): never through a tunnel"
+msgstr "локальный адрес (%s): никогда через туннель"
+
+msgid "the device is in the policy %s"
+msgstr "устройство в политике %s"
+
+msgid "the address %s is in the policy %s"
+msgstr "адрес %s в политике %s"
+
+msgid "the site %s is in the policy %s"
+msgstr "сайт %s в политике %s"
+
+msgid "the list %s of the policy %s"
+msgstr "список %s политики %s"
+
+msgid "a site of the policy %s"
+msgstr "сайт политики %s"
+
+msgid "the port %s is in the policy %s"
+msgstr "порт %s в политике %s"
+
+msgid "Blocked by the policy %s."
+msgstr "Заблокирован политикой %s."
+
+msgid "Directly through your provider: the policy %s never sends it through a tunnel."
+msgstr "Напрямую через провайдера: политика %s никогда не отправляет это через туннель."
+
+msgid "Through the policy %s - but none of its exits works now, so directly (as chosen for it)."
+msgstr "Через политику %s — но сейчас ни один её выход не работает, поэтому напрямую (так для неё выбрано)."
+
+msgid "Through the policy %s, now via the exit «%s»."
+msgstr "Через политику %s, сейчас через выход «%s»."
+
+msgid "Through the policy %s; no exit works now - blocked."
+msgstr "Через политику %s; сейчас ни один выход не работает — заблокирован."
+
+msgid "Directly through your provider."
+msgstr "Напрямую через провайдера."
+
+msgid "Directly through your provider: no rule matches it."
+msgstr "Напрямую через провайдера: ни одно правило не подходит."
+
+msgid "opens (%d ms)"
+msgstr "открывается (%d мс)"
+
+msgid "the site refused (HTTP %d)"
+msgstr "сайт отказал (HTTP %d)"
+
+msgid "a provider's stub page instead of the site"
+msgstr "вместо сайта заглушка провайдера"
+
+msgid "the site answered with an error (HTTP %d)"
+msgstr "сайт ответил ошибкой (HTTP %d)"
+
+msgid "the name is not found"
+msgstr "имя не находится"
+
+msgid "the connection is refused"
+msgstr "соединение отклонено"
+
+msgid "connected, but the TLS handshake never starts (cut by the site name)"
+msgstr "соединение есть, но рукопожатие TLS не начинается (режут по имени сайта)"
+
+msgid "started loading and froze"
+msgstr "начал загружаться и замер"
+
+msgid "the connection is reset"
+msgstr "соединение сброшено"
+
+msgid "a TLS or certificate error"
+msgstr "ошибка TLS или сертификата"
+
+msgid "It opens directly: no VPN is needed for it."
+msgstr "Открывается напрямую: VPN для него не нужен."
+
+msgid "Directly it does not open, through the VPN it does: worth sending through the VPN."
+msgstr "Напрямую не открывается, через VPN — открывается: его стоит пускать через VPN."
+
+msgid "The site itself refuses visitors from Russia; through the VPN it opens."
+msgstr "Сайт сам не пускает посетителей из России; через VPN открывается."
+
+msgid "It opens neither directly nor through the VPN: the trouble seems to be the site itself."
+msgstr "Не открывается ни напрямую, ни через VPN: похоже, проблема в самом сайте."
+
+msgid "No working exit to compare with."
+msgstr "Нет работающего выхода для сравнения."
+
+msgid "The site answers «forbidden» both ways: it refuses automatic requests, the check cannot tell."
+msgstr "Сайт оба раза ответил «доступ запрещён»: он отказывает автоматическим запросам, проверка не может сказать."
+
+msgid "Send this address through"
+msgstr "Пускать этот адрес через"
+
+msgid "Send this site through"
+msgstr "Пускать этот сайт через"
+
+msgid "Never through a tunnel"
+msgstr "Никогда через туннель"
+
+msgid "The address %s is added to the chosen rule."
+msgstr "Адрес %s добавляется в выбранное правило."
+
+msgid "The site %s (with its subdomains) is added to the chosen rule."
+msgstr "Сайт %s (с поддоменами) добавляется в выбранное правило."
+
+msgid "any device"
+msgstr "любое устройство"
+
+msgid "the one the rules choose"
+msgstr "стандартный для правил"
+
+msgid "Looking up the rules…"
+msgstr "Смотрю правила…"
+
+msgid "This is not a site name, an address or a link."
+msgstr "Это не имя сайта, не адрес и не ссылка."
+
+msgid "Where it goes:"
+msgstr "Куда пойдёт:"
+
+msgid "The name gives: %s"
+msgstr "Имя даёт адреса: %s"
+
+msgid "The name gets «no such name» - the blocking does that."
+msgstr "На имя приходит «нет такого имени» — так работает блокировка."
+
+msgid "The name is not found."
+msgstr "Имя не находится."
+
+msgid "Why:"
+msgstr "Почему:"
+
+msgid "Also matched, but checked later - so they lose:"
+msgstr "Тоже подходят, но проверяются позже — поэтому не срабатывают:"
+
+msgid "Change it"
+msgstr "Изменить"
+
+msgid "Opening it directly and through an exit (up to 15 s)…"
+msgstr "Открываю напрямую и через выход (до 15 с)…"
+
+msgid "Check a site"
+msgstr "Проверка сайта"
+
+msgid "Where a site or an address goes by your rules, and why; does it open directly and through the VPN. The router opens it itself, the same way a device would."
+msgstr "Куда идёт сайт или адрес по вашим правилам и почему; открывается ли он напрямую и через VPN. Роутер открывает его сам, так же, как это сделало бы устройство."
+
+msgid "Site or address"
+msgstr "Сайт или адрес"
+
+msgid "From the device"
+msgstr "С устройства"
+
+msgid "Rules for devices count only for the chosen one."
+msgstr "Правила для устройств учитываются только для выбранного."
+
+msgid "Compare through"
+msgstr "Сравнить через"
+
+msgid "Today"
+msgstr "Сегодня"
+
+msgid "3 days"
+msgstr "3 дня"
+
+msgid "7 days"
+msgstr "7 дней"
+
+msgid "30 days"
+msgstr "30 дней"
+
+msgid "12 months"
+msgstr "12 месяцев"
+
+msgid "nlbwmon is not installed: devices are not counted."
+msgstr "nlbwmon не установлен: трафик устройств не считается."
+
+msgid "nlbwmon is not running: devices are not counted now (System → Startup: nlbwmon)."
+msgstr "nlbwmon не запущен: трафик устройств сейчас не считается (Система → Автозапуск: nlbwmon)."
+
+msgid "Hardware flow offloading works on this router: some traffic may bypass the counting, the numbers by device can be too low."
+msgstr "На роутере работает аппаратное ускорение: часть трафика может пройти мимо учёта, цифры по устройствам бывают занижены."
+
+msgid "Counted since %s."
+msgstr "Считается с %s."
+
+msgid "Nothing counted yet: the first numbers appear within 5 minutes."
+msgstr "Пока ничего не посчитано: первые цифры появятся в течение 5 минут."
+
+msgid "Downloaded"
+msgstr "Скачано"
+
+msgid "Uploaded"
+msgstr "Отдано"
+
+msgid "Through VPN"
+msgstr "Через VPN"
+
+msgid "by month"
+msgstr "по месяцам"
+
+msgid "by day"
+msgstr "по дням"
+
+msgid "Today is a single point: the chart starts with the 3 days period."
+msgstr "За сегодня — одна точка: график начинается с периода «3 дня»."
+
+msgid "Nothing went through the exits in this period."
+msgstr "За этот период через выходы ничего не шло."
+
+msgid "(rides through «%s»: counted there too)"
+msgstr "(идёт через «%s»: учтён и там)"
+
+msgid "Through VPN and directly are counted from the tunnels: the router's own checks and downloads through a tunnel count as VPN, so the split is approximate."
+msgstr "Деление на «через VPN» и «напрямую» считается по туннелям: собственные проверки и загрузки роутера через туннель тоже попадают в VPN, поэтому оно приблизительное."
 
 msgid "Overview"
 msgstr "Обзор"

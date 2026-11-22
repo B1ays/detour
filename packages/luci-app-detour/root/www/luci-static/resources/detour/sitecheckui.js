@@ -1,6 +1,5 @@
 'use strict';
-'require view';
-'require detour.load as pdata';
+'require baseclass';
 'require rpc';
 'require ui';
 'require uci';
@@ -13,13 +12,11 @@ const E = function(tag, attr, data) {
 	return L.dom.create(tag, attr, (typeof data == 'string' || typeof data == 'number') ? [ data ] : data);
 };
 
-// "Check a site": where an address goes and why (the rule that wins and the ones that also matched), and does it
+// "Check a site" (the last part of the Policies page): where an address goes and why (the rule that wins and the ones that also matched), and does it
 // open directly and through an exit. Then one click: through VPN, never through a tunnel, or blocked.
 
 const callExplain = rpc.declare({ object: 'detour', method: 'site_explain', params: [ 'target', 'mac' ] });
 const callCheck = rpc.declare({ object: 'detour', method: 'site_check', params: [ 'target', 'exit' ] });
-const callLeases = rpc.declare({ object: 'luci-rpc', method: 'getDHCPLeases', expect: { '': {} } });
-const callStatus = rpc.declare({ object: 'detour', method: 'status' });
 
 function busy(btn, on) { btn.disabled = on; btn.classList.toggle('spinning', on); }
 function note(text, cls) { return E('div', { 'class': 'alert-message ' + (cls || 'notice') }, text); }
@@ -84,11 +81,7 @@ const VERDICT = {
 	unclear: function() { return [ _('The site answers «forbidden» both ways: it refuses automatic requests, the check cannot tell.'), 'notice' ]; }
 };
 
-return view.extend({
-	load: function() {
-		return pdata.all({ cfg: uci.load('detour'), leases: L.resolveDefault(callLeases(), {}), status: L.resolveDefault(callStatus(), {}) });
-	},
-
+return baseclass.extend({
 	// one click after the check: the site (or address) goes to a VPN policy, to the "Directly" one, or is blocked
 	actions: function(r) {
 		const isIp = !!r.ip;
@@ -112,6 +105,7 @@ return view.extend({
 		return E('div', { 'class': 'detour-lines detour-check-acts' }, items);
 	},
 
+	// data: { leases (getDHCPLeases), status } - what the Policies page has loaded anyway
 	render: function(data) {
 		const self = this;
 		const leases = (data.leases || {}).dhcp_leases || [];
@@ -157,21 +151,16 @@ return view.extend({
 		} }, _('Check'));
 		target.addEventListener('keydown', function(ev) { if (ev.key == 'Enter') btn.click(); });
 
-		return E('div', {}, [
-			E('link', { 'rel': 'stylesheet', 'href': L.resource('detour/detour.css') + '?v=' + encodeURIComponent(L.env.resource_version || '') }),
-			E('h2', {}, _('Check a site')),
-			E('div', { 'class': 'cbi-map-descr' }, _('Where a site or an address goes by your rules, and why; does it open directly and through the VPN. The router opens it itself, the same way a device would.')),
-			E('div', { 'class': 'cbi-section' }, [ E('div', { 'class': 'cbi-section-node detour-node' }, [
+		return E('div', { 'class': 'cbi-section' }, [
+			E('h3', {}, _('Check a site')),
+			E('div', { 'class': 'cbi-section-descr' }, _('Where a site or an address goes by your rules, and why; does it open directly and through the VPN. The router opens it itself, the same way a device would.')),
+			E('div', { 'class': 'cbi-section-node detour-node' }, [
 				row(_('Site or address'), target),
 				row(_('From the device'), dev, _('Rules for devices count only for the chosen one.')),
 				row(_('Compare through'), via),
 				E('div', { 'class': 'detour-actions' }, [ btn ]),
 				E('div', { 'class': 'detour-result detour-lines' }, [ where, opens, acts ])
-			]) ])
+			])
 		]);
-	},
-
-	handleSave: null,
-	handleSaveApply: null,
-	handleReset: null
+	}
 });

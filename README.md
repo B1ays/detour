@@ -158,14 +158,12 @@ On install and upgrade the package scripts set up cron jobs, reload the rules in
 
 | Page | What it has |
 |---|---|
-| **Overview** | VPN switch, external address directly and through the exits, speed graph, state of policies and exits, exit pinning, event log, configuration errors. |
-| **Policies** | Policies in check order: what they match and where it goes. |
-| **Devices** | Home network devices, where their internet goes, DNS log. |
+| **Overview** | VPN switch, external address directly and through the exits, configuration errors; a chart in two modes - the speed now and the traffic statistics of a period (today ... 12 months); traffic by exit, state of the exits, event log. |
+| **Policies** | Policies in check order: what they match and where it goes; choosing an exit by hand is in a policy's settings. Last, the site check: where an address goes and why, whether it opens. |
 | **Lists** | Large lists, ready-made categories and the catalogue. |
+| **Devices** | Home network devices, how much they downloaded and uploaded in the period chosen, where their internet goes, DNS log. |
 | **Exits** | Exits and subscriptions: check, speed, export, editing. Adding through one field: a subscription address, a link, a key, a config or a file; WARP registration. |
 | **Settings** | Check frequency, router DNS, Telegram, logs; last, the backup: saving and restoring Detour's settings. |
-| **Site check** | Where an address goes and why, whether it opens. |
-| **Traffic** | Statistics per device and per exit. |
 | **Components** | The packages Detour uses (sing-box, Xray, AmneziaWG, dnsproxy ...): install, update, remove - only these, never the rest of the firmware. Where a page needs one that is missing, it offers to install it. |
 
 Access is split into two ACL groups: `luci-app-detour` grants only viewing the state (Overview), `luci-app-detour-admin` grants the settings (including keys and tokens), the DNS log, backups and every action.

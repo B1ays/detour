@@ -8,6 +8,7 @@
 'require uci';
 'require detour.msg as msg';
 'require detour.chart as chart';
+'require detour.trafficui as trafficui';
 
 // Text from the router (names of exits and servers come from subscriptions and links) never becomes HTML:
 // LuCI's E() puts a string child in with innerHTML, here it always goes in as a text node.
@@ -17,8 +18,6 @@ const E = function(tag, attr, data) {
 };
 
 const callStatus = rpc.declare({ object: 'detour', method: 'status' });
-const callPin = rpc.declare({ object: 'detour', method: 'pin', params: [ 'policy', 'exit' ] });
-const callUnpin = rpc.declare({ object: 'detour', method: 'unpin', params: [ 'policy' ] });
 const callRates = rpc.declare({ object: 'detour', method: 'rates' });
 
 const RATE_EVERY = 3;          // s between two readings of the counters
@@ -70,14 +69,6 @@ return view.extend({
 		return out;
 	},
 	lab: function(n) { return (this.labels()[n]) || n; },
-
-	pinHandler: function(policy, sel) {
-		const v = sel.value;
-		const p = v ? callPin(policy, v) : callUnpin(policy);
-		return p.then(function(r) {
-			if (r && r.error) ui.addNotification(null, E('p', _('Error') + ': ' + r.error), 'danger');
-		});
-	},
 
 	// "VPN is on": main.enabled. Off = Detour takes everything down and all traffic goes directly - not blocked
 	vpnSwitch: function(on) {
@@ -164,6 +155,8 @@ return view.extend({
 	},
 
 	drawRates: function() {
+		// hidden (the statistics are shown): the readings go on, the picture waits
+		if (!this.chart.el.offsetParent) return;
 		const self = this, h = this.hist, src = this.src;
 		this.rateSources();
 		const vals = h.map(function(p) { return src ? (p.exits[src] || null) : p.wan; });
@@ -193,37 +186,6 @@ return view.extend({
 		});
 	},
 
-	renderPolicies: function(st) {
-		const self = this;
-		const rows = [ E('tr', { 'class': 'tr table-titles' }, [
-			E('th', { 'class': 'th' }, _('Policy')),
-			E('th', { 'class': 'th' }, _('Active exit')),
-			E('th', { 'class': 'th' }, _('Exits in order')),
-			E('th', { 'class': 'th' }, _('Manual choice'))
-		]) ];
-		(st.policies || []).forEach(function(p) {
-			if (p.block || p.action == 'direct') {
-				rows.push(E('tr', { 'class': 'tr' }, [
-					td(_('Policy'), [ self.lab(p.name), p.enabled ? '' : ' (' + _('switched off') + ')' ]),
-					td(_('Active exit'), E('strong', {}, p.block ? _('blocks') : _('directly'))),
-					td(_('Exits in order'), p.block && st.blocked ? _('refused: %d').format(st.blocked) : '—'),
-					td(_('Manual choice'), '')
-				]));
-				return;
-			}
-			const sel = E('select', { 'class': 'cbi-input-select' }, [ E('option', { 'value': '' }, _('Automatic')) ].concat(
-				p.exits.map(function(x) { return E('option', { 'value': x, 'selected': p.pinned == x ? '' : null }, self.lab(x)); })));
-			sel.addEventListener('change', ui.createHandlerFn(self, 'pinHandler', p.name, sel));
-			rows.push(E('tr', { 'class': 'tr' }, [
-				td(_('Policy'), [ self.lab(p.name), p.enabled ? '' : ' (' + _('switched off') + ')' ]),
-				td(_('Active exit'), E('strong', {}, p.direct ? _('none - goes directly') : (p.active ? self.lab(p.active) : _('none - blocked')))),
-				td(_('Exits in order'), p.exits.map(function(x) { return self.lab(x); }).join(' → ')),
-				td(_('Manual choice'), sel)
-			]));
-		});
-		return E('table', { 'class': 'table', 'id': 'detour-policies' }, rows);
-	},
-
 	renderExits: function(st) {
 		const self = this;
 		const rows = [ E('tr', { 'class': 'tr table-titles' }, [
@@ -245,24 +207,55 @@ return view.extend({
 		return E('table', { 'class': 'table', 'id': 'detour-exits' }, rows);
 	},
 
-	renderInfo: function(st) {
-		const dnsText = { 'off': _('not managed'), 'tunnel': _('through the tunnel'), 'fallback': _('encrypted fallback (all exits down)'), 'encrypted': _('encrypted (DoH/DoT/DoQ)') }[st.dns] || st.dns;
-		const items = [
-			E('div', {}, [ E('strong', {}, _('Router DNS') + ': '), dnsText ]),
-			E('div', {}, [ E('strong', {}, _('Switches') + ': '), String(st.switches), st.last_switch ? ' (' + fmtTime(st.last_switch) + ')' : '' ])
-		];
-		if (st.auth && st.auth.twofa)
-			items.push(E('div', {}, [ E('strong', {}, _('Two-factor login') + ': '),
-				st.auth.http_login_open ? badge(false, '', _('password-only login over /ubus is open')) : badge(true, _('protected'), '') ]));
-		if (st.auth && st.auth.ssh_lan_password_only)
-			items.push(E('div', {}, [ E('strong', {}, _('SSH') + ': '),
-				_('password login only from the local network; elsewhere keys only'),
-				st.auth.root_keys ? '' : E('span', { 'class': 'detour-warn' }, ' — ' + _('no SSH key for root: SSH from outside is impossible until you add one (System → Administration → SSH-Keys)')) ]));
+	// what needs attention, under the switch: configuration errors and an open way to log in
+	renderAlerts: function(st) {
+		const items = [];
+		if (st.auth && st.auth.twofa && st.auth.http_login_open)
+			items.push(E('div', { 'class': 'alert-message warning' }, _('Two-factor login') + ': ' + _('password-only login over /ubus is open')));
+		if (st.auth && st.auth.ssh_lan_password_only && !st.auth.root_keys)
+			items.push(E('div', { 'class': 'alert-message warning' }, _('SSH') + ': ' + _('no SSH key for root: SSH from outside is impossible until you add one (System → Administration → SSH-Keys)')));
 		const labels = this.labels();
 		(st.errors || []).forEach(function(e) {
 			items.push(E('div', { 'class': 'alert-message warning' }, _('Configuration') + ': ' + msg.configError(e, labels)));
 		});
-		return E('div', { 'id': 'detour-info', 'class': 'detour-info' }, items);
+		return E('div', { 'id': 'detour-alerts', 'class': 'detour-lines' }, items);
+	},
+
+	// the chart in two modes: the speed now (the last 5 minutes) or the traffic statistics of a period
+	chartBox: function() {
+		const self = this;
+		this.mode = 'speed';
+		this.period = 'day';
+		this.stats = trafficui.statsChart();
+		const rate = this.rateBox();
+		const statsPart = E('div', { 'style': 'display:none' }, [ trafficui.periodTabs(this.period, function(p) { return self.loadTraffic(p); }), this.stats.el, this.stats.notes ]);
+		const modes = E('div', { 'class': 'detour-period' });
+		const show = function(m) {
+			self.mode = m;
+			modes.querySelectorAll('.btn').forEach(function(b) { b.classList.toggle('cbi-button-action', b.getAttribute('data-mode') == m); });
+			rate.style.display = m == 'speed' ? '' : 'none';
+			statsPart.style.display = m == 'stats' ? '' : 'none';
+			// "By exit" belongs to the statistics: shown with them only
+			if (self.exitsCard) self.exitsCard.style.display = m == 'stats' ? '' : 'none';
+			if (m == 'speed') self.drawRates(); else self.stats.draw();
+		};
+		[ [ 'speed', _('Speed') ], [ 'stats', _('Statistics') ] ].forEach(function(x) {
+			modes.appendChild(E('button', { 'class': 'btn' + (x[0] == 'speed' ? ' cbi-button-action' : ''), 'data-mode': x[0], 'click': function() { show(x[0]); } }, x[1]));
+		});
+		this.exitsTraffic = E('div', {}, E('em', {}, _('Loading…')));
+		this.exitsSub = E('div', { 'class': 'cbi-section-descr' });
+		return [ modes, rate, statsPart ];
+	},
+
+	// the statistics of a period: the chart and "By exit"
+	loadTraffic: function(period) {
+		const self = this;
+		if (period) this.period = period;
+		return trafficui.fetch(this.period).then(function(r) {
+			self.stats.set(r, self.period);
+			self.exitsSub.textContent = trafficui.periodLabel(self.period);
+			dom.content(self.exitsTraffic, trafficui.exits(r));
+		});
 	},
 
 	renderEvents: function(st) {
@@ -285,21 +278,20 @@ return view.extend({
 		const body = E('div', {}, [
 			css(),
 			E('h2', {}, _('Detour')),
-			E('div', { 'class': 'cbi-section' }, [ E('div', { 'class': 'detour-node' }, [ E('div', { 'class': 'detour-result detour-lines' }, [ this.vpnSwitch(on), this.renderIp(st) ]) ]) ]),
-			E('div', { 'class': 'cbi-section' }, this.rateBox()),
-			E('div', { 'class': 'cbi-section' }, [ E('h3', {}, _('Policies')), this.renderPolicies(st) ]),
+			E('div', { 'class': 'cbi-section' }, [ E('div', { 'class': 'detour-node' }, [ E('div', { 'class': 'detour-result detour-lines' }, [ this.vpnSwitch(on), this.renderIp(st), this.renderAlerts(st) ]) ]) ]),
+			E('div', { 'class': 'cbi-section' }, this.chartBox()),
+			this.exitsCard = E('div', { 'class': 'cbi-section', 'style': 'display:none' }, [ E('h3', {}, _('By exit')), this.exitsSub, this.exitsTraffic ]),
 			E('div', { 'class': 'cbi-section' }, [ E('h3', {}, _('Exits')), this.renderExits(st) ]),
-			E('div', { 'class': 'cbi-section' }, [ E('h3', {}, _('State')), this.renderInfo(st) ]),
 			E('div', { 'class': 'cbi-section' }, [ E('h3', {}, _('Events')), this.renderEvents(st) ])
 		]);
+		this.loadTraffic();
+		poll.add(function() { return self.loadTraffic(); }, 60);
 		poll.add(function() {
 			return callStatus().then(function(s) {
 				if (!s) return;
-				// keep an open <select> untouched while the user is choosing
-				if (!document.activeElement || document.activeElement.tagName != 'SELECT')
-					dom.content(document.getElementById('detour-policies').parentNode, [ E('h3', {}, _('Policies')), self.renderPolicies(s) ]);
 				dom.content(document.getElementById('detour-exits').parentNode, [ E('h3', {}, _('Exits')), self.renderExits(s) ]);
-				dom.content(document.getElementById('detour-info').parentNode, [ E('h3', {}, _('State')), self.renderInfo(s) ]);
+				const al = document.getElementById('detour-alerts');
+				if (al) al.replaceWith(self.renderAlerts(s));
 				document.getElementById('detour-events').textContent = self.renderEvents(s).textContent;
 				const ip = document.getElementById('detour-ip');
 				if (ip) ip.replaceWith(self.renderIp(s));

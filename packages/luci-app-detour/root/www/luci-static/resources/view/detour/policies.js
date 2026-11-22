@@ -5,6 +5,7 @@
 'require ui';
 'require uci';
 'require detour.msg as msg';
+'require detour.sitecheckui as sitecheck';
 
 // Text from the router (names of exits and servers come from subscriptions and links) never becomes HTML:
 // LuCI's E() puts a string child in with innerHTML, here it always goes in as a text node.
@@ -20,6 +21,8 @@ const E = function(tag, attr, data) {
 const callStatus = rpc.declare({ object: 'detour', method: 'status' });
 const callHints = rpc.declare({ object: 'luci-rpc', method: 'getHostHints', expect: { '': {} } });
 const callLeases = rpc.declare({ object: 'luci-rpc', method: 'getDHCPLeases', expect: { '': {} } });
+const callPin = rpc.declare({ object: 'detour', method: 'pin', params: [ 'policy', 'exit' ] });
+const callUnpin = rpc.declare({ object: 'detour', method: 'unpin', params: [ 'policy' ] });
 
 function busy(btn, on) { btn.disabled = on; btn.classList.toggle('spinning', on); }
 function note(text, cls) { return E('div', { 'class': 'alert-message ' + (cls || 'notice') }, text); }
@@ -293,6 +296,12 @@ return view.extend({
 				onDown.value = 'block';
 		} }, [ E('option', { 'value': 'block', 'selected': p.on_down != 'direct' ? '' : null }, _('block it (nothing leaks)')),
 			E('option', { 'value': 'direct', 'selected': p.on_down == 'direct' ? '' : null }, _('let it go directly through the provider')) ]);
+		// which exit now: the automatic choice (the first working one) or one chosen by hand - out of the saved
+		// exits (a pin holds until it is taken off; the router keeps it across restarts)
+		const live = (((this.st || {}).policies) || []).filter(function(x) { return x.name == p['.name']; })[0] || {};
+		const pinned = live.pinned || '';
+		const pin = E('select', { 'class': 'cbi-input-select' }, [ E('option', { 'value': '' }, _('Automatically')) ].concat(
+			arr(p.exit).map(function(x) { return E('option', { 'value': x, 'selected': x == pinned ? '' : null }, uci.get('detour', x, 'label') || x); })));
 		// IPv6 is not tunnelled: an address policy may refuse all IPv6 (devices then use IPv4, which it covers)
 		const v6 = E('input', { 'type': 'checkbox', 'checked': p.ipv6_block == '1' ? '' : null });
 		const body = [];
@@ -303,6 +312,8 @@ return view.extend({
 		else body.push(
 			row(_('Exits'), exits, _('In order: the traffic goes through the first working exit; when it fails, through the next one, and back when it works again.')),
 			row(_('If no exit works'), onDown, _('Blocked is safer: nothing goes past the tunnel. Directly keeps things working without the VPN, but the provider sees this traffic.')));
+		if (vpn && !isNew && arr(p.exit).length > 1)
+			body.push(row(_('Exit now'), pin, _('Automatically: the first working exit in the order above. Chosen: that one while it works; when it fails, the others take over in the order above, and it is back when it works again.')));
 		body.push(
 			E('h4', {}, block ? _('What is blocked') : (direct ? _('What goes directly') : _('What goes through'))),
 			E('div', { 'class': 'cbi-value-description' }, block ? _('Anything that matches one of these is blocked. Bigger sets (advertising, a service) are added as lists on the Lists page.')
@@ -353,7 +364,13 @@ return view.extend({
 			set('label', label.value.trim() || (block ? _('Block') : (direct ? _('Directly') : '')));
 			if (vpn) { set('exit', exits.get()); set('on_down', onDown.value == 'direct' ? 'direct' : null); set('ipv6_block', v6.checked ? '1' : null); }
 			set('device', dv); set('src', sr); set('network', nw); set('dst', d); set('domain', o); set('port', pt);
-			return applyUci().then(function() { return true; });
+			// the exit chosen by hand: told to the router at once (a chosen one taken out of the exits: automatic again)
+			let want = pin.value;
+			if (want && (exits.get() || []).indexOf(want) < 0) want = '';
+			const pinDone = (!vpn || isNew || want == pinned) ? Promise.resolve() : (want ? callPin(n, want) : callUnpin(n)).then(function(r) {
+				if (r && r.error) throw new Error(r.error);
+			});
+			return pinDone.then(function() { return applyUci(); }).then(function() { return true; });
 		});
 	},
 
@@ -381,6 +398,7 @@ return view.extend({
 		const st = data.status || {};
 		const hints = data.hints || {};
 		this.st = st; this.hints = hints; this.pending = false; this.origOrder = this.order();
+		this.data = data;
 		this.cards = E('div');
 		// the page's own buttons below (Reset / Save / Apply, as on the other pages) take the new order
 		this.pendingBar = E('div', { 'class': 'alert-message warning', 'style': 'display:none' },
@@ -400,7 +418,9 @@ return view.extend({
 						E('button', { 'class': 'btn', 'click': function() { self.edit(null, hints, 'direct'); } }, _('Add direct')),
 						E('button', { 'class': 'btn', 'click': function() { self.edit(null, hints, 'block'); } }, _('Add blocking')) ])
 				])
-			])
+			]),
+			// where a site goes by these policies, and does it open
+			sitecheck.render({ leases: data.leases, status: st })
 		]);
 	},
 

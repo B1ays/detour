@@ -8,6 +8,7 @@
 'require dom';
 'require detour.msg as msg';
 'require detour.pkg as pkg';
+'require detour.trafficui as trafficui';
 
 // Text from the router (names of exits and servers come from subscriptions and links) never becomes HTML:
 // LuCI's E() puts a string child in with innerHTML, here it always goes in as a text node.
@@ -16,11 +17,10 @@ const E = function(tag, attr, data) {
 	return L.dom.create(tag, attr, (typeof data == 'string' || typeof data == 'number') ? [ data ] : data);
 };
 
-// "Devices": the home network's devices, online or not, Wi-Fi or wired, today's traffic, where each one goes
+// "Devices": the home network's devices, online or not, Wi-Fi or wired, their traffic (today ... 12 months), where each one goes
 // (as configured / all through a policy / always directly / no internet), its name, and what it asks for (DNS).
 
 const callDevices = rpc.declare({ object: 'detour', method: 'devices' });
-const callTraffic = rpc.declare({ object: 'detour', method: 'traffic', params: [ 'period' ] });
 const callWatch = rpc.declare({ object: 'detour', method: 'dns_watch', params: [ 'mac', 'seconds' ] });
 const callWatchStop = rpc.declare({ object: 'detour', method: 'dns_watch_stop' });
 const callLog = rpc.declare({ object: 'detour', method: 'dns_log', params: [ 'mac' ] });
@@ -85,7 +85,7 @@ return view.extend({
 	load: function() {
 		return pdata.all({
 			devices: callDevices().catch(function() { return null; }),
-			traffic: callTraffic('day').catch(function() { return null; }),
+			traffic: trafficui.fetch('day'),
 			log: callLog('').catch(function() { return {}; }),
 			cfg: uci.load('detour'), dhcp: uci.load('dhcp')
 		});
@@ -195,7 +195,7 @@ return view.extend({
 		});
 	},
 
-	card: function(d, today) {
+	card: function(d, today, period) {
 		const self = this;
 		const mode = modeOf(d.mac);
 		const conn = d.wifi ? (d.wifi.signal ? _('Wi-Fi «%s», signal %d dBm').format(d.wifi.ssid || d.wifi.iface, d.wifi.signal) : _('Wi-Fi «%s»').format(d.wifi.ssid || d.wifi.iface)) : (d.online ? _('wired') : '');
@@ -210,7 +210,7 @@ return view.extend({
 			]),
 			E('div', { 'class': 'detour-card-body' }, [
 				E('div', {}, [ d.ips.join(', ') || _('no address now'), conn ? ' · ' + conn : '' ]),
-				t ? E('div', {}, [ E('strong', {}, _('Today:')), ' ', _('downloaded %s, uploaded %s').format(size(t.rx), size(t.tx)) ]) : ''
+				t ? E('div', {}, [ E('strong', {}, (period == 'day' ? _('Today:') : trafficui.periodLabel(period) + ':')), ' ', _('downloaded %s, uploaded %s').format(size(t.rx), size(t.tx)) ]) : ''
 			]),
 			E('div', { 'class': 'detour-actions detour-card-actions' }, [
 				E('span', {}, _('Connection:')), this.modeSelect(d),
@@ -220,30 +220,38 @@ return view.extend({
 	},
 
 	cards: function(list, traffic) {
+		const period = this.period;
 		const self = this;
 		const today = {};
 		((traffic || {}).devices || []).forEach(function(x) { today[x.mac] = x; });
 		list.forEach(function(d) { d.title = d.name || d.hostname || d.ips[0] || d.mac; });
 		list.sort(function(a, b) { return (b.online - a.online) || a.title.localeCompare(b.title); });
 		if (!list.length) return E('p', { 'class': 'detour-muted' }, _('No devices found.'));
-		return E('div', { 'class': 'detour-cards' }, list.map(function(d) { return self.card(d, today); }));
+		return E('div', { 'class': 'detour-cards' }, list.map(function(d) { return self.card(d, today, period); }));
 	},
 
 	render: function(data) {
 		const self = this;
 		if (!data.devices) return E('div', { 'class': 'alert-message warning' }, _('The Detour service is not running.'));
+		this.period = 'day';
 		const box = E('div', { 'id': 'detour-devices' }, this.cards(data.devices.devices || [], data.traffic));
+		const refresh = function() {
+			return pdata.all({ devices: callDevices(), traffic: trafficui.fetch(self.period) }).then(function(r) { if (r.devices) dom.content(box, self.cards(r.devices.devices || [], r.traffic)); });
+		};
+		// the traffic of the period chosen: downloaded and uploaded on each card
+		const tabs = trafficui.periodTabs(this.period, function(p) { self.period = p; return refresh(); });
 		poll.add(function() {
 			// a page with an open select or a dialog stays as it is
 			if (document.querySelector('.modal') && document.body.classList.contains('modal-overlay-active')) return;
 			if (document.activeElement && document.activeElement.tagName == 'SELECT') return;
-			return pdata.all({ devices: callDevices(), traffic: callTraffic('day') }).then(function(r) { if (r.devices) dom.content(box, self.cards(r.devices.devices || [], r.traffic)); });
+			return refresh();
 		}, 30);
 		return E('div', {}, [
 			css(),
 			E('h2', {}, _('Devices')),
-			E('div', { 'class': 'cbi-map-descr' }, _('The devices of your home network. For each: whether it is online, how it is connected, how much it downloaded today, where its internet goes, and what it asks for.')),
+			E('div', { 'class': 'cbi-map-descr' }, _('The devices of your home network. For each: whether it is online, how it is connected, how much it downloaded and uploaded in the period chosen, where its internet goes, and what it asks for.')),
 			(data.log || {}).available === false ? pkg.offer('tcpdump', _('The DNS log needs tcpdump.')) : '',
+			tabs,
 			E('div', { 'class': 'cbi-section' }, box)
 		]);
 	},
