@@ -10,6 +10,7 @@
 					"traffic",
 					"devices",
 					"catalog_names",
+					"dns_providers",
 					"rates"
 				],
 				"luci": [

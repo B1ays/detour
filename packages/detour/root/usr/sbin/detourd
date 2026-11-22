@@ -18,6 +18,7 @@ import * as exitui from 'detour.exitui';
 import * as exitadd from 'detour.exitadd';
 import * as watch from 'detour.watch';
 import * as sitecheck from 'detour.sitecheck';
+import * as dnsprov from 'detour.dnsprov';
 import * as traffic from 'detour.traffic';
 import * as dnswatch from 'detour.dnswatch';
 import * as devices from 'detour.devices';
@@ -820,7 +821,7 @@ function rates() {
 const S = { ubus_rpc_session: '' };
 // every call into the verbose log (status and the other read-only polls of the pages too: a page left open
 // would fill the log with them, so those are left out)
-const QUIET = { status: true, exits_info: true, traffic: true, rates: true, devices: true, dns_log: true, sub_state: true, pkg_job: true, catalog_names: true };
+const QUIET = { status: true, exits_info: true, traffic: true, rates: true, devices: true, dns_log: true, sub_state: true, pkg_job: true, catalog_names: true, dns_providers: true };
 // (a function of its own per method: a closure made in the loop would see the loop's last name)
 function logged_call(name, call) {
 	return function(req) {
@@ -884,6 +885,7 @@ conn.publish('detour', logged({
 	dns_watch_stop:  { call: () => dnswatch.stop(), args: { ...S } },
 	dns_log:         { call: (req) => ({ available: dnswatch.available(), ...dnswatch.log(req.args.mac) }), args: { mac: '', ...S } },
 	catalog_names:   { call: () => catalog_names(), args: { ...S } },
+	dns_providers:   { call: () => ({ providers: dnsprov.list() }), args: { ...S } },
 	catalog_refresh: { call: (req) => catalog_refresh(req), args: { ...S } },
 	rates:           { call: () => rates(), args: { ...S } },
 	traffic:         { call: (req) => traffic.report(index([ 'day', 'days3', 'week', 'month', 'year' ], req.args.period) >= 0 ? req.args.period : 'day'), args: { period: '', ...S } },

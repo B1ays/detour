@@ -9,6 +9,8 @@ waitfor() { i=0; while [ $i -lt ${3:-15} ]; do [ "$(eval "$2")" = "$1" ] && retu
 dmode() { ubus call detour status | jsonfilter -e '@.dns'; }
 excnt() { ip netns exec ex$1 nft list chain ip exnat cnt 2>/dev/null | sed -n 's/.*packets \([0-9]*\).*/\1/p' | head -n1; }
 skuid() { nft list chain inet detour output | grep skuid | sed -n 's/.*skuid \([0-9]*\).*/\1/p'; }
+# the whole command line of the running dnsproxy (ps w cuts long ones)
+dpargs() { for p in $(pidof dnsproxy); do tr '\0' ' ' < /proc/$p/cmdline; echo; done; }
 
 apk info -e dnsproxy >/dev/null || apk add -q dnsproxy
 /etc/init.d/dnsproxy disable 2>/dev/null; /etc/init.d/dnsproxy stop 2>/dev/null
@@ -88,6 +90,41 @@ ifdown wgx1; ifdown wgx2; sleep 8
 expect "still encrypted with every exit down" "$(dmode)" "encrypted"
 waitfor ok "q example.net" 20 && ok "client DNS with every exit down" || bad "client DNS with every exit down"
 ifup wgx1; ifup wgx2
+
+echo "== a known provider: its addresses and its own bootstrap, the protocol chosen"
+uci set detour.main.dns_provider=quad9; uci set detour.main.dns_proto=tls; uci commit detour
+R=$(detour dns-upstreams)
+[ "$(echo "$R" | sed -n 1p)" = "tls://dns.quad9.net" ] && [ "$(echo "$R" | sed -n 2p)" = "9.9.9.9:53 149.112.112.112:53" ] \
+	&& ok "quad9 + tls -> tls://dns.quad9.net, bootstrap its own servers" || bad "dns-upstreams: $R"
+reload_config
+waitfor 1 "dpargs | grep -c -- '-u tls://dns.quad9.net -b 9.9.9.9:53 -b 149.112.112.112:53'" 20 && ok "dnsproxy restarted with it" || bad "dnsproxy: $(dpargs)"
+# a live answer through it: DoH (853, DoT/DoQ, is cut on some networks), dnsmasq's cache dropped first
+uci set detour.main.dns_proto=https; uci commit detour; reload_config
+waitfor 1 "dpargs | grep -c -- '-u https://dns.quad9.net/dns-query '" 20 && ok "DoH chosen: dnsproxy restarted with it" || bad "dnsproxy (DoH): $(dpargs)"
+killall -HUP dnsmasq; sleep 1
+waitfor ok "q example.com" 25 && ok "client DNS through Quad9 DoH" || bad "client DNS through Quad9 DoH"
+uci set detour.main.dns_proto=quic; uci commit detour
+[ "$(detour dns-upstreams | sed -n 1p)" = "https://dns.quad9.net/dns-query" ] && ok "a protocol it lacks (DoQ): its first, DoH" || bad "quic on quad9: $(detour dns-upstreams | sed -n 1p)"
+ubus call detour reload >/dev/null; sleep 2
+ubus call detour status | jsonfilter -e "@.errors[*]" | grep -q "Quad9 has no quic" && ok "and the status says so" || bad "no error for the missing protocol"
+B0=$(uci -q delete detour.main.dns_provider; detour dns-upstreams)
+uci set detour.main.dns_provider=nosuch; uci commit detour
+[ "$(detour dns-upstreams)" = "$B0" ] && ok "an unknown provider: the addresses given (or the defaults), as without one" || bad "unknown provider: $(detour dns-upstreams) vs $B0"
+# every provider and protocol of the table answers (a dnsproxy of its own on a spare port, the lab's internet)
+DP=$(command -v dnsproxy)
+# DoT and DoQ (port 853) are cut by some networks (the lab's own line, Russian ISPs): checked only where 853 gets out
+open853=0; curl -sv -m 5 -o /dev/null telnet://9.9.9.9:853 2>&1 | grep -q '^\* Connected' && open853=1
+for pp in $(ucode -L /usr/share/ucode -e 'import * as d from "detour.dnsprov"; for (let p in d.list()) for (let k in p.protos) print(p.id, ":", k, " ");'); do
+	case "$pp" in *:tls|*:quic) [ $open853 = 1 ] || { echo "  skip $pp: port 853 does not get out of this network"; continue; } ;; esac
+	R=$(ucode -L /usr/share/ucode -e 'import * as d from "detour.dnsprov"; const a = split(ARGV[0], ":"); const r = d.resolve(a[0], a[1]); print(join(" ", map(r.upstreams, (u) => "-u " + u)), " ", join(" ", map(r.bootstrap, (b) => "-b " + b)));' -- "$pp")
+	$DP -l 127.0.0.1 -p 5399 $R >/tmp/t3-dp.log 2>&1 & P=$!
+	# the emulated lab is slow at TLS/QUIC handshakes: up to 30 s, the first answer counts
+	a=0; i=0; while [ $i -lt 15 ] && [ "$a" = 0 ]; do sleep 2; a=$(nslookup -port=5399 example.com 127.0.0.1 2>/dev/null | grep -A1 '^Name' | grep -c Address); i=$((i+1)); done
+	kill $P 2>/dev/null; wait $P 2>/dev/null
+	[ "$a" -gt 0 ] && ok "$pp answers" || bad "$pp: no answer ($(grep -iE 'error|fail' /tmp/t3-dp.log | tail -n 1 | cut -c1-200))"
+done
+rm -f /tmp/t3-dp.log
+uci -q delete detour.main.dns_provider; uci -q delete detour.main.dns_proto; uci commit detour
 
 echo "== dns=off restores dnsmasq"
 uci set detour.main.dns=off; uci commit detour; reload_config; sleep 6

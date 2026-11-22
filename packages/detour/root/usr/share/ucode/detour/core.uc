@@ -4,6 +4,7 @@
 
 import { cursor } from 'uci';
 import * as fs from 'fs';
+import * as dnsprov from 'detour.dnsprov';
 
 export const VERSION = '0.1.0';
 export const RUN = '/tmp/detour';
@@ -288,8 +289,12 @@ export function load(conf) {
 		dns: m.dns ?? 'off',                   // off | tunnel
 		dns_policy: m.dns_policy,              // policy whose exits carry the router's DNS
 		dns_servers: as_list(m.dns_server ?? [ '1.1.1.1', '1.0.0.1' ]),
-		dns_fallback: as_list(m.dns_fallback ?? [ 'quic://dns.adguard-dns.com', 'tls://1.1.1.1', 'https://dns.google/dns-query' ]),
-		dns_bootstrap: as_list(m.dns_bootstrap ?? [ '9.9.9.9:53' ]),
+		// the encrypted resolvers: a known provider (dns_provider + dns_proto, its addresses from dnsprov) or
+		// the addresses given (dns_fallback); words of an option or a list
+		dns_provider: m.dns_provider || null,
+		dns_proto: m.dns_proto || null,
+		dns_fallback: words(m.dns_fallback ?? [ 'quic://dns.adguard-dns.com', 'tls://1.1.1.1', 'https://dns.google/dns-query' ]),
+		dns_bootstrap: words(m.dns_bootstrap ?? [ '9.9.9.9:53' ]),
 		dns_fallback_port: int(m.dns_fallback_port ?? 5354) || 5354,
 		dom_timeout: m.dom_timeout ?? '6h',
 		schema: int(m.schema ?? 0),
@@ -308,6 +313,17 @@ export function load(conf) {
 	for (let s in main.dns_servers)
 		if (!is_v4(s) || index(s, '/') >= 0) push(errors, sprintf('main: bad dns_server "%s"', s));
 	main.dns_servers = filter(main.dns_servers, (s) => is_v4(s) && index(s, '/') < 0);
+	if (main.dns_provider) {
+		const r = dnsprov.resolve(main.dns_provider, main.dns_proto);
+		if (r.error) push(errors, 'main: ' + r.error);
+		if (r.upstreams) {
+			main.dns_fallback = r.upstreams;
+			main.dns_proto = r.proto;
+			// its own plain servers resolve its names, unless bootstrap servers are given
+			if (m.dns_bootstrap == null) main.dns_bootstrap = r.bootstrap;
+		}
+		else main.dns_provider = null;   // unknown: the addresses given (or the defaults), as without one
+	}
 	if (!length(main.dns_servers)) main.dns_servers = [ '1.1.1.1', '1.0.0.1' ];
 	if (main.probe_period < 1) main.probe_period = 2;
 	if (main.probe_idle < main.probe_period) main.probe_idle = main.probe_period;

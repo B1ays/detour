@@ -189,6 +189,9 @@ config main 'main'
 	option lists_mem_reserve '150' # memory kept free after loading lists, MB (default 15 % of RAM, at least 64)
 	option dns 'tunnel'           # router DNS: off | tunnel | encrypted
 	option dns_policy 'vpn'       # policy carrying the router's DNS (tunnel mode)
+	option dns_provider 'quad9'   # encrypted resolver: adguard | cloudflare | google | quad9 | opendns; none = list dns_fallback
+	option dns_proto 'tls'        # its protocol: https | tls | quic | dnscrypt (those it has; default its first)
+	list dns_fallback 'quic://dns.adguard-dns.com'  # without a provider: your own addresses (quic/tls/https/sdns)
 	option fw_mask '0x00ffff00'   # packet mark bits (policy + exit); change when pbr or mwan3 uses them
 	list bypass_user 'myapp'      # system users whose traffic no policy takes (other packages add their own)
 

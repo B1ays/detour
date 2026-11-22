@@ -15,6 +15,7 @@ const E = function(tag, attr, data) {
 };
 
 const callStatus = rpc.declare({ object: 'detour', method: 'status' });
+const callDnsProviders = rpc.declare({ object: 'detour', method: 'dns_providers' });
 const callLogLevel = rpc.declare({ object: 'detour', method: 'log_level', params: [ 'level' ] });
 const callLogsArchive = rpc.declare({ object: 'detour', method: 'logs_archive' });
 
@@ -40,7 +41,7 @@ const CheckList = form.MultiValue.extend({
 
 return view.extend({
 	load: function() {
-		return pdata.all({ cfg: uci.load('detour'), status: L.resolveDefault(callStatus(), {}) });
+		return pdata.all({ cfg: uci.load('detour'), status: L.resolveDefault(callStatus(), {}), dnsprov: L.resolveDefault(callDnsProviders(), { providers: [] }) });
 	},
 
 	// "Log": the level (set at once through the daemon: verbose ends by itself after 24 h) and the archive of logs
@@ -142,11 +143,43 @@ return view.extend({
 		o.placeholder = '1.1.1.1';
 		o.depends('dns', 'tunnel');
 
+		// the encrypted resolvers: a known provider and one of its protocols (the daemon has their addresses,
+		// detour.dnsprov), or addresses typed in ("Custom"). Each provider has its own protocol list, all of them
+		// on the one option dns_proto; a hidden one keeps what is there (retain), so does the custom list
+		const provs = (data.dnsprov || {}).providers || [];
+		// a note only where the provider filters something
+		const NOTE = { malware: _('blocks malicious sites') };
+		const PROTO = { https: 'DNS-over-HTTPS', tls: 'DNS-over-TLS', quic: 'DNS-over-QUIC', dnscrypt: 'DNSCrypt' };
+		const both = function(opt, extra) {
+			opt.depends(Object.assign({ dns: 'tunnel' }, extra || {}));
+			opt.depends(Object.assign({ dns: 'encrypted' }, extra || {}));
+		};
+		o = s.option(form.ListValue, 'dns_provider', _('Encrypted DNS provider'),
+			_('Asked directly, not through the tunnel. Through the tunnel: used when its exits are down; encrypted: always. Its own plain servers resolve the names of its encrypted ones. Needs the dnsproxy package: without it, through the tunnel falls back to the provider\'s DNS while the exits are down.'));
+		o.value('', _('Custom: the addresses below'));
+		provs.forEach(function(p) { o.value(p.id, NOTE[p.note] ? '%s (%s)'.format(p.name, NOTE[p.note]) : p.name); });
+		o.retain = true;
+		both(o);
+		provs.forEach(function(p) {
+			o = s.option(form.ListValue, '_proto_' + p.id, _('Protocol'), _('The ones %s has and dnsproxy speaks.').format(p.name));
+			o.ucioption = 'dns_proto';
+			p.protos.forEach(function(k) { o.value(k, PROTO[k] || k); });
+			o.default = p.protos[0];
+			o.rmempty = false;
+			o.retain = true;
+			// the protocol of another provider (switched just now): this one's first
+			o.cfgvalue = function(section_id) {
+				const v = uci.get('detour', section_id, 'dns_proto');
+				return (v && p.protos.indexOf(v) > -1) ? v : p.protos[0];
+			};
+			both(o, { dns_provider: p.id });
+		});
+
 		o = s.option(form.DynamicList, 'dns_fallback', _('Encrypted resolvers'),
-			_('quic://, tls:// or https:// addresses, asked in parallel. Through the tunnel: used when its exits are down; encrypted: always. Needs the dnsproxy package: without it, through the tunnel falls back to the provider\'s DNS while the exits are down.'));
+			_('quic://, tls://, https:// or sdns:// addresses, asked in parallel.'));
 		o.placeholder = 'quic://dns.adguard-dns.com';
-		o.depends('dns', 'tunnel');
-		o.depends('dns', 'encrypted');
+		o.retain = true;
+		both(o, { dns_provider: '' });
 
 		if (!uci.get('detour', 'notify')) uci.add('detour', 'notify', 'notify');
 		s = m.section(form.NamedSection, 'notify', 'notify', _('Telegram notifications'),

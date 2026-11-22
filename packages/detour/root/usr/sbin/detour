@@ -71,6 +71,13 @@ case 'engines': {
 	for (let l in r.lines) print(l, '\n');
 	exit(0);
 }
+case 'dns-upstreams': {
+	// the encrypted resolvers dnsproxy asks (init script): line 1 the upstreams, line 2 the bootstrap servers -
+	// a known provider's (main.dns_provider + dns_proto) or the addresses given
+	const m = core.load().main;
+	print(join(' ', m.dns_fallback), '\n', join(' ', m.dns_bootstrap), '\n');
+	exit(0);
+}
 case 'link': {
 	// detour link '<share link>' [outbound file]: print (or write, mode 600) a sing-box outbound
 	const r = links.parse(ARGV[1]);

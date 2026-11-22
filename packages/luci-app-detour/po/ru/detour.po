@@ -1891,11 +1891,26 @@ msgstr "Для зашифрованного DNS нужен dnsproxy."
 msgid "Resolvers through the tunnel"
 msgstr "DNS-серверы через туннель"
 
+msgid "blocks malicious sites"
+msgstr "блокирует вредоносные сайты"
+
+msgid "Encrypted DNS provider"
+msgstr "Провайдер шифрованного DNS"
+
+msgid "Asked directly, not through the tunnel. Through the tunnel: used when its exits are down; encrypted: always. Its own plain servers resolve the names of its encrypted ones. Needs the dnsproxy package: without it, through the tunnel falls back to the provider's DNS while the exits are down."
+msgstr "Запрашивается напрямую, не через туннель. В режиме «Через туннель» — когда выходы недоступны, в режиме «Шифрованный» — всегда. Имена его шифрованных серверов узнаются у его же обычных серверов. Нужен пакет dnsproxy: без него в режиме «Через туннель» при недоступных выходах используется DNS провайдера интернета."
+
+msgid "Custom: the addresses below"
+msgstr "Свой: адреса ниже"
+
+msgid "The ones %s has and dnsproxy speaks."
+msgstr "Те, что есть у %s и поддерживает dnsproxy."
+
 msgid "Encrypted resolvers"
 msgstr "Шифрованные DNS-серверы"
 
-msgid "quic://, tls:// or https:// addresses, asked in parallel. Through the tunnel: used when its exits are down; encrypted: always. Needs the dnsproxy package: without it, through the tunnel falls back to the provider's DNS while the exits are down."
-msgstr "Адреса quic://, tls:// или https://, опрашиваются параллельно. Через туннель — когда его выходы не работают; зашифрованный — всегда. Нужен пакет dnsproxy: без него режим «через туннель», пока выходы не работают, переходит на DNS провайдера."
+msgid "quic://, tls://, https:// or sdns:// addresses, asked in parallel."
+msgstr "Адреса quic://, tls://, https:// или sdns://, запрашиваются параллельно."
 
 msgid "Create a bot with @BotFather, paste its token, write /start to the bot and put your chat id here. Messages go through a working tunnel first, then directly; undelivered ones wait and are sent later."
 msgstr "Создайте бота у @BotFather, вставьте его токен, напишите боту /start и укажите здесь id чата. Сообщения идут сначала через рабочий туннель, потом напрямую; недоставленные ждут и отправляются позже."

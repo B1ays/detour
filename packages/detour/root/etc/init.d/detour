@@ -20,11 +20,12 @@ dnsproxy_instance() {
 	procd_open_instance dnsfb
 	# runs as user "dnsproxy": its traffic is exempt from policy routing (meta skuid), goes direct
 	procd_set_param command $bin -l 127.0.0.1 -p "$port" --cache --upstream-mode=parallel
-	local up bs got=
-	config_get up main dns_fallback
+	# a known provider's addresses (main.dns_provider + dns_proto) or the ones given: as the daemon sees them
+	local up bs got= ub
+	ub=$(/usr/sbin/detour dns-upstreams 2>/dev/null)
+	up=$(echo "$ub" | sed -n 1p); bs=$(echo "$ub" | sed -n 2p)
 	[ -n "$up" ] || up="quic://dns.adguard-dns.com tls://1.1.1.1 https://dns.google/dns-query"
 	for u in $up; do procd_append_param command -u "$u"; done
-	config_get bs main dns_bootstrap
 	[ -n "$bs" ] || bs="9.9.9.9:53"
 	for b in $bs; do procd_append_param command -b "$b"; done
 	procd_set_param user dnsproxy

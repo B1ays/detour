@@ -189,6 +189,9 @@ config main 'main'
 	option lists_mem_reserve '150' # свободная память после загрузки списков, МБ (по умолчанию 15 % ОЗУ, не меньше 64)
 	option dns 'tunnel'           # DNS роутера: off | tunnel | encrypted
 	option dns_policy 'vpn'       # политика для DNS роутера (режим tunnel)
+	option dns_provider 'quad9'   # шифрованный DNS: adguard | cloudflare | google | quad9 | opendns; без него — list dns_fallback
+	option dns_proto 'tls'        # его протокол: https | tls | quic | dnscrypt (из тех, что у него есть; по умолчанию первый)
+	list dns_fallback 'quic://dns.adguard-dns.com'  # без провайдера: свои адреса (quic/tls/https/sdns)
 	option fw_mask '0x00ffff00'   # биты метки пакетов (политика + выход); менять, если их занимает pbr или mwan3
 	list bypass_user 'myapp'      # системные пользователи, чей трафик не берёт ни одна политика (их добавляют другие пакеты)
 
