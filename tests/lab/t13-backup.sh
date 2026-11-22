@@ -136,6 +136,9 @@ DAY=$(date +%d); M=$(date +%Y-%m); OD=01; [ "$DAY" = 01 ] && OD=02
 uci import detour < /tmp/t13.detour; uci commit detour; ubus call detour reload >/dev/null 2>&1
 rm -rf $W/x; mkdir -p $W/x; dec
 sed -i "s/option lan_dev .*/option lan_dev 'br-other'/" $W/x/detour.uci
+# a backup of an older Detour: the panel tunnel to a VPS (gone from Detour) with its key
+mkdir -p $W/x/files/sshtun; echo "lab-old-tunnel-key" > $W/x/files/sshtun/id_ed25519
+printf "\nconfig sshtun 'sshtun'\n\toption host 'vps.example'\n" >> $W/x/detour.uci
 mkdir -p $W/x/files/traffic
 echo '{"05":{"d":{"02:aa:bb:cc:dd:ee":[100,200]},"x":{},"v":[0,0]}}' > $W/x/files/traffic/2025-01.json
 ucode -e 'let f=ARGV[0], d={}; try { d=json(fs.readfile(f)); } catch(e) {} d[ARGV[1]]={d:{"02:aa:bb:cc:dd:ef":[300,400]},x:{},v:[0,0]}; fs.writefile(f, sprintf("%J", d));' -l fs 	$W/x/files/traffic/$M.json $OD 2>/dev/null || echo "{\"$OD\":{\"d\":{\"02:aa:bb:cc:dd:ef\":[300,400]},\"x\":{},\"v\":[0,0]}}" > $W/x/files/traffic/$M.json
@@ -143,6 +146,7 @@ enc
 LAN0=$(uci -q get detour.main.lan_dev)
 r=$(call backup_restore); echo "$r" | grep -q '"restored"' || bad "restore of the crafted backup: $r"
 [ "$(uci -q get detour.main.lan_dev)" = "$LAN0" ] && ok "lan_dev stays this router's ($LAN0)" || bad "lan_dev: $(uci -q get detour.main.lan_dev)"
+[ ! -e /etc/detour/sshtun ] && [ -z "$(uci -q get detour.sshtun)" ] && ok "an older backup's panel tunnel (key, section) is not brought back" || bad "sshtun back: $(ls /etc/detour/sshtun 2>&1) $(uci -q get detour.sshtun)"
 /etc/init.d/detour restart; waitfor x "ubus call detour status >/dev/null 2>&1 && echo x" 60   # the daemon writes its month to flash on stop
 grep -q '02:aa:bb:cc:dd:ee' /etc/detour/traffic/2025-01.json && ok "a month this router never had is restored" || bad "2025-01 missing"
 grep -q '02:aa:bb:cc:dd:ef' /etc/detour/traffic/$M.json && ok "a day of this month this router had not counted survives the daemon's own writes" || bad "day $OD of $M lost: $(head -c 300 /etc/detour/traffic/$M.json)"

@@ -84,7 +84,7 @@ export const UNREACH_METRIC = 4278198272;
 // share links, UUIDs, Telegram bot tokens, base64 keys, long tokens in URLs. Exit ids and addresses stay.
 const SECRET_NAMES = 'private_key|preshared_key|pre_shared_key|public_key|privateKey|publicKey|password|passwd|psk|' +
 	'token|tg_token|tg_chat|secret|key_root|uuid|shortId|short_id|pbk|sid|spx|spiderX|mldsa65Verify|reserved|auth|' +
-	'auth_str|obfs_password|license|client_id|access_token|refresh_token|id_token|encryption|seed';
+	'auth_str|obfs_password|license|client_id|access_token|refresh_token|id_token|encryption|seed|pass';
 // "name": "v" / name=v / name='v' (uci show) / option name 'v' (uci export). A quoted value is hidden whole, up
 // to its closing quote (a password with spaces); an unquoted one up to a space, a comma or a brace
 const RE_NAMED_DQ = regexp('(' + SECRET_NAMES + ')("?[ \t]*[:=][ \t]*")(([^"\\\\\n]|\\\\.)*)"', 'g');   // POSIX: no (?:)

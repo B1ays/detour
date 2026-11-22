@@ -993,6 +993,7 @@ RU = {
 	'Backup': 'Резервная копия',
 	'Not installed on this router: %s. The exits that need it will not work until it is installed (System → Software).': 'На этом роутере не установлено: %s. Выходы, которым это нужно, не заработают, пока пакет не установлен («Система → Программное обеспечение»).',
 	'Engine': 'Движок',
+	'The exit was not chosen: %s': 'Выход не выбран: %s',
 	'Statistics': 'Статистика',
 	'Exit now': 'Выход сейчас',
 	'Automatically: the first working exit in the order above. Chosen: that one while it works; when it fails, the others take over in the order above, and it is back when it works again.': 'Автоматически — первый работающий выход в порядке выше. Выбранный — он, пока работает; если он откажет, его заменят остальные в порядке выше, а когда заработает — трафик вернётся на него.',

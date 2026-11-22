@@ -1252,6 +1252,9 @@ msgstr "Заблокировать"
 msgid "Directly"
 msgstr "Напрямую"
 
+msgid "The exit was not chosen: %s"
+msgstr "Выход не выбран: %s"
+
 msgid "No policies yet: everything goes directly."
 msgstr "Политик пока нет: всё идёт напрямую."
 

@@ -251,7 +251,9 @@ return view.extend({
 	loadTraffic: function(period) {
 		const self = this;
 		if (period) this.period = period;
-		return trafficui.fetch(this.period).then(function(r) {
+		const p = this.period;
+		return trafficui.fetch(p).then(function(r) {
+			if (p != self.period) return;   // a period no longer chosen (a poll that started before a click)
 			self.stats.set(r, self.period);
 			self.exitsSub.textContent = trafficui.periodLabel(self.period);
 			dom.content(self.exitsTraffic, trafficui.exits(r));

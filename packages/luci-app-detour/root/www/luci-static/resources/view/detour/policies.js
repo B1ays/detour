@@ -367,9 +367,10 @@ return view.extend({
 			// the exit chosen by hand: told to the router at once (a chosen one taken out of the exits: automatic again)
 			let want = pin.value;
 			if (want && (exits.get() || []).indexOf(want) < 0) want = '';
+			// a refused choice is said, the rest of the edit is saved all the same
 			const pinDone = (!vpn || isNew || want == pinned) ? Promise.resolve() : (want ? callPin(n, want) : callUnpin(n)).then(function(r) {
-				if (r && r.error) throw new Error(r.error);
-			});
+				if (r && r.error) ui.addNotification(null, E('p', _('The exit was not chosen: %s').format(r.error)), 'warning');
+			}).catch(function(e) { ui.addNotification(null, E('p', _('The exit was not chosen: %s').format(e.message || e)), 'warning'); });
 			return pinDone.then(function() { return applyUci(); }).then(function() { return true; });
 		});
 	},

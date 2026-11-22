@@ -236,7 +236,11 @@ return view.extend({
 		this.period = 'day';
 		const box = E('div', { 'id': 'detour-devices' }, this.cards(data.devices.devices || [], data.traffic));
 		const refresh = function() {
-			return pdata.all({ devices: callDevices(), traffic: trafficui.fetch(self.period) }).then(function(r) { if (r.devices) dom.content(box, self.cards(r.devices.devices || [], r.traffic)); });
+			// an answer for a period no longer chosen (a poll that started before a click) is dropped
+			const period = self.period;
+			return pdata.all({ devices: callDevices(), traffic: trafficui.fetch(period) }).then(function(r) {
+				if (period == self.period && r.devices) dom.content(box, self.cards(r.devices.devices || [], r.traffic));
+			});
 		};
 		// the traffic of the period chosen: downloaded and uploaded on each card
 		const tabs = trafficui.periodTabs(this.period, function(p) { self.period = p; return refresh(); });

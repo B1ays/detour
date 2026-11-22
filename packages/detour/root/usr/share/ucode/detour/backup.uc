@@ -267,6 +267,8 @@ function migrate(c) {
 		c.set('detour', 'notify', 'event', l);
 		c.set('detour', 'notify', 'ev_rev', '2');
 	}
+	// the panel tunnel through a VPS left for owrt-extras (post-upgrade removes it): an older backup brings none back
+	if (c.get('detour', 'sshtun')) c.delete('detour', 'sshtun');
 }
 
 // o: from open(); the current settings are saved to BEFORE first
@@ -329,7 +331,8 @@ export function apply(o, pwfile) {
 	const keep = join(' ', map([ ...SKIP_FILES, 'traffic' ], (f) => '! -name ' + shq(f)));
 	run(sprintf('mkdir -p %s; find %s -mindepth 1 -maxdepth 1 %s -exec rm -rf {} +', PERSIST, PERSIST, keep));
 	run(sprintf('rm -f %s/ruleset.good %s/dom.save', PERSIST, PERSIST));   // they describe the old rules
-	run(sprintf('cd %s/files && for f in * .[!.]*; do [ -e "$f" ] && [ "$f" != traffic ] && cp -a "$f" %s/; done', src, PERSIST));
+	// not the traffic history (merged below), not the panel tunnel's key of an older backup (no longer Detour's)
+	run(sprintf('cd %s/files && for f in * .[!.]*; do [ -e "$f" ] && [ "$f" != traffic ] && [ "$f" != sshtun ] && cp -a "$f" %s/; done', src, PERSIST));
 	merge_traffic(src + '/files/traffic');
 	run(sprintf('chmod -R go-rwx %s/engines %s/warp 2>/dev/null', PERSIST, PERSIST));
 
