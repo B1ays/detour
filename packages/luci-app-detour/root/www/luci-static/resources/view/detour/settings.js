@@ -213,6 +213,8 @@ return view.extend({
 		o.datatype = 'string';
 		o.optional = true;
 		o.validate = function(section_id, v) { return (!v || /^https?:\/\/[^\s]+$/.test(v)) ? true : _('http(s) address'); };
+		// the rest only while notifications are on; switched off, what is set stays (retain) for the next time
+		s.children.forEach(function(c) { if (c.option != 'enabled') { c.depends('enabled', '1'); c.retain = true; } });
 
 		s = m.section(form.NamedSection, 'main', 'main', _('Detour logs'),
 			_('The verbose level is only for diagnosing the system. It switches itself off after 24 hours.'));
