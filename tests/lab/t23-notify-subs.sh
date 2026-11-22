@@ -83,7 +83,7 @@ reload_config
 waitfor true "ubus call detour status | jsonfilter -e '@.exits[@.name=\"usub_sub\"].healthy'" 120 || bad "usub not healthy"
 [ "$(ls -l /tmp/detour/engines/usub_sub_eng.api | cut -c1-10)" = '-rw-------' ] && ok "control API secret: a file, mode 600" || bad "api file: $(ls -l /tmp/detour/engines/usub_sub_eng.api)"
 SEC=$(sed -n 's/.*Bearer //p' /tmp/detour/engines/usub_sub_eng.api | cut -c1-32)
-P=$(sed -n 's/.*127.0.0.1:\([0-9]*\).*/\1/p' /tmp/detour/engines/usub_sub_eng.api)
+P=$(sed -n 's/^# url http:\/\/127.0.0.1:\([0-9]*\).*/\1/p' /tmp/detour/engines/usub_sub_eng.api)   # the API (the file also names the check inbound's port)
 [ "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:$P/proxies)" = 401 ] && ok "API refuses without the secret" || bad "API open without secret"
 ps w | grep -v grep | grep -q "$SEC" && bad "secret on a command line" || ok "secret not on a command line"
 netstat -ltn 2>/dev/null | grep ":$P " | grep -q '127.0.0.1' && ok "API listens on 127.0.0.1 only" || bad "listen: $(netstat -ltn | grep ":$P ")"

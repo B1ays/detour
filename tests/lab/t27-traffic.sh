@@ -8,9 +8,11 @@ cl() { ssh -y -i /root/.ssh/id_dropbear root@$CL "$@" 2>/dev/null; }
 FAIL=0; ok() { echo "  ok   $*"; }; bad() { echo "  FAIL $*"; FAIL=1; }
 tr_() { ubus call detour traffic '{"period":"day"}' | jsonfilter -e "$1"; }
 mb() { echo $(( ${1:-0} / 1048576 )); }
-# a public mirror (speed.cloudflare.com answers 429 after a few runs); the first N bytes of a big file
+# a public mirror (speed.cloudflare.com answers 429 after a few runs; the lab PC's own files are a private address -
+# no policy takes those, nlbwmon counts them as local); the first N bytes of a big file. The mirror sends big files
+# on to its CDN (another name): curl follows, and the policy takes both names
 U=https://mirror.yandex.ru/ubuntu-releases/24.04/ubuntu-24.04.4-desktop-amd64.iso
-dl() { cl "nslookup mirror.yandex.ru >/dev/null; curl -s -r 0-$((${1:-10000000} - 1)) -o /dev/null -w '%{size_download}' $U"; }
+dl() { cl "nslookup mirror.yandex.ru >/dev/null; curl -sL -r 0-$((${1:-10000000} - 1)) -o /dev/null -w '%{size_download}' $U"; }
 ctd() { conntrack -D -s $CL -p tcp --dport 443 >/dev/null 2>&1; }
 step() { sleep 12; }   # traffic_period 5 s: two steps at least
 
@@ -18,7 +20,7 @@ apk info -e nlbwmon >/dev/null || apk add -q nlbwmon
 /etc/init.d/nlbwmon enabled || /etc/init.d/nlbwmon enable
 pidof nlbwmon >/dev/null || /etc/init.d/nlbwmon start
 cleanup() {
-	uci -q del_list detour.vpn.domain=mirror.yandex.ru
+	uci -q del_list detour.vpn.domain=mirror.yandex.ru; uci -q del_list detour.vpn.domain=cdn.yandex.net
 	uci -q delete detour.main.traffic_period
 	uci commit detour
 	# the addresses the domain brought stay in the policy's set across reloads: out, or "directly" is not direct
@@ -36,8 +38,8 @@ step
 # the test before may have restarted dnsmasq: the client resolves again before anything is downloaded
 i=0; until cl "nslookup mirror.yandex.ru" | grep -q "^Name:" || [ $i -ge 30 ]; do sleep 2; i=$((i+2)); done
 T0=$(tr_ '@.total.rx'); V0=$(tr_ '@.vpn.rx'); D0=$(tr_ '@.direct.rx')
-n=$(dl); [ "$n" = 10000000 ] && ok "10 MB directly" || bad "direct download: $n ($(cl "curl -s -r 0-999 -o /dev/null -m 20 -w '%{http_code} %{remote_ip} %{errormsg}' $U"))"
-uci add_list detour.vpn.domain=mirror.yandex.ru; uci commit detour; ubus call detour reload >/dev/null; sleep 3
+n=$(dl); [ "$n" = 10000000 ] && ok "10 MB directly" || bad "direct download: $n ($(cl "curl -s -r 0-999 -o /dev/null -m 20 -L -w '%{http_code} %{remote_ip} %{errormsg}' $U"))"
+uci add_list detour.vpn.domain=mirror.yandex.ru; uci add_list detour.vpn.domain=cdn.yandex.net; uci commit detour; ubus call detour reload >/dev/null; sleep 3
 n=$(dl); [ "$n" = 10000000 ] && ok "10 MB through the policy vpn" || bad "vpn download: $n"
 # nlbwmon counts a closed connection when conntrack drops it (TIME_WAIT, up to 2 min): drop them now
 ctd

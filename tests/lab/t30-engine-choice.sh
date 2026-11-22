@@ -21,7 +21,8 @@ cleanup() {
 	for p in $(pgrep -f xray-t30.json); do kill $p; done
 }
 cleanup
-# the server: VLESS over XHTTP on 8444 and over WebSocket on 8445, no TLS (a private address: Xray allows it)
+# the server: VLESS over XHTTP on 8444 and over WebSocket on 8445, no TLS (a private address: Xray allows it); IPv4
+# only: the lab's upstream DNS may be a Detour router, its AAAA 100:: is a reserved address Xray's freedom refuses
 cat > $D/xray-t30.json <<J
 { "log": { "loglevel": "warning" },
   "inbounds": [
@@ -29,7 +30,7 @@ cat > $D/xray-t30.json <<J
       "streamSettings": { "network": "xhttp", "xhttpSettings": { "path": "/xh", "mode": "auto" } } },
     { "listen": "10.199.2.2", "port": 8445, "protocol": "vless", "settings": { "clients": [ { "id": "$U" } ], "decryption": "none" },
       "streamSettings": { "network": "ws", "wsSettings": { "path": "/ws" } } } ],
-  "outbounds": [ { "protocol": "freedom" } ] }
+  "outbounds": [ { "protocol": "freedom", "settings": { "domainStrategy": "UseIPv4" } } ] }
 J
 (ip netns exec ex2 xray run -c $D/xray-t30.json > $T/xs.log 2>&1 & echo $! > $T/xs.pid)
 sleep 2
