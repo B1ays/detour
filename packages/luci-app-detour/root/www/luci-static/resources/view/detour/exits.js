@@ -33,6 +33,7 @@ const callSubState = rpc.declare({ object: 'detour', method: 'sub_state', params
 const callSubCheck = rpc.declare({ object: 'detour', method: 'sub_check', params: [ 'name', 'index' ] });
 const callExport = rpc.declare({ object: 'detour', method: 'exit_export', params: [ 'name' ] });
 const callSpeed = rpc.declare({ object: 'detour', method: 'exit_speed', params: [ 'name', 'direct' ] });
+const callSubSpeed = rpc.declare({ object: 'detour', method: 'sub_speed', params: [ 'name', 'index' ] });
 const callDiag = rpc.declare({ object: 'detour', method: 'exit_diag', params: [ 'name' ] });
 const callSetVia = rpc.declare({ object: 'detour', method: 'exit_set_via', params: [ 'name', 'via' ] });
 const callReload = rpc.declare({ object: 'detour', method: 'reload' });
@@ -102,6 +103,27 @@ return view.extend({
 	},
 
 	// --- one exit --------------------------------------------------------------------------------
+	// "Speed" of an exit or a subscription: a download through it, then directly to compare
+	speedButton: function(x, result) {
+		const bSpeed = E('button', { 'class': 'btn', 'click': function() {
+			busy(bSpeed, true);
+			result.replaceChildren(E('em', {}, _('Measuring through the exit (up to 15 s)…')));
+			let viaExit = null;
+			return callSpeed(x.name, false).then(function(r) {
+				viaExit = r;
+				result.replaceChildren(E('em', {}, _('Measuring directly, to compare…')));
+				return L.resolveDefault(callSpeed(x.name, true), null);
+			}).then(function(d) {
+				const t = function(r) { return (r && r.ok) ? _('%s Mbit/s').format(r.mbps) : _('failed') + ((r && r.error) ? ' (' + r.error + ')' : ''); };
+				result.replaceChildren(note(_('Download speed: through the exit %s, directly %s.').format(t(viaExit), t(d)), (viaExit && viaExit.ok) ? 'success' : 'warning'),
+					E('div', { 'class': 'detour-muted' }, (viaExit && viaExit.host)
+						? _('A download of %s MB from %s. The speed of one download, not of the whole line.').format(viaExit.mb || '?', viaExit.host)
+						: _('The speed of one download, not of the whole line.')));
+			}).finally(function() { busy(bSpeed, false); });
+		} }, _('Speed'));
+		return bSpeed;
+	},
+
 	renderExit: function(x, by) {
 		const self = this;
 		const result = E('div', { 'class': 'detour-check' });
@@ -126,20 +148,7 @@ return view.extend({
 				return L.resolveDefault(callDiag(x.name), null).then(function(d) { result.replaceChildren(failed, self.diagNote(x, d)); });
 			}).finally(function() { busy(bCheck, false); });
 		} }, _('Check'));
-		const bSpeed = E('button', { 'class': 'btn', 'click': function() {
-			busy(bSpeed, true);
-			result.replaceChildren(E('em', {}, _('Measuring through the exit (up to 15 s)…')));
-			let viaExit = null;
-			return callSpeed(x.name, false).then(function(r) {
-				viaExit = r;
-				result.replaceChildren(E('em', {}, _('Measuring directly, to compare…')));
-				return L.resolveDefault(callSpeed(x.name, true), null);
-			}).then(function(d) {
-				const t = function(r) { return (r && r.ok) ? _('%s Mbit/s').format(r.mbps) : _('failed') + ((r && r.error) ? ' (' + r.error + ')' : ''); };
-				result.replaceChildren(note(_('Download speed: through the exit %s, directly %s.').format(t(viaExit), t(d)), (viaExit && viaExit.ok) ? 'success' : 'warning'),
-					E('div', { 'class': 'detour-muted' }, _('A 25 MB download from speed.cloudflare.com. The speed of one download, not of the whole line.')));
-			}).finally(function() { busy(bSpeed, false); });
-		} }, _('Speed'));
+		const bSpeed = this.speedButton(x, result);
 		const bShare = E('button', { 'class': 'btn', 'click': function() { self.exportExit(x); } }, _('Share'));
 		const bEdit = E('button', { 'class': 'btn', 'click': function() { self.editExit(x, by); } }, _('Edit'));
 		const bToggle = E('button', { 'class': 'btn', 'click': function() {
@@ -410,7 +419,20 @@ return view.extend({
 						: (res && res.error == 'no automatic server group for ' + x.name) ? _('only in the automatic mode') : _('no answer');
 				}).finally(function() { busy(b, false); });
 			} }, _('Check'));
-			return E('div', { 'class': 'detour-server-row' }, [ label, d, b ]);
+			// a download through this server only (its group's check inbound); the subscription does not switch
+			const sp = E('span', { 'class': 'detour-delay detour-muted' });
+			const bs = E('button', { 'class': 'btn', 'title': _('A download through this server only; the subscription does not switch'), 'click': function(ev) {
+				ev.preventDefault();
+				busy(bs, true);
+				sp.textContent = _('measuring…');
+				return callSubSpeed(x.name, i).then(function(res) {
+					sp.classList.toggle('bad', !(res && res.ok));
+					sp.textContent = (res && res.ok) ? _('%s Mbit/s').format(res.mbps)
+						: (res && res.error == 'no automatic server group for ' + x.name) ? _('only in the automatic mode')
+						: (res && res.error == 'a speed test is running') ? _('another test is running') : _('failed');
+				}).finally(function() { busy(bs, false); });
+			} }, _('Speed'));
+			return E('div', { 'class': 'detour-server-row' }, [ label, d, sp, b, bs ]);
 		};
 		list.appendChild(radio('', _('Automatically'), _('a working, fast server is chosen and re-checked every few minutes')));
 		(x.servers || []).forEach(function(s, i) {
@@ -449,6 +471,7 @@ return view.extend({
 					: note((r && r.error) ? _('No answer through this exit (%s).').format(r.error) : _('No answer from the router'), 'warning'));
 			}).finally(function() { busy(bCheck, false); });
 		} }, _('Check'));
+		const bSpeed = this.speedButton(x, result);
 		const bEdit = E('button', { 'class': 'btn', 'click': function() { self.editSub(x, by); } }, _('Edit'));
 		const bRemove = E('button', { 'class': 'btn cbi-button-negative', 'click': function() { self.removeExit(x); } }, _('Remove'));
 
@@ -458,7 +481,7 @@ return view.extend({
 			E('div', { 'class': 'detour-card-body' }, head),
 			E('details', { 'class': 'detour-details', 'open': x.pick ? '' : null }, [ E('summary', {}, _('Servers and the choice')), list ]),
 			result,
-			E('div', { 'class': 'detour-actions detour-card-actions' }, [ bUpdate, bCheck, bEdit, bRemove ])
+			E('div', { 'class': 'detour-actions detour-card-actions' }, [ bUpdate, bCheck, bSpeed, bEdit, bRemove ])
 		]);
 	},
 

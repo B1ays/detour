@@ -80,6 +80,7 @@
 					"exit_add",
 					"exit_export",
 					"exit_speed",
+					"sub_speed",
 					"exit_diag",
 					"exit_set_via",
 					"site_check",

@@ -111,6 +111,8 @@ xray run -test -c $X >/dev/null 2>&1 && ok "Xray accepts it" || bad "xray -test:
 healthy txs_sub 90 && ok "txs (Xray balancer) healthy" || bad "txs not healthy"
 R=$(ubus call detour sub_state '{"name":"txs_sub"}'); echo "$R" | grep -q '"now": [01]' && ok "the group says which server it uses" || bad "sub_state: $R"
 R=$(ubus call detour sub_check '{"name":"txs_sub","index":1}'); echo "$R" | grep -q '"ok": true' && ok "one server checked through the check inbound" || bad "sub_check: $R"
+# the usual speed address (the internet, as the checks above): the lab's Xray server does not reach the PC's private address
+R=$(ubus -t 30 call detour sub_speed '{"name":"txs_sub","index":0}'); echo "$R" | grep -q '"ok": true' && ok "speed of one server of the Xray group: $(echo "$R" | jsonfilter -e '@.mbps') Mbit/s" || bad "xray server speed: $R"
 ps w | grep -v grep | grep 'xray run' | grep -q -- "-c $X" && ok "Xray runs it" || bad "no xray process"
 uci -q delete detour.txs.engine; uci commit detour
 R=$(detour sub-update txs)

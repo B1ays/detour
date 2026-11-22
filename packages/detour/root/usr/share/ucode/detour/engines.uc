@@ -122,8 +122,8 @@ export function list() {
 
 // A group of servers (a subscription) gets a control API on 127.0.0.1: which server the group chose and each
 // server's delay, without switching. sing-box: its clash API behind a secret, written as a curl config (mode 600) -
-// the secret never shows on a command line. Xray: its own API (the balancer's choice, "xray api bi") and a SOCKS
-// inbound whose user "sN" leaves through server N only (a check of one server), password = the same secret.
+// the secret never shows on a command line. Xray: its own API (the balancer's choice, "xray api bi"). Both: a SOCKS
+// inbound whose user "sN" leaves through server N only (a check of one server, its speed), password = the secret.
 export function api_file(engine) { return sprintf('%s/%s.api', DIR, engine); };
 function api_conf(e) {
 	fs.mkdir(RUN); fs.mkdir(DIR);
@@ -139,11 +139,11 @@ function api_conf(e) {
 		if (!match(secret ?? '', /^[0-9a-f]{32}$/)) return null;
 	}
 	const f = api_file(e.name);
-	// Xray's check inbound: the ports after the API ones (19100..19599)
-	const socks = (e.type == 'xray') ? 19600 + e.idx % 500 : null;
+	// the check inbound (both engines): the ports after the API ones (19100..19599)
+	const socks = 19600 + e.idx % 500;
 	fs.writefile(f + '.tmp', ''); fs.chmod(f + '.tmp', 0600);
 	fs.writefile(f + '.tmp', sprintf('header = "Authorization: Bearer %s"\n# url http://127.0.0.1:%d\n', secret, port) +
-		(socks ? sprintf('# engine xray\n# socks 127.0.0.1:%d\n', socks) : ''));
+		(e.type == 'xray' ? '# engine xray\n' : '') + sprintf('# socks 127.0.0.1:%d\n', socks));
 	fs.rename(f + '.tmp', f);
 	return { external_controller: sprintf('127.0.0.1:%d', port), secret, port, socks };
 }
@@ -151,7 +151,7 @@ export function api_port(engine) {
 	const m = match(fs.readfile(api_file(engine)) ?? '', /# url http:\/\/127\.0\.0\.1:([0-9]+)/);
 	return m ? int(m[1]) : null;
 };
-// the API of a group: { engine: singbox | xray, port, socks (Xray), secret } | null
+// the API of a group: { engine: singbox | xray, port, socks (the check inbound), secret } | null
 export function api_info(engine) {
 	const t = fs.readfile(api_file(engine)) ?? '';
 	const p = match(t, /# url http:\/\/127\.0\.0\.1:([0-9]+)/), s = match(t, /Bearer ([0-9a-f]{32})/);
@@ -211,7 +211,14 @@ export function render(e) {
 			outbounds: outs,
 			route: { final: 'out', auto_detect_interface: false }
 		};
-		if (api) cfg.experimental = { clash_api: { external_controller: api.external_controller, secret: api.secret } };
+		if (api) {
+			cfg.experimental = { clash_api: { external_controller: api.external_controller, secret: api.secret } };
+			// a check of one server (its speed): a SOCKS inbound whose user sN leaves through server N only
+			const tags = map(filter(outs, (x) => x.type != 'urltest'), (x) => x.tag);
+			push(cfg.inbounds, { type: 'socks', tag: 'check', listen: '127.0.0.1', listen_port: api.socks,
+				users: map(tags, (t) => ({ username: t, password: api.secret })) });
+			cfg.route.rules = map(tags, (t) => ({ inbound: [ 'check' ], auth_user: [ t ], action: 'route', outbound: t }));
+		}
 	}
 	else {
 		// every server with the underlay mark (its own traffic, the observatory's probes too) / via

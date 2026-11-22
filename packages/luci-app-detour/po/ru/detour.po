@@ -382,6 +382,27 @@ msgstr "подписка"
 msgid "masking"
 msgstr "маскировка"
 
+msgid "Measuring through the exit (up to 15 s)…"
+msgstr "Замер через выход (до 15 с)…"
+
+msgid "Measuring directly, to compare…"
+msgstr "Замер напрямую, для сравнения…"
+
+msgid "%s Mbit/s"
+msgstr "%s Мбит/с"
+
+msgid "Download speed: through the exit %s, directly %s."
+msgstr "Скорость загрузки: через выход %s, напрямую %s."
+
+msgid "A download of %s MB from %s. The speed of one download, not of the whole line."
+msgstr "Загрузка %s МБ с %s. Это скорость одной загрузки, а не всей линии."
+
+msgid "The speed of one download, not of the whole line."
+msgstr "Это скорость одной загрузки, а не всей линии."
+
+msgid "Speed"
+msgstr "Скорость"
+
 msgid "Server: %s"
 msgstr "Сервер: %s"
 
@@ -411,24 +432,6 @@ msgstr "Через этот выход нет ответа (%s)."
 
 msgid "Finding out why…"
 msgstr "Выясняю причину…"
-
-msgid "Measuring through the exit (up to 15 s)…"
-msgstr "Замер через выход (до 15 с)…"
-
-msgid "Measuring directly, to compare…"
-msgstr "Замер напрямую, для сравнения…"
-
-msgid "%s Mbit/s"
-msgstr "%s Мбит/с"
-
-msgid "Download speed: through the exit %s, directly %s."
-msgstr "Скорость загрузки: через выход %s, напрямую %s."
-
-msgid "A 25 MB download from speed.cloudflare.com. The speed of one download, not of the whole line."
-msgstr "Загрузка 25 МБ с speed.cloudflare.com. Это скорость одной загрузки, а не всей линии."
-
-msgid "Speed"
-msgstr "Скорость"
 
 msgid "Share"
 msgstr "Поделиться"
@@ -624,6 +627,15 @@ msgstr "%d мс"
 
 msgid "only in the automatic mode"
 msgstr "только в режиме «Автоматически»"
+
+msgid "A download through this server only; the subscription does not switch"
+msgstr "Скачивание только через этот сервер; подписка не переключается"
+
+msgid "measuring…"
+msgstr "замер…"
+
+msgid "another test is running"
+msgstr "идёт другой замер"
 
 msgid "Automatically"
 msgstr "Автоматически"

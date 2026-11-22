@@ -37,6 +37,14 @@ reload_config; sleep 10
 [ "$(jsonfilter -i /tmp/detour/engines/prov_sub_eng.json -e '@.outbounds[2].type')" = urltest ] && ok "urltest group over 2 servers" || bad "no urltest"
 sing-box check -c /tmp/detour/engines/prov_sub_eng.json && ok "sing-box accepts it" || bad "sing-box check"
 waitfor true "ubus call detour status | jsonfilter -e '@.exits[@.name=\"prov_sub\"].healthy'" 120 && ok "exit prov healthy (urltest found the working server)" || bad "prov not healthy"
+# speed: the subscription as a whole and one server of it (the group's check inbound, user sN), from the lab's PC
+BIG=$(wget -qO- http://10.0.2.2:8765/feed/ | grep -o 'xray-core-[^"]*\.apk' | head -n1)   # ~12 MB, on the lab's PC
+uci set detour.main.speed_url=http://10.0.2.2:8765/feed/$BIG; uci commit detour
+R=$(ubus -t 30 call detour exit_speed '{"name":"prov_sub"}'); echo "$R" | grep -q '"ok": true' && ok "speed of the subscription: $(echo "$R" | jsonfilter -e '@.mbps') Mbit/s" || bad "subscription speed: $R"
+jsonfilter -i /tmp/detour/engines/prov_sub_eng.json -e '@.inbounds[@.tag="check"].type' | grep -qx socks && ok "sing-box group has its check inbound" || bad "no check inbound in the sing-box config"
+R=$(ubus -t 30 call detour sub_speed '{"name":"prov_sub","index":1}'); echo "$R" | grep -q '"ok": true' && ok "speed of server 2 (good): $(echo "$R" | jsonfilter -e '@.mbps') Mbit/s" || bad "server speed: $R"
+R=$(ubus -t 30 call detour sub_speed '{"name":"prov_sub","index":0}'); echo "$R" | grep -q '"ok": false' && ok "server 1 (dead): no speed, said so" || bad "dead server speed: $R"
+uci -q delete detour.main.speed_url; uci commit detour
 uci set detour.ps=policy; uci set detour.ps.id=8; uci add_list detour.ps.exit=prov_sub; uci add_list detour.ps.dst=9.9.9.0/24; uci commit detour; reload_config; sleep 5
 conntrack -D -d 9.9.9.9 >/dev/null 2>&1
 t0=$(txb provtun); r=$(cl "curl -s -m 10 -o /dev/null -w '%{http_code}' https://9.9.9.9/"); t1=$(txb provtun)

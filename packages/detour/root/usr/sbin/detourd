@@ -558,6 +558,17 @@ function wan_dev() {
 	return m ? m[1] : null;
 }
 
+// what curl's -w line in f says about a speed test (url: where it downloaded from, its host told); f is removed
+function speed_result(f, url) {
+	const host = match(url ?? '', /^[a-z]+:\/\/([^\/:?#]+)/)?.[1];
+	const w = split(trim(fs.readfile(f) ?? ''), ' ');
+	fs.unlink(f);
+	const bytes = +(w[2] ?? 0);
+	// a download cut at 14 s still tells the speed; too little data says nothing
+	if (bytes < 500000) return { ok: false, error: 'too little came through (' + int(bytes / 1024) + ' KB)', host };
+	return { ok: true, mbps: int(+w[1] * 8 / 100000) / 10, mb: int(bytes / 104857.6) / 10, s: int(+w[3] * 10) / 10, host };
+}
+
 // "Speed": a download of up to 25 MB through the exit (or directly, to compare), at most 14 s
 let speed_busy = false;
 function exit_speed(req) {
@@ -573,12 +584,29 @@ function exit_speed(req) {
 	uloop.process('/bin/sh', [ '-c', sprintf("%s -s -m 14 --interface %s -o /dev/null -w '%%{http_code} %%{speed_download} %%{size_download} %%{time_total}' %s > %s 2>/dev/null",
 		req.args.direct ? direct_curl() : 'curl', core.shq(dev), core.shq(url), f) ], {}, function() {
 		speed_busy = false;
-		const w = split(trim(fs.readfile(f) ?? ''), ' ');
-		fs.unlink(f);
-		const bytes = +(w[2] ?? 0);
-		// a download cut at 14 s still tells the speed; too little data says nothing
-		if (bytes < 500000) return req.reply({ ok: false, error: 'too little came through (' + int(bytes / 1024) + ' KB)' });
-		req.reply({ ok: true, mbps: int(+w[1] * 8 / 100000) / 10, mb: int(bytes / 104857.6) / 10, s: int(+w[3] * 10) / 10 });
+		req.reply(speed_result(f, url));
+	});
+}
+
+// "Speed" of one server of a subscription: the same download through its group's check inbound as user sN
+// (that server only, the group does not switch); the password in a file, not on the command line
+function sub_speed(req) {
+	const i = int(req.args.index ?? -1);
+	if (i < 0 || i > 999) return { error: 'bad server index' };
+	const a = sub_group(req);
+	if (!a || !a.socks) return { error: 'no automatic server group for ' + (req.args.name ?? '') };
+	if (speed_busy) return { error: 'a speed test is running' };
+	speed_busy = true;
+	req.defer();
+	const f = sprintf('%s/speed-%s', core.RUN, req.args.name);
+	const url = cursor().get('detour', 'main', 'speed_url') ?? 'https://speed.cloudflare.com/__down?bytes=25000000';
+	fs.writefile(f + '.k', ''); fs.chmod(f + '.k', 0600);
+	fs.writefile(f + '.k', sprintf('proxy = "socks5h://127.0.0.1:%d"\nproxy-user = "s%d:%s"\nurl = "%s"\n', a.socks, i + 1, a.secret, replace(url, '"', '%22')));
+	uloop.process('/bin/sh', [ '-c', sprintf("curl -s -m 14 -K %s -o /dev/null -w '%%{http_code} %%{speed_download} %%{size_download} %%{time_total}' > %s 2>/dev/null",
+		core.shq(f + '.k'), f) ], {}, function() {
+		speed_busy = false;
+		fs.unlink(f + '.k');
+		req.reply(speed_result(f, url));
 	});
 }
 
@@ -876,6 +904,7 @@ conn.publish('detour', logged({
 		: { error: 'missing argument' }, args: { text: '', picks: [], name: '', via: '', label: '', engines: [], ...S } },
 	exit_export:     { call: (req) => exitui.export_exit(req.args.name), args: { name: '', ...S } },
 	exit_speed:      { call: (req) => exit_speed(req), args: { name: '', direct: false, ...S } },
+	sub_speed:       { call: (req) => sub_speed(req), args: { name: '', index: 0, ...S } },
 	exit_diag:       { call: (req) => { req.defer(); diag_exit(req.args.name ?? '', (d) => req.reply(d)); }, args: { name: '', ...S } },
 	site_explain:    { call: (req) => site_explain(req), args: { target: '', mac: '', ...S } },
 	site_check:      { call: (req) => site_check(req), args: { target: '', exit: '', ...S } },
