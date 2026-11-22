@@ -27,7 +27,7 @@ SS=$(cat $D/ss.pw)
 WGK=$(uci -q get network.wgx1.private_key)
 UUID=6f1c2a9e-36ab-4c1d-9e2f-0123456789ab   # put through a VLESS link below
 RPK=Zx3PqT7vB9wK2mN5cR8yL1hD4fG6jS0aE3uI7oV9t2Q   # its Reality key
-BPW=lab-backup-pw-t36
+BPW='lab-backup pw-horse-t36'   # with a space: a quoted value is masked whole, not up to the space
 [ -n "$SS" ] && [ -n "$WGK" ] && ok "secrets to look for: ss password, WG key, a VLESS UUID and Reality key, TG token, backup password" || bad "secrets: ss '${SS:+set}' wg '${WGK:+set}'"
 
 echo "== normal: nothing in the verbose log"
@@ -89,7 +89,7 @@ ls $A/config | grep -q '^engine-' && ! ls $A/config | grep -qE 'engine-t(add|mp|
 echo "== no secret anywhere"
 # "what:value" - only "what" is ever printed
 for p in "Shadowsocks password:$SS" "WireGuard key:$WGK" "VLESS UUID:$UUID" "Reality key:$RPK" "Telegram token:$TG" \
-	"backup password:$BPW" "token text:LABTOKEN" "2FA key:JBSWY3DPEHPK3PXP"; do
+	"backup password:$BPW" "backup password after its space:pw-horse-t36" "token text:LABTOKEN" "2FA key:JBSWY3DPEHPK3PXP"; do
 	w=${p%%:*}; s=${p#*:}
 	[ -z "$s" ] && continue
 	h=$(grep -rlF -- "$s" $V $A 2>/dev/null | sed "s#$X/##" | tr '\n' ' ')

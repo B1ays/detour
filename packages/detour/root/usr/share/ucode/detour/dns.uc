@@ -211,12 +211,34 @@ function addrs(host) {
 // After dnsmasq restarted with the new config, the domain (and www.) is looked up again - its addresses leave
 // the old policy's sets, and its flows under that policy are dropped; where it moved, the same lookup fills the
 // new policy's set at once. Subdomains with other addresses (and rotated CDN addresses) still wait for the timeout.
-// gone: [ "<policy id> <domain>" ]; returns the number of addresses taken out
+// the domain lists of a policy (lists-update's targets: "<list> p<id> <kind>"): their data files
+function domain_list_files(pid) {
+	const out = [];
+	for (let l in split(fs.readfile('/tmp/detour/lists/.targets') ?? '', '\n')) {
+		const f = split(trim(l), ' ');
+		if (f[1] == 'p' + pid && f[2] == 'domain' && fs.access('/tmp/detour/lists/' + f[0] + '.data')) push(out, '/tmp/detour/lists/' + f[0] + '.data');
+	}
+	return out;
+}
+
+// domains taken off a policy ("<policy id> <domain>"): their addresses leave the policy's sets and their flows
+// are reset - unless one of the policy's domain lists still has the domain or a parent of it (the list keeps
+// the same sets filled). Run by "detour dom-forget" in the background: one nslookup per name and nft/conntrack
+// per address must not hold the daemon. -> { domains, kept, addrs }
 export function forget(gone) {
 	const L = marks(), pmask = 0xff << L.shift;
-	let n = 0;
-	for (let k in slice(gone, 0, 32)) {
+	let n = 0, kept = 0, done = 0;
+	const lists = {};
+	for (let k in gone) {
 		const sp = index(k, ' '), pid = int(substr(k, 0, sp)), d = substr(k, sp + 1);
+		if (!pid || !length(d)) continue;
+		done++;
+		lists[pid] ??= domain_list_files(pid);
+		if (length(lists[pid])) {
+			const parts = split(d, '.'), names = [];
+			for (let i = 0; i < length(parts); i++) push(names, join('.', slice(parts, i)));
+			if (run(sprintf('grep -qxF %s %s', join(' ', map(names, (x) => '-e ' + shq(x))), join(' ', map(lists[pid], shq)))).code == 0) { kept++; continue; }
+		}
 		for (let h in [ d, 'www.' + d ])
 			for (let ip in addrs(h)) {
 				const v6 = index(ip, ':') >= 0;
@@ -227,5 +249,5 @@ export function forget(gone) {
 				n++;
 			}
 	}
-	return n;
+	return { domains: done, kept, addrs: n };
 };

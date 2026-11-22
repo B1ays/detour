@@ -71,6 +71,15 @@ case 'engines': {
 	for (let l in r.lines) print(l, '\n');
 	exit(0);
 }
+case 'dom-forget': {
+	// detour dom-forget <file>: domains taken off a policy, "<policy id> <domain>" a line (detourd, after a reload,
+	// in the background): their addresses leave the policy's sets unless its lists still cover them; the file goes
+	const f = ARGV[1] ?? '';
+	const keys = filter(map(split(fs.readfile(f) ?? '', '\n'), (l) => trim(l)), (x) => length(x));
+	if (match(f, /^\/tmp\/detour\/forget-/)) fs.unlink(f);
+	printf('%J\n', dns.forget(keys));
+	exit(0);
+}
 case 'dns-upstreams': {
 	// the encrypted resolvers dnsproxy asks (init script): line 1 the upstreams, line 2 the bootstrap servers -
 	// a known provider's (main.dns_provider + dns_proto) or the addresses given

@@ -85,14 +85,19 @@ export const UNREACH_METRIC = 4278198272;
 const SECRET_NAMES = 'private_key|preshared_key|pre_shared_key|public_key|privateKey|publicKey|password|passwd|psk|' +
 	'token|tg_token|tg_chat|secret|key_root|uuid|shortId|short_id|pbk|sid|spx|spiderX|mldsa65Verify|reserved|auth|' +
 	'auth_str|obfs_password|license|client_id|access_token|refresh_token|id_token|encryption|seed';
-// "name": "v" / name=v / name='v' (uci show) / option name 'v' (uci export)
-const RE_NAMED = regexp('(' + SECRET_NAMES + ')("?[ \t]*[:=][ \t]*["\']?|[ \t]+\')([^"\' \t,}\n]+)', 'g');
+// "name": "v" / name=v / name='v' (uci show) / option name 'v' (uci export). A quoted value is hidden whole, up
+// to its closing quote (a password with spaces); an unquoted one up to a space, a comma or a brace
+const RE_NAMED_DQ = regexp('(' + SECRET_NAMES + ')("?[ \t]*[:=][ \t]*")(([^"\\\\\n]|\\\\.)*)"', 'g');   // POSIX: no (?:)
+const RE_NAMED_SQ = regexp('(' + SECRET_NAMES + ')("?[ \t]*[:=][ \t]*\'|[ \t]+\')([^\'\n]*)\'', 'g');
+const RE_NAMED = regexp('(' + SECRET_NAMES + ')("?[ \t]*[:=][ \t]*)([^"\' \t,}\n]+)', 'g');
 export function redact(s) {
 	if (s == null) return s;
 	s = '' + s;
 	s = replace(s, /(vless|vmess|trojan|ss|ssr|hy2|hysteria2?|tuic|wireguard|awg|socks5?|https?\+?[a-z]*)(:\/\/)([^@ \t\n'"]+)@/g,
 		(m, p, sep, cred) => p + sep + '***@');
 	s = replace(s, /(vless|vmess|trojan|ss|ssr|hy2|hysteria2?|tuic|wireguard|awg):\/\/[^ \t\n'"]+/g, (m, p) => p + '://***');
+	s = replace(s, RE_NAMED_DQ, (m, k, sep, v) => k + sep + '***"');
+	s = replace(s, RE_NAMED_SQ, (m, k, sep, v) => k + sep + "***'");
 	s = replace(s, RE_NAMED, (m, k, sep, v) => k + sep + '***');
 	s = replace(s, /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/g, '***');
 	s = replace(s, /[0-9]{6,12}:[A-Za-z0-9_-]{30,}/g, '***');

@@ -8,13 +8,15 @@ excnt() { ip netns exec ex$1 nft list chain ip exnat cnt 2>/dev/null | sed -n 's
 leak() { nft list chain inet labwatch post 2>/dev/null | sed -n 's/.*packets \([0-9]*\).*/\1/p' | head -n1; }
 FAIL=0; ok() { echo "  ok   $*"; }; bad() { echo "  FAIL $*"; FAIL=1; }
 inset() { nft get element inet detour $1 "{ $2 }" >/dev/null 2>&1 && echo yes || echo no; }
+waitfor() { i=0; while [ $i -lt ${3:-15} ]; do [ "$(eval "$2")" = "$1" ] && return 0; sleep 1; i=$((i+1)); done; return 1; }
+st() { jsonfilter -i /tmp/detour/lists/$1.status -e "@.$2" 2>/dev/null; }
 reload() { R=$(ubus call detour reload); echo "$R" | grep -q '"ok": true' || bad "reload: $R"; conntrack -F >/dev/null 2>&1; sleep 1; }
 # 1.1.1.1 from the client: through exit 1 (1), through the WAN (the leak counter of 1.1.1.0/24) (1)
 meas() { a=$(excnt 1); l=$(leak); cl "curl -s -m 6 -o /dev/null https://$1/" >/dev/null; echo "$(( $(excnt 1) - a > 0 ? 1 : 0 )) $(( $(leak) - l > 0 ? 1 : 0 ))"; }
 # up to 3 tries (the first packets after a rules reload may still be in the WireGuard handshake): want <ip> <expected>
 mwant() { M1=; for i in 1 2 3; do m=$(meas $1); [ -n "$M1" ] || M1=$m; [ "$m" = "$2" ] && return 0; done; return 1; }
 cleanup() {
-	for s in tdir; do uci -q delete detour.$s; done
+	for s in tdir tdl; do uci -q delete detour.$s; done
 	uci -q delete detour.main.dns_policy; uci set detour.main.dns=off
 	uci commit detour; ubus call detour reload >/dev/null
 	nft delete table inet labwatch 2>/dev/null
@@ -84,10 +86,43 @@ A=$(cl "nslookup example.com 192.168.1.1" | awk '/^Address: [0-9.]+$/{print $2}'
 echo "== the site taken off the policy: its addresses leave the set at once, not after the timeout"
 uci -q delete detour.tdir.domain; uci add_list detour.tdir.dst=192.0.2.1; uci commit detour
 reload
-[ "$(inset dom4_p$DID $A)" = no ] && ok "$A no longer in dom4_p$DID" || bad "$A still in dom4_p$DID"
+# forgotten in the background (detour dom-forget), soon after the reload has answered
+waitfor no "inset dom4_p$DID $A" 30 && ok "$A no longer in dom4_p$DID" || bad "$A still in dom4_p$DID"
 R=$(ubus call detour site_explain '{"target":"example.com"}')
 [ "$(echo "$R" | jsonfilter -e '@.goes.policy')" != tdir ] && ok "the check no longer names the policy" || bad "site_explain: $(echo "$R" | head -c 300)"
-logread | tail -30 | grep -q 'domains taken off a policy: 1' && ok "logged" || bad "no log line"
+logread | tail -30 | grep -q 'domains taken off a policy: 1, their addresses forgotten' && ok "logged" || bad "no log line"
+
+echo "== a site the policy's list still has stays in its set; so does one a top-level parent keeps"
+uci -q batch <<U
+set detour.tdl=list
+set detour.tdl.policy=tdir
+add_list detour.tdl.url=http://10.0.2.2:8765/tests/stub/lists/domains.txt
+del_list detour.tdir.dst=192.0.2.1
+add_list detour.tdir.domain=example.com
+commit detour
+U
+reload
+waitfor true "st tdl ok" 60 && grep -qx example.com /tmp/detour/lists/tdl.data && ok "the list has example.com" || bad "list tdl: $(cat /tmp/detour/lists/tdl.status 2>/dev/null)"
+A=$(cl "nslookup example.com 192.168.1.1" | awk '/^Address: [0-9.]+$/{print $2}' | head -n1)
+[ -n "$A" ] && [ "$(inset dom4_p$DID $A)" = yes ] && ok "example.com ($A) in dom4_p$DID" || bad "dom4_p$DID: '$A'"
+uci del_list detour.tdir.domain=example.com; uci add_list detour.tdir.dst=192.0.2.1; uci commit detour
+reload; sleep 8
+[ "$(inset dom4_p$DID $A)" = yes ] && ok "taken off by hand, still in the list: $A stays" || bad "$A forgotten although the list has it"
+logread | tail -30 | grep -q 'domains taken off a policy: 1 (1 still in its lists, kept)' && ok "logged as kept" || bad "log: $(logread | grep 'taken off' | tail -1)"
+uci -q delete detour.tdl; uci -q batch <<U
+add_list detour.tdir.domain=example.com
+add_list detour.tdir.domain=com
+commit detour
+U
+reload
+cl "nslookup example.com 192.168.1.1" >/dev/null
+waitfor yes "inset dom4_p$DID $A" 15 || true
+n0=$(logread | grep -c 'domains taken off a policy')
+uci del_list detour.tdir.domain=example.com; uci commit detour
+reload; sleep 8
+[ "$(inset dom4_p$DID $A)" = yes ] && ok "\"com\" in the policy keeps example.com's $A" || bad "$A forgotten although \"com\" is in the policy"
+[ "$(logread | grep -c 'domains taken off a policy')" = "$n0" ] && ok "nothing forgotten" || bad "forgotten: $(logread | grep 'taken off' | tail -1)"
+uci del_list detour.tdir.domain=com; uci commit detour; reload
 
 echo "== not a policy for the router's DNS, no 'no valid exit'"
 uci set detour.main.dns=tunnel; uci set detour.main.dns_policy=tdir; uci commit detour

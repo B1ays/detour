@@ -230,6 +230,22 @@ function guard() {
 	catch (e) { ev('2FA guard error: ' + e); return 'error'; }
 }
 
+// domains taken off a policy: forgotten in the background (detour dom-forget: its lists may still cover them; an
+// nslookup per name and nft/conntrack per address must not hold the daemon and the reload's answer)
+let forget_seq = 0;
+function forget_domains(gone) {
+	const f = sprintf('%s/forget-%d-%d', core.RUN, time(), ++forget_seq);
+	fs.writefile(f, join('\n', gone) + '\n');
+	uloop.process('/bin/sh', [ '-c', sprintf('/usr/sbin/detour dom-forget %s > %s.out 2>/dev/null', core.shq(f), core.shq(f)) ], {}, function() {
+		let r = null;
+		try { r = json(fs.readfile(f + '.out') ?? 'null'); } catch (e) { }
+		fs.unlink(f); fs.unlink(f + '.out');
+		if (type(r) != 'object') return ev(sprintf('domains taken off a policy: %d, forgetting their addresses failed', length(gone)));
+		ev(sprintf('domains taken off a policy: %d%s, their addresses forgotten (%d)', length(gone),
+			r.kept ? sprintf(' (%d still in its lists, kept)', r.kept) : '', r.addrs));
+	});
+}
+
 function load_all(reason) {
 	log_sync();
 	cfg = core.load();
@@ -280,11 +296,12 @@ function load_all(reason) {
 		if (dk[k]) continue;
 		const sp = index(k, ' '), pid = substr(k, 0, sp), parts = split(substr(k, sp + 1), '.');
 		let kept = false;
-		for (let i = 1; i < length(parts) - 1; i++) if (dk[pid + ' ' + join('.', slice(parts, i))]) kept = true;
+		// a parent still in the policy keeps them - up to the top level ("ru" keeps "example.ru")
+		for (let i = 1; i < length(parts); i++) if (dk[pid + ' ' + join('.', slice(parts, i))]) kept = true;
 		if (!kept) push(gone, k);
 	}
 	dom_keys = dk;
-	if (length(gone)) ev(sprintf('domains taken off a policy: %d, their addresses forgotten (%d)', length(gone), dns.forget(gone)));
+	if (length(gone)) forget_domains(gone);
 	apply_errors = res.errors;
 	// engines the init script could not start (it only tells its stderr): here they reach the log and LuCI
 	for (let e in engines.list()) {

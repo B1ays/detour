@@ -1,5 +1,5 @@
 name=detour
-version=0.1.0-r157
+version=0.1.0-r160
 description=Detour: policy routing through VPN exits with kill-switch, failover and DNS policy
 license=MIT
 depends=curl openssl-util ucode ucode-mod-ubus ucode-mod-uloop ucode-mod-uci ucode-mod-fs nftables-json ip-full conntrack dnsmasq-full nlbwmon kmod-tun
