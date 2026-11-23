@@ -196,7 +196,7 @@ return baseclass.extend({
 				E('div', {}, [ E('strong', {}, _('Also:') + ' '), [
 					N_(b.subscriptions || 0, '%d subscription', '%d subscriptions').format(b.subscriptions || 0),
 					N_(b.devices || 0, '%d device name', '%d device names').format(b.devices || 0),
-					b.notify ? _('Telegram notifications') : null,
+					b.notify ? _('notifications (%s)').format(b.notify) : null,
 					b.warp ? N_(b.warp, '%d WARP registration', '%d WARP registrations').format(b.warp) : null,
 					(b.traffic_months || []).length ? N_(b.traffic_months.length, 'traffic history: %d month', 'traffic history: %d months').format(b.traffic_months.length) : null
 				].filter(function(x) { return x; }).join(', ') ]),

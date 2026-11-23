@@ -4,6 +4,7 @@
 'require form';
 'require uci';
 'require rpc';
+'require ui';
 'require fs';
 'require detour.pkg as pkg';
 'require detour.backupui as backupui';
@@ -19,6 +20,7 @@ const callStatus = rpc.declare({ object: 'detour', method: 'status' });
 const callDnsProviders = rpc.declare({ object: 'detour', method: 'dns_providers' });
 const callLogLevel = rpc.declare({ object: 'detour', method: 'log_level', params: [ 'level' ] });
 const callLogsArchive = rpc.declare({ object: 'detour', method: 'logs_archive' });
+const callNotifyTest = rpc.declare({ object: 'detour', method: 'notify_test' });
 
 // a list option shown as checkboxes, one per line: the theme's multi-select cuts long names to a few letters
 const CheckList = form.MultiValue.extend({
@@ -86,11 +88,32 @@ return view.extend({
 		return E('div', {}, [ sel, state, E('div', { 'style': 'margin-top:.5em' }, [ bGet ]), box ]);
 	},
 
+	// the page in parts: a heading, then its cards. A heading goes before the card holding the given field; the
+	// cards stay where the theme puts them (a card inside another loses its frame in some themes). A theme that
+	// draws no frame around a card (Bootstrap) gets a light one here, so the cards of a part read as cards.
+	groups: function(node, parts) {
+		parts.forEach(function(p, i) {
+			const f = node.querySelector('[data-field="' + p[0] + '"]');
+			const card = f && f.closest('.cbi-section');
+			if (card) card.parentNode.insertBefore(E('h3', { 'class': 'detour-group' + (i ? '' : ' first') }, p[1]), card);
+		});
+		// the theme's styles are there only once the page is in the document
+		const frame = function() {
+			if (!node.isConnected) return window.setTimeout(frame, 50);
+			const one = node.querySelector('.cbi-section');
+			if (!one) return;
+			const cs = window.getComputedStyle(one);
+			if (parseFloat(cs.borderTopWidth) == 0 && cs.boxShadow == 'none' && (cs.backgroundColor == 'transparent' || /rgba\(.*, 0\)$/.test(cs.backgroundColor)))
+				node.classList.add('detour-framed');
+		};
+		frame();
+	},
+
 	render: function(data) {
 		const self = this;
 		const m = new form.Map('detour', _('Detour settings'));
 
-		let s = m.section(form.NamedSection, 'main', 'main', _('General settings'));
+		let s = m.section(form.NamedSection, 'main', 'main', _('Exit checks'));
 		// switching Detour on and off: only the switch on the Overview (it asks before switching off)
 		let o = s.option(form.Value, 'probe_period', _('Check exits every (s)'),
 			_('How often an exit is checked with a real request while it fails, has just started, or sends without getting answers. Shorter: a failure is noticed sooner.'));
@@ -106,17 +129,6 @@ return view.extend({
 			_('How many checks in a row must fail before a policy moves to its next exit. 2 with checks every 2 s: about 4-6 s.'));
 		o.datatype = 'range(1,10)';
 		o.placeholder = '2';
-		// the two fwmark bytes (policy, exit): only when another program uses the same bits (pbr, mwan3)
-		o = s.option(form.Value, 'fw_mask', _('Packet mark bits'),
-			_('Change only when another program uses the same bits: pbr (0x00ff0000) or mwan3 (0x3f00) - a message on the Overview says so. For example 0x0ffff000.'));
-		o.placeholder = '0x00ffff00';
-		o.optional = true;
-		o.validate = function(section_id, v) {
-			if (!v) return true;
-			const n = /^(0x)?[0-9a-fA-F]{1,8}$/.test(v) ? parseInt(v.replace(/^0x/i, ''), 16) : -1;
-			for (let sh = 0; sh <= 12; sh++) if (n === 0xffff * Math.pow(2, sh)) return true;
-			return _('0xffff shifted by whole bits: 0x0000ffff ... 0x0ffff000');
-		};
 
 		s = m.section(form.NamedSection, 'main', 'main', _('Router DNS'),
 			_('Through the tunnel: the router resolves names via the exits of the selected policy, so the provider does not see the queries. ' +
@@ -182,16 +194,29 @@ return view.extend({
 		o.retain = true;
 		both(o, { dns_provider: '' });
 
+		s = m.section(form.NamedSection, 'main', 'main', _('Compatibility with other programs'));
+		// the two fwmark bytes (policy, exit): only when another program uses the same bits (pbr, mwan3)
+		o = s.option(form.Value, 'fw_mask', _('Packet mark bits'),
+			_('Change only when another program uses the same bits: pbr (0x00ff0000) or mwan3 (0x3f00) - a message on the Overview says so. For example 0x0ffff000.'));
+		o.placeholder = '0x00ffff00';
+		o.optional = true;
+		o.validate = function(section_id, v) {
+			if (!v) return true;
+			const n = /^(0x)?[0-9a-fA-F]{1,8}$/.test(v) ? parseInt(v.replace(/^0x/i, ''), 16) : -1;
+			for (let sh = 0; sh <= 12; sh++) if (n === 0xffff * Math.pow(2, sh)) return true;
+			return _('0xffff shifted by whole bits: 0x0000ffff ... 0x0ffff000');
+		};
+
+
 		if (!uci.get('detour', 'notify')) uci.add('detour', 'notify', 'notify');
-		s = m.section(form.NamedSection, 'notify', 'notify', _('Telegram notifications'),
-			_('Create a bot with @BotFather, paste its token, write /start to the bot and put your chat id here. ' +
-			  'Messages go through a working tunnel first, then directly; undelivered ones wait and are sent later.'));
+		// three cards over the one UCI section: what is said and when, then each channel on its own card (shown only
+		// while notifications are on); a message goes to every channel that is on
+		const tg = { enabled: '1', telegram: '1' }, nf = { enabled: '1', ntfy: '1' };
+		// while notifications are on; switched off, what is set stays (retain) for the next time
+		const onlyOn = function(sec) { sec.children.forEach(function(c) { if (!c.deps.length) c.depends('enabled', '1'); c.retain = true; }); };
+		s = m.section(form.NamedSection, 'notify', 'notify', _('Messages'),
+			_('Telegram and ntfy can be on together: each message goes to both. Messages go through a working tunnel first, then directly; undelivered ones wait and are sent later.'));
 		o = s.option(form.Flag, 'enabled', _('Enabled'));
-		o = s.option(form.Value, 'tg_token', _('Bot token'));
-		o.password = true;
-		o.validate = function(section_id, v) { return (!v || /^[0-9]+:[A-Za-z0-9_-]{30,}$/.test(v)) ? true : _('Looks like 123456:ABC… from @BotFather'); };
-		o = s.option(form.Value, 'tg_chat', _('Chat id'));
-		o.datatype = 'integer';
 		o = s.option(CheckList, 'event', _('Notify about'),
 			_('While the provider\'s internet is gone (and 3 minutes after it is back) nothing is said about the exits: they fall and rise with the line, one message about the line says it all.'));
 		o.value('exit_down', _('an exit stopped responding'));
@@ -208,13 +233,57 @@ return view.extend({
 		o.value('', _('automatically'));
 		o.value('en', 'English');
 		o.value('ru', 'Русский');
+		o = s.option(form.Button, '_test', _('Test message'), _('To every channel that is on, with the applied settings: apply the changes first.'));
+		o.inputtitle = _('Send');
+		o.inputstyle = 'action';
+		o.onclick = function() {
+			return callNotifyTest().then(function(r) {
+				ui.addNotification(null, E('p', {}, (r && r.queued)
+					? _('The test message is on its way: it arrives within a minute.')
+					: _('Notifications are off or not filled in on the router: apply the settings first.')), (r && r.queued) ? 'info' : 'warning');
+			}).catch(function(e) { ui.addNotification(null, E('p', {}, e.message), 'danger'); });
+		};
+		s.children.forEach(function(c) { if (c.option != 'enabled') { c.depends('enabled', '1'); c.retain = true; } });
+
+		s = m.section(form.NamedSection, 'notify', 'notify', 'Telegram',
+			_('Create a bot with @BotFather, paste its token, write /start to the bot and put your chat id below.'));
+		o = s.option(form.Flag, 'telegram', _('Send to Telegram'));
+		o.default = '1';
+		o = s.option(form.Value, 'tg_token', _('Bot token'));
+		o.password = true;
+		o.validate = function(section_id, v) { return (!v || /^[0-9]+:[A-Za-z0-9_-]{30,}$/.test(v)) ? true : _('Looks like 123456:ABC… from @BotFather'); };
+		o.depends(tg);
+		o = s.option(form.Value, 'tg_chat', _('Chat id'));
+		o.datatype = 'integer';
+		o.depends(tg);
 		o = s.option(form.Value, 'tg_api', _('Own Bot API address'), _('Only if api.telegram.org is blocked for you and you run a Bot API proxy.'));
 		o.placeholder = 'https://api.telegram.org';
 		o.datatype = 'string';
 		o.optional = true;
-		o.validate = function(section_id, v) { return (!v || /^https?:\/\/[^\s]+$/.test(v)) ? true : _('http(s) address'); };
-		// the rest only while notifications are on; switched off, what is set stays (retain) for the next time
-		s.children.forEach(function(c) { if (c.option != 'enabled') { c.depends('enabled', '1'); c.retain = true; } });
+		o.validate = function(section_id, v) { return (!v || /^https?:\/\/[^\s"\\]+$/.test(v)) ? true : _('http(s) address'); };
+		o.depends(tg);
+		onlyOn(s);
+
+		s = m.section(form.NamedSection, 'notify', 'notify', 'ntfy',
+			_('Push notifications without an account: install the ntfy app (Android, iOS) or open ntfy.sh in a browser and subscribe to the topic below.'));
+		o = s.option(form.Flag, 'ntfy', _('Send to ntfy'));
+		o = s.option(form.Value, 'ntfy_topic', _('Topic'),
+			_('On ntfy.sh anyone who knows the name can read the topic, so keep the long random one.'));
+		// a new topic: a name nobody guesses (shown and saved only while ntfy is on)
+		o.default = 'detour-' + Array.from({ length: 16 }, function() { return 'abcdefghijkmnpqrstuvwxyz23456789'.charAt(Math.floor(Math.random() * 32)); }).join('');
+		o.validate = function(section_id, v) { return /^[-_A-Za-z0-9]{1,64}$/.test(v) ? true : _('Latin letters, digits, - and _, up to 64'); };
+		o.depends(nf);
+		o = s.option(form.Value, 'ntfy_url', _('ntfy server'), _('Your own server, if you run one.'));
+		o.placeholder = 'https://ntfy.sh';
+		o.optional = true;
+		o.validate = function(section_id, v) { return (!v || /^https?:\/\/[^\s"\\]+$/.test(v)) ? true : _('http(s) address'); };
+		o.depends(nf);
+		o = s.option(form.Value, 'ntfy_token', _('Access token'), _('Only for a topic with access control: a token tk_… from the account on the server.'));
+		o.password = true;
+		o.optional = true;
+		o.validate = function(section_id, v) { return (!v || /^[!-~]+$/.test(v) && !/["\\]/.test(v)) ? true : _('Looks like tk_…'); };
+		o.depends(nf);
+		onlyOn(s);
 
 		s = m.section(form.NamedSection, 'main', 'main', _('Detour logs'),
 			_('The verbose level is only for diagnosing the system. It switches itself off after 24 hours.'));
@@ -227,6 +296,19 @@ return view.extend({
 			// the backup last: saving and restoring work at once with their own buttons, not with the page's Apply
 			node.appendChild(backupui.renderSave());
 			node.appendChild(backupui.renderRestore());
+			// the card of a channel goes away whole while notifications are off (LuCI hides only its rows, the title
+			// and the description would stay): it follows the row of the channel's switch
+			const flags = [ 'telegram', 'ntfy' ].map(function(o) { return node.querySelector('[data-field="cbid.detour.notify.' + o + '"]'); }).filter(Boolean);
+			const cardsUpd = function() {
+				flags.forEach(function(r) { const card = r.closest('.cbi-section'); if (card) card.style.display = r.classList.contains('hidden') ? 'none' : ''; });
+			};
+			new MutationObserver(cardsUpd).observe(node, { subtree: true, attributes: true, attributeFilter: [ 'class' ] });
+			cardsUpd();
+			self.groups(node, [
+				[ 'cbid.detour.main.probe_period', _('Exits and DNS') ],
+				[ 'cbid.detour.notify.enabled', _('Notifications') ],
+				[ 'cbid.detour.main._log', _('Maintenance') ]
+			]);
 			return node;
 		});
 	}

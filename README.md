@@ -59,7 +59,7 @@ Detour ships as regular OpenWrt packages (`apk`) plus a section in the LuCI web 
 
 **Other**
 - The router's own DNS: through a tunnel with an encrypted fallback (DoH/DoT/DoQ), or always encrypted.
-- Telegram notifications (9 event types) in English or Russian, queued while the API is unreachable.
+- Notifications through Telegram, ntfy (ntfy.sh or your own server) or both, 9 event types, in English or Russian, queued while the service is unreachable.
 - Other programs' traffic can be left out of every policy (`bypass_user`).
 - Encrypted settings backup with a restore preview and rollback.
 - LuCI login protection with two-factor authentication (`luci-plugin-2fa`).
@@ -163,7 +163,7 @@ On install and upgrade the package scripts set up cron jobs, reload the rules in
 | **Lists** | Large lists, ready-made categories and the catalogue. |
 | **Devices** | Home network devices, how much they downloaded and uploaded in the period chosen, where their internet goes, DNS log. |
 | **Exits** | Exits and subscriptions: check, speed, export, editing. Adding through one field: a subscription address, a link, a key, a config or a file; WARP registration. |
-| **Settings** | Check frequency, router DNS, Telegram, logs; last, the backup: saving and restoring Detour's settings. |
+| **Settings** | Check frequency, router DNS, notifications (Telegram, ntfy), logs; last, the backup: saving and restoring Detour's settings. |
 | **Components** | The packages Detour uses (sing-box, Xray, AmneziaWG, dnsproxy ...): install, update, remove - only these, never the rest of the firmware. Where a page needs one that is missing, it offers to install it. |
 
 Access is split into two ACL groups: `luci-app-detour` grants only viewing the state (Overview), `luci-app-detour-admin` grants the settings (including keys and tokens), the DNS log, backups and every action.
@@ -250,8 +250,12 @@ config subscription 'prov'
 
 config notify 'notify'
 	option enabled '1'
+	option telegram '1'           # on unless '0'; ntfy and Telegram can be on together
+	option ntfy '1'
 	option tg_token '…'
 	option tg_chat '123456'
+	# ntfy: option ntfy_topic 'detour-…' (a secret: anyone who knows it reads it on ntfy.sh);
+	#       option ntfy_url 'https://ntfy.example.org' (default https://ntfy.sh); option ntfy_token 'tk_…'
 	list event 'exit_down'        # exit_down exit_up switch all_down boot wan list_fail sub_fail sub_expire
 ```
 
@@ -422,7 +426,7 @@ Interface strings and the texts of the notifications are written in English insi
 python tools/i18n-ru.py packages/luci-app-detour
 ```
 
-The command generates `po/ru/detour.po` for LuCI and `packages/detour/root/usr/share/detour/i18n/ru.json` for the notifications, and fails if any string is left untranslated. The language of the notifications is set in **Settings → Telegram notifications** (by default, the language of LuCI).
+The command generates `po/ru/detour.po` for LuCI and `packages/detour/root/usr/share/detour/i18n/ru.json` for the notifications, and fails if any string is left untranslated. The language of the notifications is set in **Settings → Notifications** (by default, the language of LuCI).
 
 ## Testing
 
@@ -430,7 +434,7 @@ Acceptance tests are shell scripts in `tests/lab/` that run on a test OpenWrt ro
 
 ```sh
 python -m http.server 8765               # from the repository root: feed and tests for the test router
-python -I tests/stub/tg_stub.py 8766     # Telegram Bot API
+python -I tests/stub/tg_stub.py 8766     # Telegram Bot API and ntfy
 python -I tests/stub/warp_stub.py 8767   # WARP API
 python -I tests/stub/sub_stub.py 8768    # subscription provider
 ```

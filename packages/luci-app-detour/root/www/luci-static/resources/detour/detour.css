@@ -428,3 +428,23 @@ textarea.detour-code.detour-json {
 /* "Add an exit": what the imported exit is, in the dialog before it is added */
 .detour-info-row { display: flex; flex-wrap: wrap; gap: .25rem .75rem; margin: 0 0 .4rem; }
 .detour-info-row > .detour-muted { min-width: 8rem; }
+
+/* a page in parts (Settings): the heading of a part, above its cards - bigger than a card's title, outside the cards */
+.cbi-map > h3.detour-group {
+	font-size: 1.5rem;
+	font-weight: 600;
+	margin: 2rem 0 .75rem;
+	padding: 0;
+	border: 0;
+	background: none;
+}
+.cbi-map > h3.detour-group.first {
+	margin-top: .75rem;
+}
+/* a theme without a frame around a card (Bootstrap): a light one, so the cards under a heading read as cards */
+.cbi-map.detour-framed > .cbi-section {
+	border: 1px solid rgba(128, 128, 128, .3);
+	border-radius: 6px;
+	padding: .5rem 1rem .75rem;
+	margin-bottom: 1rem;
+}

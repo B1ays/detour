@@ -247,7 +247,8 @@ export function preview(o) {
 		backup: {
 			exits: labels(b, 'exit'), policies: labels(b, 'policy'), lists: labels(b, 'list'),
 			subscriptions: length(labels(b, 'subscription')),
-			notify: notify && (notify.tg_chat || notify.tg_token) ? 'Telegram' : null,
+			notify: !notify ? null : join(', ', filter([ notify.telegram != '0' && (notify.tg_chat || notify.tg_token) ? 'Telegram' : null,
+				notify.ntfy == '1' && notify.ntfy_topic ? 'ntfy' : null ], (x) => x)) || null,
 			devices: length(o.hosts), traffic_months: sort(files),
 			warp: length(fs.glob(o.dir + '/files/warp/*.json') ?? []),
 		},

@@ -1303,8 +1303,8 @@ msgstr "Скачать логи (.tar.gz)"
 msgid "Detour settings"
 msgstr "Настройки Detour"
 
-msgid "General settings"
-msgstr "Основное"
+msgid "Exit checks"
+msgstr "Проверка выходов"
 
 msgid "Check exits every (s)"
 msgstr "Проверять выходы каждые (с)"
@@ -1323,15 +1323,6 @@ msgstr "Неудачных проверок до переключения"
 
 msgid "How many checks in a row must fail before a policy moves to its next exit. 2 with checks every 2 s: about 4-6 s."
 msgstr "Сколько проверок подряд должно не пройти, чтобы политика перешла на следующий выход. 2 при проверке раз в 2 с — примерно 4–6 с."
-
-msgid "Packet mark bits"
-msgstr "Биты метки пакетов"
-
-msgid "Change only when another program uses the same bits: pbr (0x00ff0000) or mwan3 (0x3f00) - a message on the Overview says so. For example 0x0ffff000."
-msgstr "Меняйте, только если те же биты использует другая программа: pbr (0x00ff0000) или mwan3 (0x3f00) — об этом скажет сообщение на «Обзоре». Например, 0x0ffff000."
-
-msgid "0xffff shifted by whole bits: 0x0000ffff ... 0x0ffff000"
-msgstr "0xffff, сдвинутое на целое число битов: 0x0000ffff … 0x0ffff000"
 
 msgid "Router DNS"
 msgstr "DNS роутера"
@@ -1390,23 +1381,26 @@ msgstr "Шифрованные DNS-серверы"
 msgid "quic://, tls://, https:// or sdns:// addresses, asked in parallel."
 msgstr "Адреса quic://, tls://, https:// или sdns://, запрашиваются параллельно."
 
-msgid "Telegram notifications"
-msgstr "Уведомления в Telegram"
+msgid "Compatibility with other programs"
+msgstr "Совместимость с другими программами"
 
-msgid "Create a bot with @BotFather, paste its token, write /start to the bot and put your chat id here. Messages go through a working tunnel first, then directly; undelivered ones wait and are sent later."
-msgstr "Создайте бота у @BotFather, вставьте его токен, напишите боту /start и укажите здесь id чата. Сообщения идут сначала через рабочий туннель, потом напрямую; недоставленные ждут и отправляются позже."
+msgid "Packet mark bits"
+msgstr "Биты метки пакетов"
+
+msgid "Change only when another program uses the same bits: pbr (0x00ff0000) or mwan3 (0x3f00) - a message on the Overview says so. For example 0x0ffff000."
+msgstr "Меняйте, только если те же биты использует другая программа: pbr (0x00ff0000) или mwan3 (0x3f00) — об этом скажет сообщение на «Обзоре». Например, 0x0ffff000."
+
+msgid "0xffff shifted by whole bits: 0x0000ffff ... 0x0ffff000"
+msgstr "0xffff, сдвинутое на целое число битов: 0x0000ffff … 0x0ffff000"
+
+msgid "Messages"
+msgstr "Сообщения"
+
+msgid "Telegram and ntfy can be on together: each message goes to both. Messages go through a working tunnel first, then directly; undelivered ones wait and are sent later."
+msgstr "Telegram и ntfy можно включить вместе: каждое сообщение уйдёт в оба. Сообщения идут сначала через рабочий туннель, потом напрямую; недоставленные ждут и отправляются позже."
 
 msgid "Enabled"
 msgstr "Включено"
-
-msgid "Bot token"
-msgstr "Токен бота"
-
-msgid "Looks like 123456:ABC… from @BotFather"
-msgstr "Должен выглядеть как 123456:ABC… от @BotFather"
-
-msgid "Chat id"
-msgstr "Id чата"
 
 msgid "Notify about"
 msgstr "Сообщать о"
@@ -1450,6 +1444,36 @@ msgstr "Язык сообщений. «Автоматически» — язык
 msgid "automatically"
 msgstr "автоматически"
 
+msgid "Test message"
+msgstr "Проверочное сообщение"
+
+msgid "To every channel that is on, with the applied settings: apply the changes first."
+msgstr "Во все включённые каналы, с применёнными настройками: сначала примените изменения."
+
+msgid "Send"
+msgstr "Отправить"
+
+msgid "The test message is on its way: it arrives within a minute."
+msgstr "Проверочное сообщение отправлено: придёт в течение минуты."
+
+msgid "Notifications are off or not filled in on the router: apply the settings first."
+msgstr "Уведомления на роутере выключены или не заполнены: сначала примените настройки."
+
+msgid "Create a bot with @BotFather, paste its token, write /start to the bot and put your chat id below."
+msgstr "Создайте бота у @BotFather, вставьте его токен, напишите боту /start и укажите ниже id чата."
+
+msgid "Send to Telegram"
+msgstr "Отправлять в Telegram"
+
+msgid "Bot token"
+msgstr "Токен бота"
+
+msgid "Looks like 123456:ABC… from @BotFather"
+msgstr "Должен выглядеть как 123456:ABC… от @BotFather"
+
+msgid "Chat id"
+msgstr "Id чата"
+
 msgid "Own Bot API address"
 msgstr "Свой адрес Bot API"
 
@@ -1459,6 +1483,36 @@ msgstr "Только если api.telegram.org у вас заблокирова�
 msgid "http(s) address"
 msgstr "адрес http(s)"
 
+msgid "Push notifications without an account: install the ntfy app (Android, iOS) or open ntfy.sh in a browser and subscribe to the topic below."
+msgstr "Push-уведомления без учётной записи: установите приложение ntfy (Android, iOS) или откройте ntfy.sh в браузере и подпишитесь на тему ниже."
+
+msgid "Send to ntfy"
+msgstr "Отправлять в ntfy"
+
+msgid "Topic"
+msgstr "Тема"
+
+msgid "On ntfy.sh anyone who knows the name can read the topic, so keep the long random one."
+msgstr "На ntfy.sh тему может читать любой, кто знает её имя, поэтому оставьте длинное случайное."
+
+msgid "Latin letters, digits, - and _, up to 64"
+msgstr "Латинские буквы, цифры, - и _, не длиннее 64"
+
+msgid "ntfy server"
+msgstr "Сервер ntfy"
+
+msgid "Your own server, if you run one."
+msgstr "Свой сервер, если он у вас есть."
+
+msgid "Access token"
+msgstr "Токен доступа"
+
+msgid "Only for a topic with access control: a token tk_… from the account on the server."
+msgstr "Только для темы с ограниченным доступом: токен tk_… из учётной записи на сервере."
+
+msgid "Looks like tk_…"
+msgstr "Должен выглядеть как tk_…"
+
 msgid "Detour logs"
 msgstr "Логи Detour"
 
@@ -1467,6 +1521,15 @@ msgstr "Подробный уровень нужен только для диа�
 
 msgid "Detour log level"
 msgstr "Уровень"
+
+msgid "Exits and DNS"
+msgstr "Выходы и DNS"
+
+msgid "Notifications"
+msgstr "Уведомления"
+
+msgid "Maintenance"
+msgstr "Обслуживание"
 
 msgid "the scheme «%s» is not supported"
 msgstr "схема «%s» не поддерживается"
@@ -1773,6 +1836,9 @@ msgid_plural "%d device names"
 msgstr[0] "%d имя устройства"
 msgstr[1] "%d имени устройств"
 msgstr[2] "%d имён устройств"
+
+msgid "notifications (%s)"
+msgstr "уведомления (%s)"
 
 msgid "%d WARP registration"
 msgid_plural "%d WARP registrations"
