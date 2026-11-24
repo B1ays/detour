@@ -6,7 +6,7 @@ import { cursor } from 'uci';
 import * as fs from 'fs';
 import * as dnsprov from 'detour.dnsprov';
 
-export const VERSION = '0.1.0';
+export const VERSION = '0.5.0';   // the release workflow sets it from the tag
 export const RUN = '/tmp/detour';
 export const PERSIST = '/etc/detour';
 

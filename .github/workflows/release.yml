@@ -39,6 +39,8 @@ jobs:
           case "$v" in *-r[0-9]*) ;; *) v="$v-r1";; esac
           echo "$v" | grep -Eq '^[0-9]+(\.[0-9]+)*-r[0-9]+$' || { echo "::error::tag $GITHUB_REF_NAME is not v<x.y.z> or v<x.y.z>-r<n>"; exit 1; }
           sed -i "s/^version=.*/version=$v/" packages/detour/control packages/luci-app-detour/control
+          sed -i "s/^export const VERSION = .*/export const VERSION = '${v%-r*}';/" packages/detour/root/usr/share/ucode/detour/core.uc
+          grep -q "^export const VERSION = '${v%-r*}';" packages/detour/root/usr/share/ucode/detour/core.uc || { echo "::error::VERSION in core.uc not set"; exit 1; }
           echo "version=$v" >> "$GITHUB_OUTPUT"
 
       - name: Signing key
