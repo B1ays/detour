@@ -1381,6 +1381,54 @@ msgstr "Шифрованные DNS-серверы"
 msgid "quic://, tls://, https:// or sdns:// addresses, asked in parallel."
 msgstr "Адреса quic://, tls://, https:// или sdns://, запрашиваются параллельно."
 
+msgid "SOCKS5 proxy"
+msgstr "SOCKS5-прокси"
+
+msgid "A proxy on the router for apps and devices that can use one (a browser, Telegram, a torrent client). Its traffic goes by the policies like any device - by addresses, sites, lists and ports; rules by device (MAC, address) do not apply to it, its connections are the router's. Or all of it through one policy, with its exits and kill-switch. Only from the home networks."
+msgstr "Прокси на роутере для приложений и устройств, которые умеют с ним работать (браузер, Telegram, торрент-клиент). Его трафик идёт по политикам, как у любого устройства, — по адресам, сайтам, спискам и портам; правила по устройствам (MAC, адрес) к нему не применяются: его соединения — соединения роутера. Или весь трафик через одну политику, с её выходами и защитой от утечек. Доступен только из домашних сетей."
+
+msgid "Enabled"
+msgstr "Включено"
+
+msgid "Needs sing-box or Xray: install one on the Components page."
+msgstr "Нужен sing-box или Xray: установите один из них на странице «Компоненты»."
+
+msgid "Install sing-box or Xray first"
+msgstr "Сначала установите sing-box или Xray"
+
+msgid "Port"
+msgstr "Порт"
+
+msgid "Traffic"
+msgstr "Трафик"
+
+msgid "By the policies"
+msgstr "По политикам"
+
+msgid "All through the policy «%s»"
+msgstr "Весь через политику «%s»"
+
+msgid "Login"
+msgstr "Логин"
+
+msgid "With a login and a password the proxy asks for them; without, anyone in the home network can use it."
+msgstr "С логином и паролем прокси их спрашивает; без них им может пользоваться любое устройство домашней сети."
+
+msgid "Latin letters, digits and signs, no spaces"
+msgstr "Латинские буквы, цифры и знаки, без пробелов"
+
+msgid "Password"
+msgstr "Пароль"
+
+msgid "A login needs a password, a password a login"
+msgstr "Логину нужен пароль, паролю — логин"
+
+msgid "Address for apps"
+msgstr "Адрес для приложений"
+
+msgid "Shown once the settings are applied."
+msgstr "Появится после применения настроек."
+
 msgid "Compatibility with other programs"
 msgstr "Совместимость с другими программами"
 
@@ -1398,9 +1446,6 @@ msgstr "Сообщения"
 
 msgid "Telegram and ntfy can be on together: each message goes to both. Messages go through a working tunnel first, then directly; undelivered ones wait and are sent later."
 msgstr "Telegram и ntfy можно включить вместе: каждое сообщение уйдёт в оба. Сообщения идут сначала через рабочий туннель, потом напрямую; недоставленные ждут и отправляются позже."
-
-msgid "Enabled"
-msgstr "Включено"
 
 msgid "Notify about"
 msgstr "Сообщать о"
@@ -1522,8 +1567,8 @@ msgstr "Подробный уровень нужен только для диа�
 msgid "Detour log level"
 msgstr "Уровень"
 
-msgid "Exits and DNS"
-msgstr "Выходы и DNS"
+msgid "Routing"
+msgstr "Маршрутизация"
 
 msgid "Notifications"
 msgstr "Уведомления"
@@ -1761,9 +1806,6 @@ msgstr "Сохранить настройки"
 
 msgid "One file with everything of Detour: exits (with their keys), policies, lists, subscriptions, notifications, router DNS, devices' names and modes, the panel tunnel key and the traffic history. The router's own settings (network, Wi-Fi, passwords) are not in it - those are saved in System → Backup / Flash Firmware."
 msgstr "Один файл со всем, что есть в Detour: выходы (с ключами), политики, списки, подписки, уведомления, DNS роутера, имена и режимы устройств, ключ туннеля к панели и история трафика. Собственных настроек роутера (сеть, Wi-Fi, пароли) в нём нет — их сохраняет «Система → Резервное копирование»."
-
-msgid "Password"
-msgstr "Пароль"
 
 msgid "The file holds private keys, the Telegram token and the subscription addresses, so it is always encrypted. At least 8 characters."
 msgstr "В файле закрытые ключи, токен Telegram и адреса подписок, поэтому он всегда шифруется. Не короче 8 символов."

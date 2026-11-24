@@ -17,6 +17,7 @@ import * as exitui from 'detour.exitui';
 import * as exitadd from 'detour.exitadd';
 import * as listmem from 'detour.listmem';
 import * as logs from 'detour.logs';
+import * as socks from 'detour.socks';
 import * as fs from 'fs';
 
 const cmd = ARGV[0];
@@ -69,6 +70,13 @@ case 'engines': {
 	const r = engines.prepare();
 	for (let e in r.errors) warn('detour: ' + e + '\n');
 	for (let l in r.lines) print(l, '\n');
+	exit(0);
+}
+case 'socks': {
+	// the local SOCKS5 proxy for the init script: "<binary>\t<args>" (its config written, mode 600), nothing when off
+	const r = socks.prepare(core.load());
+	if (r?.error) { warn('detour: ' + r.error + '\n'); exit(0); }
+	if (r) print(r.bin, '\t', r.args, '\n');
 	exit(0);
 }
 case 'dom-forget': {

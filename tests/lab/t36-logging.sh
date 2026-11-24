@@ -14,7 +14,7 @@ TG=123456:LABTOKEN_not_a_real_token_t36xxxxxxxxxxxx
 cleanup() {
 	ubus call detour log_level '{"level":"normal"}' >/dev/null
 	uci -q get detour.lg1 >/dev/null && /usr/sbin/detour exit-remove lg1 >/dev/null 2>&1   # its engine, interface, zone, file
-	uci -q delete detour.notify; uci -q delete detour.lg1; uci -q delete detour.lg1_eng; uci -q delete network.lg1; uci commit
+	uci -q delete detour.notify; uci -q delete detour.socks; uci -q delete detour.lg1; uci -q delete detour.lg1_eng; uci -q delete network.lg1; uci commit
 	rm -f /etc/detour/engines/lg1.json
 	rm -rf $X /tmp/detour-logs.tar.gz /tmp/detour-backup.bin
 	ubus call detour reload >/dev/null
@@ -28,6 +28,7 @@ WGK=$(uci -q get network.wgx1.private_key)
 UUID=6f1c2a9e-36ab-4c1d-9e2f-0123456789ab   # put through a VLESS link below
 RPK=Zx3PqT7vB9wK2mN5cR8yL1hD4fG6jS0aE3uI7oV9t2Q   # its Reality key
 BPW='lab-backup pw-horse-t36'   # with a space: a quoted value is masked whole, not up to the space
+SPW='t36-socks-pw_7d1e'   # the SOCKS proxy's password (its section stays off)
 [ -n "$SS" ] && [ -n "$WGK" ] && ok "secrets to look for: ss password, WG key, a VLESS UUID and Reality key, TG token, backup password" || bad "secrets: ss '${SS:+set}' wg '${WGK:+set}'"
 
 echo "== normal: nothing in the verbose log"
@@ -50,6 +51,10 @@ set detour.notify.enabled=1
 set detour.notify.tg_token=$TG
 set detour.notify.tg_chat=4242
 set detour.notify.tg_api=http://10.0.2.2:8766
+set detour.socks=socks
+set detour.socks.enabled=0
+set detour.socks.username=t36user
+set detour.socks.password=$SPW
 commit detour
 U
 ubus call detour reload >/dev/null
@@ -89,7 +94,7 @@ ls $A/config | grep -q '^engine-' && ! ls $A/config | grep -qE 'engine-t(add|mp|
 echo "== no secret anywhere"
 # "what:value" - only "what" is ever printed
 for p in "Shadowsocks password:$SS" "WireGuard key:$WGK" "VLESS UUID:$UUID" "Reality key:$RPK" "Telegram token:$TG" \
-	"backup password:$BPW" "backup password after its space:pw-horse-t36" "token text:LABTOKEN" "2FA key:JBSWY3DPEHPK3PXP"; do
+	"backup password:$BPW" "backup password after its space:pw-horse-t36" "SOCKS password:$SPW" "token text:LABTOKEN" "2FA key:JBSWY3DPEHPK3PXP"; do
 	w=${p%%:*}; s=${p#*:}
 	[ -z "$s" ] && continue
 	h=$(grep -rlF -- "$s" $V $A 2>/dev/null | sed "s#$X/##" | tr '\n' ' ')

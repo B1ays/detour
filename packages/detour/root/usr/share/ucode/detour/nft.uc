@@ -4,7 +4,7 @@
 'use strict';
 
 import * as fs from 'fs';
-import { hex, run, log, M_SKIP, RUN, PRIVATE4, PRIVATE6, pol_mark as core_pol_mark } from 'detour.core';
+import { hex, run, log, M_SKIP, RUN, PRIVATE4, PRIVATE6, pol_mark as core_pol_mark, uid_of } from 'detour.core';
 
 const T = 'inet detour';
 
@@ -192,6 +192,23 @@ export function render(cfg, active, opts) {
 	add(sprintf('add rule %s output meta mark & %s != 0 return comment "underlay 0x10000000 + nfqws 0x40000000"', T, hex(M_SKIP)));
 	for (let u in opts.skip_uid ?? [])
 		add(sprintf('add rule %s output meta skuid %d return comment "always direct (DNS fallback, notifications, bypass_user)"', T, u));
+	// the local SOCKS5 proxy (socks.uc, user dtsocks): its connections are the router's own. Local and private
+	// destinations (dnsmasq, the home network) as they are; no IPv6 past the router (the policies and the
+	// kill-switch are IPv4). By the policies: on to classify as any traffic of the router. All through one policy:
+	// its mark and its exit at once (pol2exit), as a device of that policy - a "Directly" one: unmarked
+	const su = cfg.socks?.enabled ? uid_of('dtsocks') : null;
+	if (su != null) {
+		add(sprintf('add rule %s output meta skuid %d meta nfproto ipv6 ip6 daddr != @bypass6 counter reject comment "socks: no IPv6"', T, su));
+		add(sprintf('add rule %s output meta skuid %d meta nfproto ipv4 ip daddr @bypass4 return', T, su));
+		add(sprintf('add rule %s output meta skuid %d fib daddr type local return', T, su));
+		if (cfg.socks.pid && cfg.socks.direct)
+			add(sprintf('add rule %s output meta skuid %d return comment "socks: directly"', T, su));
+		else if (cfg.socks.pid) {
+			add(sprintf('add rule %s output meta skuid %d meta nfproto ipv4 meta mark set meta mark & %s | %s', T, su, hex(~K.pol & 0xffffffff), hex(pol_mark(cfg.socks.pid))));
+			add(sprintf('add rule %s output meta skuid %d meta mark & %s != 0 meta mark & %s vmap @pol2exit', T, su, hex(K.pol), hex(K.pol)));
+			add(sprintf('add rule %s output meta skuid %d return comment "socks: through %s"', T, su, cfg.socks.policy));
+		}
+	}
 	// sockets bound to an exit device (health probes, notifications via a tunnel) already chose their path
 	add(sprintf('add rule %s output oifname @exit_devs return comment "bound to an exit device"', T));
 	add(sprintf('add rule %s output meta mark & %s != 0 return', T, hex(K.both)));

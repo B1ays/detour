@@ -438,6 +438,25 @@ export function load(conf) {
 		if (!ok) { push(errors, sprintf('main: dns_policy "%s" is not a valid policy, DNS stays as is', main.dns_policy)); main.dns = 'off'; }
 	}
 
+	// the local SOCKS5 proxy (socks.uc): its port, an optional login, by the policies or all through one
+	const sk = c.get_all(name, 'socks') ?? {};
+	const socks = { enabled: bool(sk.enabled, false), port: int(sk.port ?? 1080), user: sk.username || null,
+		pass: sk.password || null, policy: sk.policy || null, pid: null, direct: false };
+	if (socks.enabled) {
+		// 1024..65535 (the user cannot bind lower), not Detour's own: the DNS fallback, the engines' API and check ports
+		const p = socks.port;
+		if (!(p >= 1024 && p <= 65535) || p == main.dns_fallback_port || (p >= 19100 && p < 20100)) {
+			push(errors, sprintf('socks: port "%s" cannot be used (1024..65535, not %d or 19100..20099)', sk.port, main.dns_fallback_port));
+			socks.enabled = false;
+		}
+		if (!!socks.user != !!socks.pass) { push(errors, 'socks: a login needs a password, a password a login'); socks.enabled = false; }
+		if (socks.policy) {
+			const pp = filter(policies, (x) => x.name == socks.policy && x.enabled && !x.block)[0];
+			if (!pp) { push(errors, sprintf('socks: policy "%s" is not a VPN or direct policy that is on', socks.policy)); socks.enabled = false; }
+			else { socks.pid = pp.id; socks.direct = !!pp.direct; }
+		}
+	}
+
 	if (main.force_dns == null) {
 		main.force_dns = false;
 		for (let p in policies) if (p.enabled && length(p.domains)) main.force_dns = true;
@@ -453,8 +472,9 @@ export function load(conf) {
 	}
 	else main.ipv6_block = bool(main.ipv6_block, false);
 
-	return { main, exits, policies, errors, by_name };
+	return { main, exits, policies, errors, by_name, socks };
 };
+
 
 export function exit_by_id(cfg, id) {
 	for (let e in cfg.exits) if (e.id == id) return e;

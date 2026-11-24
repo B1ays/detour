@@ -59,6 +59,7 @@ Detour ships as regular OpenWrt packages (`apk`) plus a section in the LuCI web 
 
 **Other**
 - The router's own DNS: through a tunnel with an encrypted fallback (DoH/DoT/DoQ), or always encrypted.
+- A SOCKS5 proxy on the router for apps that take one (sing-box or Xray): its traffic by the policies or all through one policy, with its failover and kill-switch; only on the home networks, an optional login.
 - Notifications through Telegram, ntfy (ntfy.sh or your own server) or both, 9 event types, in English or Russian, queued while the service is unreachable.
 - Other programs' traffic can be left out of every policy (`bypass_user`).
 - Encrypted settings backup with a restore preview and rollback.
@@ -163,7 +164,7 @@ On install and upgrade the package scripts set up cron jobs, reload the rules in
 | **Lists** | Large lists, ready-made categories and the catalogue. |
 | **Devices** | Home network devices, how much they downloaded and uploaded in the period chosen, where their internet goes, DNS log. |
 | **Exits** | Exits and subscriptions: check, speed, export, editing. Adding through one field: a subscription address, a link, a key, a config or a file; WARP registration. |
-| **Settings** | Check frequency, router DNS, notifications (Telegram, ntfy), logs; last, the backup: saving and restoring Detour's settings. |
+| **Settings** | Check frequency, router DNS, the SOCKS5 proxy, notifications (Telegram, ntfy), logs; last, the backup: saving and restoring Detour's settings. |
 | **Components** | The packages Detour uses (sing-box, Xray, AmneziaWG, dnsproxy ...): install, update, remove - only these, never the rest of the firmware. Where a page needs one that is missing, it offers to install it. |
 
 Access is split into two ACL groups: `luci-app-detour` grants only viewing the state (Overview), `luci-app-detour-admin` grants the settings (including keys and tokens), the DNS log, backups and every action.
@@ -247,6 +248,13 @@ config subscription 'prov'
 	option interval '12'          # hours; default: as the provider advises, else 24
 	option via 'pl'               # optional
 	option engine 'xray'          # singbox (default) | xray: what runs the servers
+
+config socks 'socks'            # the SOCKS5 proxy: on the IPv4 addresses of lan_dev, as user dtsocks
+	option enabled '1'
+	option port '1080'            # 1024..65535
+	option username 'me'          # optional, with password
+	option password '…'           # a secret: in a config file of mode 600, never on a command line
+	option policy 'vpn'           # optional: all its traffic through this policy; without - by the policies
 
 config notify 'notify'
 	option enabled '1'

@@ -194,6 +194,46 @@ return view.extend({
 		o.retain = true;
 		both(o, { dns_provider: '' });
 
+		// the local SOCKS5 proxy (socks.uc): on the router, for apps and devices that take a proxy
+		if (!uci.get('detour', 'socks')) uci.add('detour', 'socks', 'socks');
+		const sk = (data.status || {}).socks || {};
+		s = m.section(form.NamedSection, 'socks', 'socks', _('SOCKS5 proxy'),
+			_('A proxy on the router for apps and devices that can use one (a browser, Telegram, a torrent client). Its traffic goes by the policies like any device - by addresses, sites, lists and ports; rules by device (MAC, address) do not apply to it, its connections are the router\'s. Or all of it through one policy, with its exits and kill-switch. Only from the home networks.'));
+		o = s.option(form.Flag, 'enabled', _('Enabled'));
+		if (!sk.engine) o.description = _('Needs sing-box or Xray: install one on the Components page.');
+		o.validate = function(section_id, v) { return (v != '1' || sk.engine || sk.engine === undefined) ? true : _('Install sing-box or Xray first'); };
+		o = s.option(form.Value, 'port', _('Port'));
+		o.datatype = 'range(1024,65535)';
+		o.placeholder = '1080';
+		o.depends('enabled', '1');
+		o = s.option(form.ListValue, 'policy', _('Traffic'));
+		o.value('', _('By the policies'));
+		uci.sections('detour', 'policy').forEach(function(p) {
+			if (p.enabled == '0' || p.action == 'block') return;
+			o.value(p['.name'], _('All through the policy «%s»').format(p.label || p['.name']));
+		});
+		o.depends('enabled', '1');
+		o = s.option(form.Value, 'username', _('Login'), _('With a login and a password the proxy asks for them; without, anyone in the home network can use it.'));
+		o.optional = true;
+		o.validate = function(section_id, v) { return (!v || /^[!-~]{1,64}$/.test(v)) ? true : _('Latin letters, digits and signs, no spaces'); };
+		o.depends('enabled', '1');
+		o = s.option(form.Value, 'password', _('Password'));
+		o.password = true;
+		o.optional = true;
+		o.validate = function(section_id, v) {
+			const u = this.section.formvalue(section_id, 'username');
+			if (!!u != !!v) return _('A login needs a password, a password a login');
+			return (!v || /^[!-~]{1,128}$/.test(v)) ? true : _('Latin letters, digits and signs, no spaces');
+		};
+		o.depends('enabled', '1');
+		o = s.option(form.DummyValue, '_addr', _('Address for apps'));
+		o.depends('enabled', '1');
+		o.renderWidget = function() {
+			if (!sk.enabled || !(sk.addrs || []).length) return E('span', { 'class': 'detour-muted' }, _('Shown once the settings are applied.'));
+			return E('div', {}, sk.addrs.map(function(a) { return E('div', {}, E('code', {}, 'socks5://' + a + ':' + sk.port)); }));
+		};
+		s.children.forEach(function(c) { c.retain = true; });
+
 		s = m.section(form.NamedSection, 'main', 'main', _('Compatibility with other programs'));
 		// the two fwmark bytes (policy, exit): only when another program uses the same bits (pbr, mwan3)
 		o = s.option(form.Value, 'fw_mask', _('Packet mark bits'),
@@ -305,7 +345,7 @@ return view.extend({
 			new MutationObserver(cardsUpd).observe(node, { subtree: true, attributes: true, attributeFilter: [ 'class' ] });
 			cardsUpd();
 			self.groups(node, [
-				[ 'cbid.detour.main.probe_period', _('Exits and DNS') ],
+				[ 'cbid.detour.main.probe_period', _('Routing') ],
 				[ 'cbid.detour.notify.enabled', _('Notifications') ],
 				[ 'cbid.detour.main._log', _('Maintenance') ]
 			]);
