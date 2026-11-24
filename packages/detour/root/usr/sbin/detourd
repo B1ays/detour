@@ -105,7 +105,7 @@ function tell(ev, key, text) {
 }
 
 function healthy(e) {
-	if (!e.enabled) return false;
+	if (!e.enabled || e.idle) return false;
 	const h = health[e.name];
 	if (!net.dev_up(e.device)) return false;
 	if (!e.probe) return true;               // no probe configured: device state only
@@ -121,7 +121,7 @@ function choose(p) {
 
 function ready() {
 	// start-up grace: decide only after every probed exit reported once (no flapping at boot)
-	for (let e in cfg.exits) if (e.enabled && e.probe && !health[e.name]?.seen) return false;
+	for (let e in cfg.exits) if (e.enabled && !e.idle && e.probe && !health[e.name]?.seen) return false;
 	return true;
 }
 
@@ -196,7 +196,7 @@ function evaluate() {
 function probe(e) {
 	const cmd = net.probe_cmd(e, cfg.main.probe_timeout);
 	// one probe of an exit at a time: a slow answer must not be counted twice by the probes started after it
-	if (!cmd || !e.enabled || probing[e.name]) return;
+	if (!cmd || !e.enabled || e.idle || probing[e.name]) return;
 	probing[e.name] = true;
 	const t_start = clock(true);
 	const proc = uloop.process(cmd[0], slice(cmd, 1), {}, function(code) {
@@ -345,7 +345,7 @@ function status() {
 	const ex = [];
 	for (let e in cfg.exits) {
 		const h = health[e.name] ?? {};
-		push(ex, { name: e.name, id: e.id, device: e.device, enabled: e.enabled, up: net.dev_up(e.device),
+		push(ex, { name: e.name, id: e.id, device: e.device, enabled: e.enabled, idle: e.idle, warm: e.warm, up: net.dev_up(e.device),
 			healthy: healthy(e), probe: e.probe, fails: h.fails ?? 0, last_ok: h.last_ok, drops: nft.counter_drops(e.id),
 			colo: trim(fs.readfile(sprintf('%s/warp-%s.colo', core.RUN, e.name)) ?? '') || null,
 			rx: int(fs.readfile(sprintf('/sys/class/net/%s/statistics/rx_bytes', e.device)) ?? 0),
@@ -435,6 +435,7 @@ function exits_info() {
 	return { exits: map(exitui.info(), function(x) {
 		const h = st[x.name] ?? {};
 		x.healthy = h.healthy; x.up = h.up; x.last_ok = h.last_ok; x.colo = h.colo; x.drops = h.drops; x.id = h.id;
+		x.idle = !!h.idle; x.warm = h.warm ?? null;
 		return x;
 	}) };
 }
@@ -462,6 +463,33 @@ function exit_check(req) {
 		req.reply(ok ? { ok: true, ms: int((w[1] ?? 0) * 1000), ip: kv.ip, loc: kv.loc, colo: kv.colo, warp: kv.warp }
 			: { ok: false, http: w[0] ?? '000', error: (w[0] == '000' || !length(w[0] ?? '')) ? 'no answer through the exit' : 'unexpected answer ' + w[0] });
 	});
+}
+
+// An exit no policy uses (core.mark_idle) has no engine running. "Start for a check" in LuCI: its engine runs for
+// WAKE_S seconds (core.WARM), checked and measured like any exit, then stops again (warm_expire, on the tick). The
+// init script starts what engines.prepare says - the daemon's own instance stays as it is.
+const WAKE_S = 600;
+function engines_refresh() { uloop.process('/etc/init.d/detour', [ 'start' ], {}, function() {}); }
+function exit_wake(req) {
+	const e = filter(cfg.exits, (x) => x.name == req.args.name)[0];
+	if (!e) return { error: 'no exit ' + (req.args.name ?? '') };
+	if (!e.engine) return { error: 'not an exit on an engine' };
+	const w = core.warm_list();
+	w[e.name] = time() + WAKE_S;
+	core.write_json(core.WARM, w);
+	const was = e.idle;
+	core.mark_idle(cfg);
+	if (was) { ev(sprintf('exit %s started for a check (%d min)', e.name, WAKE_S / 60)); engines_refresh(); }
+	return { ok: true, until: w[e.name] };
+}
+function warm_expire() {
+	const w = core.warm_list();
+	let gone = false;
+	for (let e in cfg.exits) if (e.warm && !w[e.name]) gone = true;
+	if (!gone) return;
+	core.write_json(core.WARM, w);
+	core.mark_idle(cfg);
+	engines_refresh();
 }
 
 // a subscription's group (engines.api_conf): which server the automatic choice uses and the delays measured;
@@ -786,7 +814,7 @@ function alerts() {
 	for (let e in cfg.exits) {
 		const h = health[e.name];
 		if (!h?.down_at || h.told || time() - h.down_at < cfg.main.alert_hold) continue;
-		if (!e.enabled) { h.down_at = null; continue; }
+		if (!e.enabled || e.idle) { h.down_at = null; continue; }
 		// the message says why, when the router can tell (diag_exit, a few seconds); nothing to send - no check
 		const nc = notify.config();
 		if (h.diag || watch.quiet() || !nc.enabled || index(nc.events, 'exit_down') < 0) continue;
@@ -906,6 +934,7 @@ conn.publish('detour', logged({
 	sub_update:      { call: (req) => cli_job(req, [ 'sub-update', ...(length(req.args.name ?? '') ? [ req.args.name ] : []) ]), args: { name: '', ...S } },
 	exits_info:      { call: () => exits_info(), args: { ...S } },
 	exit_check:      { call: (req) => exit_check(req), args: { name: '', ...S } },
+	exit_wake:       { call: (req) => exit_wake(req), args: { name: '', ...S } },
 	sub_state:       { call: (req) => sub_state(req), args: { name: '', ...S } },
 	sub_check:       { call: (req) => sub_check(req), args: { name: '', index: 0, ...S } },
 	exit_remove:     { call: (req) => cli_job(req, [ 'exit-remove', req.args.name ], true), args: { name: '', ...S } },
@@ -1028,6 +1057,7 @@ tick = uloop.timer(500, function() {
 		if (e.enabled && net.dev_up(e.device)) net.ensure_route(e);
 	}
 	engines.devices_up();
+	warm_expire();
 	evaluate();
 	alerts();
 	try { watch.tick(cfg.exits, healthy, ready()); } catch (x) { core.log('watch: ' + x); }

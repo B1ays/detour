@@ -112,7 +112,7 @@ function check_boot(exits, healthy, ready) {
 	if (!boot_pending || boot_sent) return;
 	if (!ready && time() - t_start < 300) return;
 	boot_sent = true;
-	const on = filter(exits, (e) => e.enabled);
+	const on = filter(exits, (e) => e.enabled && !e.idle);   // an exit no policy uses is not started
 	const bad = map(filter(on, (e) => !healthy(e)), (e) => q(e.label ?? e.name));
 	let t = sprintf(_('The router rebooted, Detour works: %d of %d exits work'), length(on) - length(bad), length(on));
 	if (length(bad)) t += '. ' + sprintf(_('Did not come up: %s'), join(', ', bad));

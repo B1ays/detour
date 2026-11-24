@@ -70,6 +70,7 @@
 					"lists_update",
 					"sub_update",
 					"exit_check",
+					"exit_wake",
 					"sub_check",
 					"exit_remove",
 					"exit_pick",

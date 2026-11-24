@@ -199,7 +199,7 @@ return view.extend({
 			rows.push(E('tr', { 'class': 'tr' }, [
 				td(_('Exit'), self.lab(x.name)),
 				td(_('Device'), x.colo ? [ x.device, ' ', E('small', { 'title': _('Cloudflare point the WARP tunnel lands on') }, '(' + x.colo + ')') ] : x.device),
-				td(_('State'), !x.enabled ? _('switched off') : badge(x.healthy, _('working'), x.up ? _('not responding') : _('down'))),
+				td(_('State'), !x.enabled ? _('switched off') : x.idle ? _('not in use') : badge(x.healthy, _('working'), x.up ? _('not responding') : _('down'))),
 				td(_('Last good probe'), x.probe ? fmtTime(x.last_ok) : _('device state only')),
 				td(_('Blocked leaks'), String(x.drops || 0))
 			]));

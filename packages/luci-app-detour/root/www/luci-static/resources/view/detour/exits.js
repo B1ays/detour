@@ -37,6 +37,7 @@ const callSubSpeed = rpc.declare({ object: 'detour', method: 'sub_speed', params
 const callDiag = rpc.declare({ object: 'detour', method: 'exit_diag', params: [ 'name' ] });
 const callSetVia = rpc.declare({ object: 'detour', method: 'exit_set_via', params: [ 'name', 'via' ] });
 const callReload = rpc.declare({ object: 'detour', method: 'reload' });
+const callWake = rpc.declare({ object: 'detour', method: 'exit_wake', params: [ 'name' ] });
 
 // AmneziaWG masking parameters (amneziawg-tools 3.1 names, network UCI options awg_*), with what they do
 const AWG = [
@@ -56,8 +57,37 @@ function fmtTime(ts) { return ts ? new Date(ts * 1000).toLocaleString() : ''; }
 
 function stateBadge(x) {
 	if (!x.enabled) return E('span', { 'class': 'detour-badge off' }, _('switched off'));
+	if (x.idle) return E('span', { 'class': 'detour-badge off' }, _('not in use'));
 	if (x.healthy) return E('span', { 'class': 'detour-badge ok' }, _('working'));
 	return E('span', { 'class': 'detour-badge bad' }, x.up ? _('not responding') : _('down'));
+}
+
+// an exit on an engine that no policy uses is not started (core.mark_idle): what the card says, and "start for a
+// check" - its engine runs for 10 minutes (exit_wake), the page comes back once its device is up
+function idleLine(x) {
+	if (x.idle) return E('div', { 'class': 'detour-muted' }, _('Not started: no policy uses it. It starts by itself once a policy does.'));
+	if (x.warm) return E('div', { 'class': 'detour-muted' }, _('Started for a check until %s.').format(new Date(x.warm * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })));
+	return null;
+}
+function wakeButton(x) {
+	const b = E('button', { 'class': 'btn cbi-button-action', 'click': function() {
+		busy(b, true);
+		return callWake(x.name).then(function(r) {
+			if (!r || r.error) { ui.addNotification(null, E('p', (r && r.error) || _('No answer from the router')), 'danger'); return; }
+			// the engine's device comes up in a few seconds; at most 20 s of waiting
+			let n = 0;
+			const wait = function() {
+				return L.resolveDefault(callStatus(), {}).then(function(s) {
+					const e = ((s || {}).exits || []).filter(function(e) { return e.name == x.name; })[0];
+					if ((e && e.up) || ++n >= 13) return location.reload();
+					return new Promise(function(res) { window.setTimeout(res, 1500); }).then(wait);
+				});
+			};
+			return wait();
+		}).finally(function() { busy(b, false); });
+	} }, _('Start for 10 minutes'));
+	b.title = _('To check it or measure its speed before a policy uses it');
+	return b;
 }
 
 function kindText(x) {
@@ -135,7 +165,9 @@ return view.extend({
 		if (x.server) lines.push(E('div', {}, _('Server: %s').format(x.server + (x.port ? ':' + x.port : ''))));
 		if (x.via) lines.push(E('div', {}, _('Connects to its server through «%s»: if that exit stops, this one stops too.').format(x.via_label || x.via)));
 		if (x.warp) lines.push(E('div', {}, x.colo ? _('Cloudflare WARP, point %s').format(x.colo) : _('Cloudflare WARP')));
-		if (x.last_ok) lines.push(E('div', { 'class': 'detour-muted' }, _('Last successful automatic check: %s').format(fmtTime(x.last_ok))));
+		if (x.last_ok && !x.idle) lines.push(E('div', { 'class': 'detour-muted' }, _('Last successful automatic check: %s').format(fmtTime(x.last_ok))));
+		const il = idleLine(x);
+		if (il) lines.push(il);
 
 		const bCheck = E('button', { 'class': 'btn cbi-button-action', 'click': function() {
 			busy(bCheck, true);
@@ -162,7 +194,7 @@ return view.extend({
 				E('span', { 'class': 'detour-muted', 'title': _('Internal name: used in the configuration and the log') }, x.name) ]),
 			E('div', { 'class': 'detour-card-body' }, lines),
 			result,
-			E('div', { 'class': 'detour-actions detour-card-actions' }, [ bCheck, bSpeed, bEdit, bShare, bToggle, bRemove ])
+			E('div', { 'class': 'detour-actions detour-card-actions' }, (x.idle && x.enabled) ? [ wakeButton(x), bEdit, bShare, bToggle, bRemove ] : [ bCheck, bSpeed, bEdit, bShare, bToggle, bRemove ])
 		]);
 	},
 
@@ -389,6 +421,8 @@ return view.extend({
 			head.push(pkg.offer(/xray/.test(st.message || '') ? 'xray' : 'singbox', _('The engine chosen for this subscription is not installed - the previous servers are kept.')));
 		else if (st.ok === false) head.push(note(_('The last update failed - the previous servers are kept.'), 'warning'));
 		if (x.via) head.push(E('div', {}, _('Connects to its servers through «%s».').format(x.via_label || x.via)));
+		const il = idleLine(x);
+		if (il) head.push(il);
 		const nowLine = E('div', {});
 		head.push(nowLine);
 
@@ -406,7 +440,7 @@ return view.extend({
 				}).finally(function() { list.classList.remove('spinning'); });
 			} });
 			const label = E('label', { 'class': 'detour-server' }, [ r, ' ', E('span', {}, [ E('strong', {}, title), sub ? E('span', { 'class': 'detour-muted' }, ' ' + sub) : '' ]) ]);
-			if (i == null) return label;
+			if (i == null || x.idle) return label;   // not started: nothing to check a server through
 			const d = E('span', { 'class': 'detour-delay detour-muted' });
 			delays[i] = d;
 			const b = E('button', { 'class': 'btn', 'title': _('A request through this server only; the subscription does not switch'), 'click': function(ev) {
@@ -439,7 +473,7 @@ return view.extend({
 			list.appendChild(radio(s.key, s.name, protoText(s.proto) + (s.server ? ' · ' + s.server + (s.port ? ':' + s.port : '') : ''), i));
 		});
 		// which server the automatic choice uses now and the delays it measured (sing-box's own checks)
-		if (x.sub_auto && x.enabled) L.resolveDefault(callSubState(x.name), null).then(function(r) {
+		if (x.sub_auto && x.enabled && !x.idle) L.resolveDefault(callSubState(x.name), null).then(function(r) {
 			if (!r || r.error) return;
 			const s = (r.now != null) ? (x.servers || [])[r.now] : null;
 			if (s) nowLine.replaceChildren(E('span', { 'class': 'detour-now' }, _('Now: %s').format(s.name)),
@@ -481,7 +515,7 @@ return view.extend({
 			E('div', { 'class': 'detour-card-body' }, head),
 			E('details', { 'class': 'detour-details', 'open': x.pick ? '' : null }, [ E('summary', {}, _('Servers and the choice')), list ]),
 			result,
-			E('div', { 'class': 'detour-actions detour-card-actions' }, [ bUpdate, bCheck, bSpeed, bEdit, bRemove ])
+			E('div', { 'class': 'detour-actions detour-card-actions' }, (x.idle && x.enabled) ? [ bUpdate, wakeButton(x), bEdit, bRemove ] : [ bUpdate, bCheck, bSpeed, bEdit, bRemove ])
 		]);
 	},
 

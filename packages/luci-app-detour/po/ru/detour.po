@@ -181,6 +181,9 @@ msgstr "Пакет, похожий на другой протокол (напр�
 msgid "switched off"
 msgstr "выключено"
 
+msgid "not in use"
+msgstr "не используется"
+
 msgid "working"
 msgstr "работает"
 
@@ -189,6 +192,21 @@ msgstr "не отвечает"
 
 msgid "down"
 msgstr "не поднят"
+
+msgid "Not started: no policy uses it. It starts by itself once a policy does."
+msgstr "Не запущен: его не использует ни одна политика. Запустится сам, когда его добавят в политику."
+
+msgid "Started for a check until %s."
+msgstr "Запущен для проверки до %s."
+
+msgid "No answer from the router"
+msgstr "Роутер не ответил"
+
+msgid "Start for 10 minutes"
+msgstr "Запустить на 10 минут"
+
+msgid "To check it or measure its speed before a policy uses it"
+msgstr "Чтобы проверить его или измерить скорость, пока его не использует ни одна политика"
 
 msgid "proxy (sing-box)"
 msgstr "прокси (sing-box)"
@@ -252,9 +270,6 @@ msgstr "точка Cloudflare %s"
 
 msgid "No answer through this exit (%s)."
 msgstr "Через этот выход нет ответа (%s)."
-
-msgid "No answer from the router"
-msgstr "Роутер не ответил"
 
 msgid "Finding out why…"
 msgstr "Выясняю причину…"

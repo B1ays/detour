@@ -10,7 +10,7 @@
 
 import * as fs from 'fs';
 import { cursor } from 'uci';
-import { M_UNDERLAY, RUN, PERSIST, run, log } from 'detour.core';
+import { M_UNDERLAY, RUN, PERSIST, run, log, load as core_load, warm_list, write_json, WARM } from 'detour.core';
 import * as links from 'detour.links';
 import { ensure_zone } from 'detour.warp';
 
@@ -69,6 +69,10 @@ export function create_exit(name, f, via, label, dev, etype) {
 	c.set('network', name, 'device', dev);
 	ensure_zone(c, name);
 	c.commit('detour'); c.commit('network'); c.commit('firewall');
+	// a new exit runs for a while before a policy uses it (core.mark_idle): it is seen working, or not, at once
+	const w = warm_list();
+	w[name] = time() + 600;
+	write_json(WARM, w);
 	// the engine itself starts with the service's reload (procd instances of engines.prepare())
 	run('/etc/init.d/network reload; fw4 -q reload; /etc/init.d/detour reload');
 	return { exit_id: id, device: dev };
@@ -263,8 +267,11 @@ export function prepare() {
 	fs.mkdir(RUN);
 	fs.mkdir(DIR);
 	const lines = [], errors = [];
+	// only the engines of exits in use (core.mark_idle): a policy that is on, a chain, a check from LuCI
+	const live = {};
+	for (let x in core_load().exits) if (!x.idle) live[x.device] = true;
 	for (let e in list()) {
-		if (!e.enabled) continue;
+		if (!e.enabled || !live[e.device]) continue;
 		if (!e.installed) { push(errors, sprintf('engine %s: %s is not installed', e.name, BIN[e.type])); continue; }
 		// both engines make their device through /dev/net/tun: without kmod-tun (xray-core does not pull it in,
 		// sing-box does) the engine starts and the exit never comes up

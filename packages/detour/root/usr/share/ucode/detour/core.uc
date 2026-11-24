@@ -269,6 +269,40 @@ function split_addrs(list, errors, where) {
 }
 
 // Read and validate /etc/config/detour (or another config name for tests).
+// Exits that run on an engine (sing-box, Xray) and no policy that is on uses: their engine is not started - a
+// process of tens of MB for nothing. Still started: an exit a used one connects through (via, to any depth), and
+// one woken for a while from LuCI to be checked (WARM: { exit: until }). WireGuard exits are the kernel's and stay.
+// Sets e.engine (its engine section, or null), e.idle, e.warm (until, or null).
+export const WARM = RUN + '/warm.json';
+export function warm_list() {
+	let w = {};
+	try { w = json(fs.readfile(WARM) ?? '{}') ?? {}; } catch (e) { }
+	const out = {};
+	for (let n, t in w) if (int(t) > time()) out[n] = int(t);
+	return out;
+};
+export function mark_idle(cfg) {
+	const eng = {};
+	cursor().foreach('detour', 'engine', (s) => { eng[s.device ?? s['.name']] = { name: s['.name'], via: s.via }; });
+	const warm = warm_list();
+	const need = {};
+	for (let p in cfg.policies) if (p.enabled && !p.block && !p.direct) for (let n in p.exits) need[n] = true;
+	for (let n in keys(warm)) need[n] = true;
+	for (let grew = true; grew;) {
+		grew = false;
+		for (let e in cfg.exits) {
+			const v = need[e.name] ? eng[e.device]?.via : null;
+			if (v && !need[v]) { need[v] = true; grew = true; }
+		}
+	}
+	for (let e in cfg.exits) {
+		e.engine = eng[e.device]?.name ?? null;
+		e.idle = !!e.engine && !need[e.name];
+		e.warm = warm[e.name] ?? null;
+	}
+	return cfg;
+};
+
 // Returns { main, exits[], policies[], errors[], by_name }.
 // Invalid items are dropped and reported; the rest still applies. A policy left without a valid exit is
 // kept and blocks its traffic (exits: []).
@@ -472,7 +506,9 @@ export function load(conf) {
 	}
 	else main.ipv6_block = bool(main.ipv6_block, false);
 
-	return { main, exits, policies, errors, by_name, socks };
+	const cfg = { main, exits, policies, errors, by_name, socks };
+	mark_idle(cfg);
+	return cfg;
 };
 
 
