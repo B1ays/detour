@@ -129,10 +129,31 @@ case 'sub-update': {
 	exit((type(r) == 'object' && r.error) ? 1 : 0);
 }
 case 'warp-pick': {
-	// detour warp-pick <name> [--force]: check the colo through the tunnel, move away from DME
-	const r = warppick.pick(ARGV[1], ARGV[2] == '--force');
+	// detour warp-pick <name> [--force] [--scan] [use=IP:PORT] [drop=IP:PORT]: check the point through the tunnel,
+	// move to the pool's next address when it is wrong, keep the pool full (warppick.uc)
+	const o = { wait: 240 };   // by hand: wait for a run of the daemon
+	for (let a in slice(ARGV, 2)) {
+		if (a == '--force') o.force = true;
+		else if (a == '--now') o.wait = 0;
+		else if (a == '--scan') o.scan = true;
+		else if (index(a, 'use=') == 0) o.use = substr(a, 4);
+		else if (index(a, 'drop=') == 0) o.drop = substr(a, 5);
+	}
+	const r = warppick.tend(ARGV[1], o);
 	printf('%.J\n', r);
 	fs.writefile(sprintf('%s/warp-pick-%s.json', core.RUN, ARGV[1]), sprintf('%J', r));
+	exit(r.error ? 1 : 0);
+}
+case 'warp-proto': {
+	// detour warp-proto <name> wg|awg [quic|dns|stun]: WireGuard <-> AmneziaWG, the I1 imitation profile
+	const r = (ARGV[2] == 'wg' || ARGV[2] == 'awg') ? warp.set_proto(ARGV[1], ARGV[2] == 'awg', ARGV[3]) : { error: 'wg or awg' };
+	printf('%.J\n', r);
+	exit(r.error ? 1 : 0);
+}
+case 'warp-pool': {
+	// detour warp-pool <name>: the pool of a WARP exit (JSON)
+	const r = warppick.state(ARGV[1]);
+	printf('%.J\n', r);
 	exit(r.error ? 1 : 0);
 }
 case 'warp-unregister': {

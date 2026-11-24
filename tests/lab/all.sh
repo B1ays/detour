@@ -5,7 +5,7 @@
 #   lab tests/lab/all.sh 10 15 t25       only these (a number, "tN" or the full name), in the suite's order
 #   lab tests/lab/all.sh --from 20       from this test on
 #   lab tests/lab/all.sh --list          the names
-ALL="t0-compile t1-lifecycle t2-routing t3-dns t4-auth t9-notify t10-engines t11-links t12-warp t13-backup t14-lists t15-luci-actions t16-chain t17-warp-dme t18-subs t19-flowreset t21-ports t22-exits-ui t23-notify-subs t24-failclosed t25-exit-add t26-block-open-site t27-traffic t28-devices-dns t29-overview t30-engine-choice t31-lists-memory t32-direct-policy t33-review-stage1 t34-review-stage2 t35-packages t36-logging t37-awg-server t38-socks t39-idle-engines t1b-uninstall-full"
+ALL="t0-compile t1-lifecycle t2-routing t3-dns t4-auth t9-notify t10-engines t11-links t12-warp t13-backup t14-lists t15-luci-actions t16-chain t17-warp-dme t18-subs t19-flowreset t21-ports t22-exits-ui t23-notify-subs t24-failclosed t25-exit-add t26-block-open-site t27-traffic t28-devices-dns t29-overview t30-engine-choice t31-lists-memory t32-direct-policy t33-review-stage1 t34-review-stage2 t35-packages t36-logging t37-awg-server t38-socks t39-idle-engines t40-warp-pool t1b-uninstall-full"
 
 key() { k=${1%.sh}; k=${k#t}; echo "t${k%%-*}"; }   # "10", "t10", "t10-engines" -> "t10"
 FROM=; WANT=

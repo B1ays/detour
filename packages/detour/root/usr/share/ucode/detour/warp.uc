@@ -2,7 +2,7 @@
 // (netifd WireGuard/AmneziaWG interface + firewall zone + detour exit). Mirrors stock warp.sh:
 // same API version and client headers (the API refuses other clients), the server key must be
 // WARP's own, the token never appears on a command line (curl -K file).
-// Endpoint pool/scanner and moving away from DME (colo check via /cdn-cgi/trace) - not yet.
+// The point check, the endpoint pool and its scanner: warppick.uc / warppool.uc.
 'use strict';
 
 import * as fs from 'fs';
@@ -225,7 +225,47 @@ export function unregister(name) {
 	});
 	c.commit('detour'); c.commit('network'); c.commit('firewall');
 	fs.unlink(f);
+	fs.unlink(DIR + '/' + name + '.pool'); fs.unlink(sprintf('%s/warp-%s.pool.json', RUN, name));
 	run('/etc/init.d/network reload; fw4 -q reload');
 	log(sprintf('WARP %s removed (API deregistration: %s)', name, api_ok ? 'ok' : 'failed'));
 	return { name, deregistered: api_ok };
+};
+
+// WireGuard <-> AmneziaWG of a WARP exit (same key, same registration): the netifd proto and its peer section
+// type change; AmneziaWG gets the stock WARP masking (junk Jc 4 / 40-70, H1-H4 = 1-4) and an I1 imitation packet
+// made by warp-i1 (quic | dns | stun). An AmneziaWG exit given only a new I1 profile keeps its other values.
+export function set_proto(name, awg, mask) {
+	const c = cursor();
+	if (c.get('detour', name) != 'exit' || c.get('detour', name, 'warp') != '1') return { error: 'no WARP exit ' + name };
+	if (mask != null && index([ 'quic', 'dns', 'stun' ], mask) < 0) return { error: 'I1 profile: quic, dns or stun' };
+	if (awg && !fs.access('/usr/bin/awg')) return { error: 'AmneziaWG is not installed (kmod-amneziawg, amneziawg-tools)' };
+	const iface = c.get('detour', name, 'iface') ?? name;
+	const was = c.get('network', iface, 'proto');
+	if (was != 'wireguard' && was != 'amneziawg') return { error: 'no WireGuard interface ' + iface };
+	const want = awg ? 'amneziawg' : 'wireguard';
+	if (want != was) {
+		// the peer section moves to the other type with all its options
+		const peers = [];
+		c.foreach('network', was + '_' + iface, (s) => push(peers, s));
+		for (let p in peers) {
+			c.delete('network', p['.name']);
+			const n = c.add('network', want + '_' + iface);
+			for (let k, v in p) if (substr(k, 0, 1) != '.') c.set('network', n, k, v);
+		}
+		c.set('network', iface, 'proto', want);
+	}
+	if (awg) {
+		for (let k, v in { awg_jc: '4', awg_jmin: '40', awg_jmax: '70', awg_s1: '0', awg_s2: '0', awg_h1: '1', awg_h2: '2', awg_h3: '3', awg_h4: '4' })
+			if (want != was || c.get('network', iface, k) == null) c.set('network', iface, k, v);
+		if (want != was || mask != null) {
+			const i1 = trim(run('/usr/libexec/detour/warp-i1 ' + shq(mask ?? 'quic')).out);
+			if (!match(i1, /^(<(b 0x[0-9a-fA-F]+|r [0-9]+)>)+$/)) return { error: 'warp-i1 made no packet' };
+			c.set('network', iface, 'awg_i1', i1);
+		}
+	}
+	else for (let k in [ 'jc', 'jmin', 'jmax', 's1', 's2', 'h1', 'h2', 'h3', 'h4', 'i1', 'i2', 'i3', 'i4', 'i5' ]) c.delete('network', iface, 'awg_' + k);
+	c.commit('network');
+	run('/etc/init.d/network reload');
+	log(sprintf('WARP %s: %s%s', name, want, awg ? ', I1 ' + (mask ?? 'kept') : ''));
+	return { name, proto: want, changed: want != was };
 };

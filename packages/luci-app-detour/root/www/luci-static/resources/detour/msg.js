@@ -157,6 +157,13 @@ return baseclass.extend({
 				N_(+m[2], '%d exit', '%d exits').format(+m[2]) + ', ' + N_(+m[3], '%d policy', '%d policies').format(+m[3]);
 		if ((m = line.match(/^new under a policy: .* - their direct flows reset \((\d+)\)$/))) return _('New addresses, devices or ports under a policy: their open direct connections were reset');
 		if ((m = line.match(/^WARP (\S+) moved to (\S+) \(colo (\S+), was (\S+)\)$/))) return _('WARP %s moved to point %s (was %s)').format(L(m[1]), m[3], m[4]);
+		if ((m = line.match(/^WARP (\S+): pool scan, (\d+) tried, (\d+) added, (\d+) dropped, (\d+) in the pool$/)))
+			return _('WARP %s: the address pool was checked - %d tried, %d added, %d removed, %d in the pool').format(L(m[1]), +m[2], +m[3], +m[4], +m[5]);
+		if ((m = line.match(/^WARP (\S+): no address in the pool passes the filters$/))) return _('WARP %s: no address passes the filters of points and countries').format(L(m[1]));
+		if ((m = line.match(/^WARP (\S+): no endpoint outside the filters answered \((.*)\)$/)))
+			return _('WARP %s: no address with a suitable point answered - the working one stays (%s)').format(L(m[1]), m[2]);
+		if ((m = line.match(/^WARP (\S+): no address answered - WARP seems unreachable, the pool is kept$/))) return _('WARP %s: no address answered - WARP seems unreachable, the pool is kept').format(L(m[1]));
+		if ((m = line.match(/^WARP (\S+): no endpoint answered through the tunnel$/))) return _('WARP %s: no address answered through the tunnel').format(L(m[1]));
 		if ((m = line.match(/^WARP (\S+): (.*)$/))) return _('WARP %s: %s').format(L(m[1]), m[2]);
 		if ((m = line.match(/^LuCI: (\S+) -> (ok|error)$/))) {
 			const act = { 'lists-update': _('update lists'), 'sub-update': _('update a subscription'), 'engine-add': _('add an exit from a link'),

@@ -242,6 +242,6 @@ return baseclass.extend({
 			} }, _('Remove'));
 			body.push(row(_('Registered WARP exits'), sel), actions([ btn2 ]), box2);
 		}
-		return card(_('Cloudflare WARP'), _('Registers a new free WARP device at Cloudflare and adds it as an exit.'), body);
+		return card(_('New Cloudflare WARP exit'), _('Registers a new free WARP device at Cloudflare and adds it as an exit.'), body);
 	}
 });

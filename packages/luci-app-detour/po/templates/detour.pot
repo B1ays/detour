@@ -13,6 +13,10 @@ msgid_plural "%d addresses"
 msgstr[0] ""
 msgstr[1] ""
 
+#: root/www/luci-static/resources/detour/warpui.js:36
+msgid "%d days ago"
+msgstr ""
+
 #: root/www/luci-static/resources/detour/policyutil.js:91
 msgid "%d device"
 msgid_plural "%d devices"
@@ -43,7 +47,11 @@ msgid_plural "%d exits"
 msgstr[0] ""
 msgstr[1] ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:523
+#: root/www/luci-static/resources/detour/warpui.js:35
+msgid "%d h ago"
+msgstr ""
+
+#: root/www/luci-static/resources/view/detour/exits.js:529
 msgid "%d hours"
 msgstr ""
 
@@ -59,7 +67,11 @@ msgid_plural "%d lists did not update"
 msgstr[0] ""
 msgstr[1] ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:452 root/www/luci-static/resources/view/detour/exits.js:480 root/www/luci-static/resources/view/detour/exits.js:486
+#: root/www/luci-static/resources/detour/warpui.js:34
+msgid "%d min ago"
+msgstr ""
+
+#: root/www/luci-static/resources/view/detour/exits.js:458 root/www/luci-static/resources/view/detour/exits.js:486 root/www/luci-static/resources/view/detour/exits.js:492 root/www/luci-static/resources/detour/warpui.js:58 root/www/luci-static/resources/detour/warpui.js:120
 msgid "%d ms"
 msgstr ""
 
@@ -81,7 +93,7 @@ msgid_plural "%d ports"
 msgstr[0] ""
 msgstr[1] ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:414
+#: root/www/luci-static/resources/view/detour/exits.js:420
 msgid "%d server"
 msgid_plural "%d servers"
 msgstr[0] ""
@@ -107,7 +119,7 @@ msgstr ""
 msgid "%s - domains"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:147 root/www/luci-static/resources/view/detour/exits.js:464
+#: root/www/luci-static/resources/view/detour/exits.js:148 root/www/luci-static/resources/view/detour/exits.js:470
 msgid "%s Mbit/s"
 msgstr ""
 
@@ -131,8 +143,16 @@ msgstr ""
 msgid "%s: %s"
 msgstr ""
 
+#: root/www/luci-static/resources/detour/warpui.js:207
+msgid "%s: a number from %d to %d"
+msgstr ""
+
 #: root/www/luci-static/resources/detour/addexit.js:33
 msgid "%s: the %s package is not installed"
+msgstr ""
+
+#: root/www/luci-static/resources/detour/warpui.js:199
+msgid "%s: «%s» is not a code of %d letters"
 msgstr ""
 
 #: root/www/luci-static/resources/detour/msg.js:148
@@ -171,7 +191,7 @@ msgstr ""
 msgid "0xffff shifted by whole bits: 0x0000ffff ... 0x0ffff000"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:523
+#: root/www/luci-static/resources/view/detour/exits.js:529
 msgid "12 hours"
 msgstr ""
 
@@ -187,7 +207,7 @@ msgstr ""
 msgid "30 days"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:523
+#: root/www/luci-static/resources/view/detour/exits.js:529
 msgid "6 hours"
 msgstr ""
 
@@ -195,11 +215,11 @@ msgstr ""
 msgid "7 days"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:366
-msgid "A Cloudflare WARP address. Detour moves it away from a bad point (DME) by itself."
+#: root/www/luci-static/resources/view/detour/exits.js:369
+msgid "A Cloudflare WARP address. Detour changes it by itself: to the best address of the pool when the point is wrong or the tunnel stops."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:255
+#: root/www/luci-static/resources/view/detour/exits.js:258
 msgid "A QR code needs qrencode."
 msgstr ""
 
@@ -211,7 +231,7 @@ msgstr ""
 msgid "A blocking policy: what matches it gets no internet at all. Sites get «no such name», addresses and ports are refused at once."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:240
+#: root/www/luci-static/resources/view/detour/exits.js:243
 msgid "A config for the WireGuard or AmneziaWG app."
 msgstr ""
 
@@ -219,11 +239,11 @@ msgstr ""
 msgid "A direct policy: what matches it never goes through a tunnel, it goes directly through your provider. Put it above the policies it should make exceptions in."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:150
+#: root/www/luci-static/resources/view/detour/exits.js:151
 msgid "A download of %s MB from %s. The speed of one download, not of the whole line."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:458
+#: root/www/luci-static/resources/view/detour/exits.js:464
 msgid "A download through this server only; the subscription does not switch"
 msgstr ""
 
@@ -231,7 +251,7 @@ msgstr ""
 msgid "A download with fewer entries is treated as a failure, and the previous list stays in use."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:239
+#: root/www/luci-static/resources/view/detour/exits.js:242
 msgid "A link for v2rayN, v2rayNG, Hiddify, NekoBox, Streisand…"
 msgstr ""
 
@@ -239,7 +259,7 @@ msgstr ""
 msgid "A login needs a password, a password a login"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:51
+#: root/www/luci-static/resources/view/detour/exits.js:52
 msgid "A packet that looks like another protocol (for example QUIC) sent before the handshake. For WARP Detour makes it itself."
 msgstr ""
 
@@ -251,11 +271,11 @@ msgstr ""
 msgid "A proxy on the router for apps and devices that can use one (a browser, Telegram, a torrent client). Its traffic goes by the policies like any device - by addresses, sites, lists and ports; rules by device (MAC, address) do not apply to it, its connections are the router's. Or all of it through one policy, with its exits and kill-switch. Only from the home networks."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:446
+#: root/www/luci-static/resources/view/detour/exits.js:452
 msgid "A request through this server only; the subscription does not switch"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:645
+#: root/www/luci-static/resources/view/detour/exits.js:657
 msgid "A subscription is an address from your VPN provider that gives the current list of its servers. All of them form one exit: it picks a working server by itself, or you choose one."
 msgstr ""
 
@@ -263,11 +283,11 @@ msgstr ""
 msgid "Access token"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/msg.js:166
+#: root/www/luci-static/resources/detour/msg.js:173
 msgid "Action «%s» from the panel: %s"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:607 root/www/luci-static/resources/view/detour/policy.js:93 root/www/luci-static/resources/detour/addexit.js:147 root/www/luci-static/resources/detour/addexit.js:199 root/www/luci-static/resources/detour/listsui.js:215 root/www/luci-static/resources/detour/listsui.js:257
+#: root/www/luci-static/resources/view/detour/exits.js:613 root/www/luci-static/resources/view/detour/policy.js:93 root/www/luci-static/resources/detour/addexit.js:147 root/www/luci-static/resources/detour/addexit.js:199 root/www/luci-static/resources/detour/listsui.js:215 root/www/luci-static/resources/detour/listsui.js:257
 msgid "Add"
 msgstr ""
 
@@ -283,8 +303,20 @@ msgstr ""
 msgid "Add policy"
 msgstr ""
 
+#: root/www/luci-static/resources/detour/warpui.js:111 root/www/luci-static/resources/detour/warpui.js:118
+msgid "Address"
+msgstr ""
+
 #: root/www/luci-static/resources/view/detour/settings.js:229
 msgid "Address for apps"
+msgstr ""
+
+#: root/www/luci-static/resources/view/detour/exits.js:187 root/www/luci-static/resources/detour/warpui.js:188
+msgid "Address pool"
+msgstr ""
+
+#: root/www/luci-static/resources/detour/warpui.js:142
+msgid "Address pool of «%s»"
 msgstr ""
 
 #: root/www/luci-static/resources/detour/addexit.js:151
@@ -339,6 +371,10 @@ msgstr ""
 msgid "Amnezia vpn:// keys need ucode-mod-zlib."
 msgstr ""
 
+#: root/www/luci-static/resources/detour/warpui.js:169
+msgid "AmneziaWG (masking)"
+msgstr ""
+
 #: root/www/luci-static/resources/detour/pkg.js:67
 msgid "AmneziaWG exits and the masking of WARP (a kernel module and its tools)"
 msgstr ""
@@ -347,7 +383,11 @@ msgstr ""
 msgid "AmneziaWG masking"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:635
+#: root/www/luci-static/resources/detour/warpui.js:180
+msgid "AmneziaWG masks the tunnel when the provider blocks plain WireGuard. The key and the registration stay."
+msgstr ""
+
+#: root/www/luci-static/resources/view/detour/exits.js:642
 msgid "An exit is a way out to the internet other than your provider: a VPN server, WARP, a proxy. Policies send chosen traffic into exits. If an exit stops, its traffic is blocked or goes to the next exit of the policy - never directly."
 msgstr ""
 
@@ -363,11 +403,11 @@ msgstr ""
 msgid "Another package action is running: %s"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:334
+#: root/www/luci-static/resources/view/detour/exits.js:337
 msgid "Another server from a link"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:48
+#: root/www/luci-static/resources/view/detour/exits.js:49
 msgid "Answer padding (S2)"
 msgstr ""
 
@@ -395,7 +435,7 @@ msgstr ""
 msgid "Asked directly, not through the tunnel. Through the tunnel: used when its exits are down; encrypted: always. Its own plain servers resolve the names of its encrypted ones. Needs the dnsproxy package: without it, through the tunnel falls back to the provider's DNS while the exits are down."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:471
+#: root/www/luci-static/resources/view/detour/exits.js:477
 msgid "Automatically"
 msgstr ""
 
@@ -479,7 +519,7 @@ msgstr ""
 msgid "By the policies"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/devices.js:115 root/www/luci-static/resources/view/detour/exits.js:118 root/www/luci-static/resources/view/detour/exits.js:266 root/www/luci-static/resources/view/detour/policies.js:103 root/www/luci-static/resources/view/detour/policy.js:66 root/www/luci-static/resources/view/detour/policy.js:181 root/www/luci-static/resources/detour/addexit.js:210 root/www/luci-static/resources/detour/listsui.js:44 root/www/luci-static/resources/detour/listsui.js:130
+#: root/www/luci-static/resources/view/detour/devices.js:115 root/www/luci-static/resources/view/detour/exits.js:119 root/www/luci-static/resources/view/detour/exits.js:269 root/www/luci-static/resources/view/detour/policies.js:103 root/www/luci-static/resources/view/detour/policy.js:66 root/www/luci-static/resources/view/detour/policy.js:181 root/www/luci-static/resources/detour/addexit.js:210 root/www/luci-static/resources/detour/listsui.js:44 root/www/luci-static/resources/detour/listsui.js:130
 msgid "Cancel"
 msgstr ""
 
@@ -511,7 +551,7 @@ msgstr ""
 msgid "Chat id"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:182 root/www/luci-static/resources/view/detour/exits.js:455 root/www/luci-static/resources/view/detour/exits.js:507 root/www/luci-static/resources/detour/sitecheckui.js:151
+#: root/www/luci-static/resources/view/detour/exits.js:184 root/www/luci-static/resources/view/detour/exits.js:461 root/www/luci-static/resources/view/detour/exits.js:513 root/www/luci-static/resources/detour/sitecheckui.js:151
 msgid "Check"
 msgstr ""
 
@@ -523,8 +563,16 @@ msgstr ""
 msgid "Check a working idle exit every (s)"
 msgstr ""
 
+#: root/www/luci-static/resources/detour/warpui.js:191 root/www/luci-static/resources/detour/warpui.js:222
+msgid "Check every, min"
+msgstr ""
+
 #: root/www/luci-static/resources/view/detour/settings.js:118
 msgid "Check exits every (s)"
+msgstr ""
+
+#: root/www/luci-static/resources/detour/warpui.js:111 root/www/luci-static/resources/detour/warpui.js:122
+msgid "Checked"
 msgstr ""
 
 #: root/www/luci-static/resources/view/detour/policies.js:124
@@ -535,7 +583,11 @@ msgstr ""
 msgid "Checked later"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:174 root/www/luci-static/resources/view/detour/exits.js:501
+#: root/www/luci-static/resources/detour/warpui.js:133
+msgid "Checking and scanning now (up to a few minutes)…"
+msgstr ""
+
+#: root/www/luci-static/resources/view/detour/exits.js:176 root/www/luci-static/resources/view/detour/exits.js:507
 msgid "Checking…"
 msgstr ""
 
@@ -547,7 +599,7 @@ msgstr ""
 msgid "Choose the backup file…"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/devices.js:187 root/www/luci-static/resources/view/detour/exits.js:230 root/www/luci-static/resources/detour/listsui.js:279 root/www/luci-static/resources/detour/pkg.js:99
+#: root/www/luci-static/resources/view/detour/devices.js:187 root/www/luci-static/resources/view/detour/exits.js:233 root/www/luci-static/resources/detour/listsui.js:279 root/www/luci-static/resources/detour/pkg.js:99 root/www/luci-static/resources/detour/warpui.js:143
 msgid "Close"
 msgstr ""
 
@@ -555,15 +607,7 @@ msgstr ""
 msgid "Cloudflare - addresses (much of the internet)"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:167 root/www/luci-static/resources/detour/addexit.js:245
-msgid "Cloudflare WARP"
-msgstr ""
-
-#: root/www/luci-static/resources/view/detour/exits.js:167
-msgid "Cloudflare WARP, point %s"
-msgstr ""
-
-#: root/www/luci-static/resources/view/detour/exits.js:176
+#: root/www/luci-static/resources/view/detour/exits.js:178
 msgid "Cloudflare point %s"
 msgstr ""
 
@@ -573,6 +617,10 @@ msgstr ""
 
 #: root/www/luci-static/resources/view/detour/overview.js:101
 msgid "Cloudflare point: %s"
+msgstr ""
+
+#: root/www/luci-static/resources/detour/warpui.js:182
+msgid "Cloudflare points"
 msgstr ""
 
 #: root/www/luci-static/resources/view/detour/settings.js:73
@@ -599,11 +647,11 @@ msgstr ""
 msgid "Components installed: %s. The exits that waited for them start now."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:336 root/www/luci-static/resources/view/detour/overview.js:238
+#: root/www/luci-static/resources/view/detour/exits.js:339 root/www/luci-static/resources/view/detour/overview.js:238
 msgid "Configuration"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/msg.js:168
+#: root/www/luci-static/resources/detour/msg.js:175
 msgid "Configuration: %s"
 msgstr ""
 
@@ -611,15 +659,15 @@ msgstr ""
 msgid "Congestion control"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:222
+#: root/www/luci-static/resources/view/detour/exits.js:225
 msgid "Connect through «%s»"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:331 root/www/luci-static/resources/detour/addexit.js:208
+#: root/www/luci-static/resources/view/detour/exits.js:334 root/www/luci-static/resources/detour/addexit.js:208
 msgid "Connect to the server"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:544
+#: root/www/luci-static/resources/view/detour/exits.js:550
 msgid "Connect to the servers"
 msgstr ""
 
@@ -627,11 +675,11 @@ msgstr ""
 msgid "Connection:"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:166
+#: root/www/luci-static/resources/view/detour/exits.js:168
 msgid "Connects to its server through «%s»: if that exit stops, this one stops too."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:423
+#: root/www/luci-static/resources/view/detour/exits.js:429
 msgid "Connects to its servers through «%s»."
 msgstr ""
 
@@ -639,16 +687,20 @@ msgstr ""
 msgid "Contents"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:249
+#: root/www/luci-static/resources/view/detour/exits.js:252
 msgid "Copied"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:250
+#: root/www/luci-static/resources/view/detour/exits.js:253
 msgid "Copy"
 msgstr ""
 
 #: root/www/luci-static/resources/detour/trafficui.js:82
 msgid "Counted since %s."
+msgstr ""
+
+#: root/www/luci-static/resources/detour/warpui.js:186
+msgid "Countries of the points. Empty: any."
 msgstr ""
 
 #: root/www/luci-static/resources/view/detour/policies.js:95
@@ -663,6 +715,10 @@ msgstr ""
 msgid "Custom: the addresses below"
 msgstr ""
 
+#: root/www/luci-static/resources/detour/warpui.js:185
+msgid "DME by default. Empty: no point is excluded."
+msgstr ""
+
 #: root/www/luci-static/resources/view/detour/devices.js:217
 msgid "DNS log"
 msgstr ""
@@ -675,7 +731,7 @@ msgstr ""
 msgid "DNS mode"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/msg.js:188
+#: root/www/luci-static/resources/detour/msg.js:195
 msgid "DNS through the tunnel: the dnsproxy package is not installed - if the exits fail, the provider's DNS is used unencrypted"
 msgstr ""
 
@@ -711,7 +767,7 @@ msgstr ""
 msgid "Device"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:547
+#: root/www/luci-static/resources/view/detour/exits.js:553
 msgid "Device id (x-hwid)"
 msgstr ""
 
@@ -763,11 +819,11 @@ msgstr ""
 msgid "Done."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:251
+#: root/www/luci-static/resources/view/detour/exits.js:254
 msgid "Download %s"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:148
+#: root/www/luci-static/resources/view/detour/exits.js:149
 msgid "Download speed: through the exit %s, directly %s."
 msgstr ""
 
@@ -787,12 +843,16 @@ msgstr ""
 msgid "Downloading"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:185 root/www/luci-static/resources/view/detour/exits.js:509 root/www/luci-static/resources/detour/listsui.js:122
+#: root/www/luci-static/resources/view/detour/exits.js:188 root/www/luci-static/resources/view/detour/exits.js:515 root/www/luci-static/resources/detour/listsui.js:122
 msgid "Edit"
 msgstr ""
 
 #: root/www/luci-static/resources/view/detour/policy.js:92
 msgid "Edit as text"
+msgstr ""
+
+#: root/www/luci-static/resources/detour/warpui.js:184
+msgid "Empty: any point that is not excluded."
 msgstr ""
 
 #: root/www/luci-static/resources/view/detour/settings.js:202 root/www/luci-static/resources/view/detour/settings.js:259
@@ -831,7 +891,7 @@ msgstr ""
 msgid "Encryption"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:545 root/www/luci-static/resources/detour/addexit.js:207
+#: root/www/luci-static/resources/view/detour/exits.js:551 root/www/luci-static/resources/detour/addexit.js:207
 msgid "Engine"
 msgstr ""
 
@@ -857,6 +917,14 @@ msgstr ""
 
 #: root/www/luci-static/resources/view/detour/overview.js:90
 msgid "Everything goes directly through your provider: no policy, no exit, no blocking."
+msgstr ""
+
+#: root/www/luci-static/resources/detour/warpui.js:187 root/www/luci-static/resources/detour/warpui.js:214
+msgid "Exclude countries"
+msgstr ""
+
+#: root/www/luci-static/resources/detour/warpui.js:185 root/www/luci-static/resources/detour/warpui.js:213
+msgid "Exclude points"
 msgstr ""
 
 #: root/www/luci-static/resources/view/detour/overview.js:211 root/www/luci-static/resources/view/detour/overview.js:219 root/www/luci-static/resources/detour/trafficui.js:141 root/www/luci-static/resources/detour/trafficui.js:145
@@ -887,11 +955,11 @@ msgstr ""
 msgid "Exit checks"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:329 root/www/luci-static/resources/view/detour/exits.js:379 root/www/luci-static/resources/view/detour/overview.js:171
+#: root/www/luci-static/resources/view/detour/exits.js:332 root/www/luci-static/resources/view/detour/exits.js:384 root/www/luci-static/resources/view/detour/overview.js:171
 msgid "Exit «%s»"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:634 root/www/luci-static/resources/view/detour/exits.js:637 root/www/luci-static/resources/view/detour/overview.js:305 root/www/luci-static/resources/view/detour/overview.js:313 root/www/luci-static/resources/view/detour/policy.js:265 root/usr/share/luci/menu.d/luci-app-detour.json:50
+#: root/www/luci-static/resources/view/detour/exits.js:641 root/www/luci-static/resources/view/detour/exits.js:644 root/www/luci-static/resources/view/detour/overview.js:305 root/www/luci-static/resources/view/detour/overview.js:313 root/www/luci-static/resources/view/detour/policy.js:265 root/usr/share/luci/menu.d/luci-app-detour.json:50
 msgid "Exits"
 msgstr ""
 
@@ -907,7 +975,15 @@ msgstr ""
 msgid "Failed: see the log."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:178
+#: root/www/luci-static/resources/detour/warpui.js:190
+msgid "Fewer working addresses than this: the pool is refilled at the next check."
+msgstr ""
+
+#: root/www/luci-static/resources/detour/warpui.js:128
+msgid "Filters: %s."
+msgstr ""
+
+#: root/www/luci-static/resources/view/detour/exits.js:180
 msgid "Finding out why…"
 msgstr ""
 
@@ -915,8 +991,12 @@ msgstr ""
 msgid "First exit"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:335
+#: root/www/luci-static/resources/view/detour/exits.js:338
 msgid "For experts: the configuration as JSON"
+msgstr ""
+
+#: root/www/luci-static/resources/view/detour/exits.js:652
+msgid "Free Cloudflare tunnels. Each keeps a pool of checked addresses and moves to the next one by itself when its point is wrong (DME by default) or the tunnel stops."
 msgstr ""
 
 #: root/www/luci-static/resources/view/detour/packages.js:88
@@ -943,7 +1023,7 @@ msgstr ""
 msgid "Google - domains"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:47
+#: root/www/luci-static/resources/view/detour/exits.js:48
 msgid "Handshake padding (S1)"
 msgstr ""
 
@@ -955,16 +1035,32 @@ msgstr ""
 msgid "Higher: %s"
 msgstr ""
 
+#: root/www/luci-static/resources/detour/warpui.js:194
+msgid "How long one check with a scan may take (20-900)."
+msgstr ""
+
+#: root/www/luci-static/resources/detour/warpui.js:189
+msgid "How many checked addresses to keep for a quick move (1-20)."
+msgstr ""
+
 #: root/www/luci-static/resources/view/detour/settings.js:129
 msgid "How many checks in a row must fail before a policy moves to its next exit. 2 with checks every 2 s: about 4-6 s."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:44
+#: root/www/luci-static/resources/view/detour/exits.js:45
 msgid "How many random packets go before the handshake. 0 = no masking by junk."
 msgstr ""
 
 #: root/www/luci-static/resources/view/detour/settings.js:119
 msgid "How often an exit is checked with a real request while it fails, has just started, or sends without getting answers. Shorter: a failure is noticed sooner."
+msgstr ""
+
+#: root/www/luci-static/resources/detour/warpui.js:191
+msgid "How often the point of the tunnel is checked. A tunnel that stops is checked at once. 0: never."
+msgstr ""
+
+#: root/www/luci-static/resources/detour/warpui.js:192
+msgid "How often the pool is rechecked and refreshed with new addresses."
 msgstr ""
 
 #: root/www/luci-static/resources/detour/addexit.js:205
@@ -999,7 +1095,7 @@ msgstr ""
 msgid "If no exit works"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:51
+#: root/www/luci-static/resources/view/detour/exits.js:52 root/www/luci-static/resources/detour/warpui.js:174
 msgid "Imitation packet (I1)"
 msgstr ""
 
@@ -1043,7 +1139,7 @@ msgstr ""
 msgid "Installing the components: %s…"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:586 root/www/luci-static/resources/view/detour/policies.js:99 root/www/luci-static/resources/detour/addexit.js:206 root/www/luci-static/resources/detour/listsui.js:183
+#: root/www/luci-static/resources/view/detour/exits.js:592 root/www/luci-static/resources/view/detour/policies.js:99 root/www/luci-static/resources/detour/addexit.js:206 root/www/luci-static/resources/detour/listsui.js:183
 msgid "Internal name"
 msgstr ""
 
@@ -1055,11 +1151,11 @@ msgstr ""
 msgid "Internal name: a-z, 0-9, _, starts with a letter"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:588 root/www/luci-static/resources/view/detour/policies.js:74
+#: root/www/luci-static/resources/view/detour/exits.js:594 root/www/luci-static/resources/view/detour/policies.js:74
 msgid "Internal name: a-z, 0-9, _, starts with a letter, up to 11"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:194 root/www/luci-static/resources/view/detour/exits.js:514 root/www/luci-static/resources/view/detour/policies.js:116 root/www/luci-static/resources/view/detour/policy.js:151 root/www/luci-static/resources/detour/listsui.js:140
+#: root/www/luci-static/resources/view/detour/exits.js:197 root/www/luci-static/resources/view/detour/exits.js:520 root/www/luci-static/resources/view/detour/policies.js:116 root/www/luci-static/resources/view/detour/policy.js:151 root/www/luci-static/resources/detour/listsui.js:140
 msgid "Internal name: used in the configuration and the log"
 msgstr ""
 
@@ -1091,15 +1187,15 @@ msgstr ""
 msgid "Its lists (%s) are removed too. What went through it goes directly from now on."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:44
+#: root/www/luci-static/resources/view/detour/exits.js:45
 msgid "Junk packets (Jc)"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:45
+#: root/www/luci-static/resources/view/detour/exits.js:46
 msgid "Junk size from (Jmin)"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:46
+#: root/www/luci-static/resources/view/detour/exits.js:47
 msgid "Junk size to (Jmax)"
 msgstr ""
 
@@ -1111,19 +1207,29 @@ msgstr ""
 msgid "Language"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:46
+#: root/www/luci-static/resources/view/detour/exits.js:47
 msgid "Largest junk packet, bytes."
+msgstr ""
+
+#: root/www/luci-static/resources/detour/warpui.js:50
+msgid "Last check: no address answered - WARP seems unreachable, the pool is kept."
 msgstr ""
 
 #: root/www/luci-static/resources/view/detour/overview.js:214 root/www/luci-static/resources/view/detour/overview.js:222
 msgid "Last good probe"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:168
+#: root/www/luci-static/resources/detour/warpui.js:52
+msgid "Last scan: %d address tried"
+msgid_plural "Last scan: %d addresses tried"
+msgstr[0] ""
+msgstr[1] ""
+
+#: root/www/luci-static/resources/view/detour/exits.js:170
 msgid "Last successful automatic check: %s"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:586 root/www/luci-static/resources/view/detour/policies.js:99 root/www/luci-static/resources/detour/addexit.js:206
+#: root/www/luci-static/resources/view/detour/exits.js:592 root/www/luci-static/resources/view/detour/policies.js:99 root/www/luci-static/resources/detour/addexit.js:206
 msgid "Latin letters, digits and _, up to 11; used in the configuration."
 msgstr ""
 
@@ -1179,7 +1285,7 @@ msgstr ""
 msgid "Little space is left: %s. Installing or updating a component may fail, and a full flash can stop the router from saving its settings. Remove what is not used, or move the overlay to a USB drive (extroot)."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:228 root/www/luci-static/resources/view/detour/exits.js:304 root/www/luci-static/resources/view/detour/exits.js:306 root/www/luci-static/resources/view/detour/overview.js:264 root/www/luci-static/resources/detour/listsui.js:227
+#: root/www/luci-static/resources/view/detour/exits.js:231 root/www/luci-static/resources/view/detour/exits.js:307 root/www/luci-static/resources/view/detour/exits.js:309 root/www/luci-static/resources/view/detour/overview.js:264 root/www/luci-static/resources/detour/listsui.js:227 root/www/luci-static/resources/detour/warpui.js:84
 msgid "Loading…"
 msgstr ""
 
@@ -1203,6 +1309,10 @@ msgstr ""
 msgid "Looks like tk_…"
 msgstr ""
 
+#: root/www/luci-static/resources/detour/warpui.js:111 root/www/luci-static/resources/detour/warpui.js:121
+msgid "Loss"
+msgstr ""
+
 #: root/www/luci-static/resources/view/detour/policies.js:126 root/www/luci-static/resources/view/detour/policies.js:140
 msgid "Lower: %s"
 msgstr ""
@@ -1211,11 +1321,11 @@ msgstr ""
 msgid "Maintenance"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:372
+#: root/www/luci-static/resources/view/detour/exits.js:375
 msgid "Makes the tunnel look unlike WireGuard so the provider does not cut it. The values must match the server (your VPN provider gives them in the config)."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:371
+#: root/www/luci-static/resources/view/detour/exits.js:374
 msgid "Masking (AmneziaWG)"
 msgstr ""
 
@@ -1227,11 +1337,11 @@ msgstr ""
 msgid "Mbit/s"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:144
+#: root/www/luci-static/resources/view/detour/exits.js:145
 msgid "Measuring directly, to compare…"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:140
+#: root/www/luci-static/resources/view/detour/exits.js:141
 msgid "Measuring through the exit (up to 15 s)…"
 msgstr ""
 
@@ -1263,7 +1373,7 @@ msgstr ""
 msgid "Minimum entries: a number"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:330 root/www/luci-static/resources/view/detour/exits.js:365 root/www/luci-static/resources/view/detour/exits.js:541 root/www/luci-static/resources/view/detour/policies.js:98 root/www/luci-static/resources/view/detour/policy.js:251 root/www/luci-static/resources/detour/addexit.js:205 root/www/luci-static/resources/detour/addexit.js:227 root/www/luci-static/resources/detour/listsui.js:185
+#: root/www/luci-static/resources/view/detour/exits.js:333 root/www/luci-static/resources/view/detour/exits.js:368 root/www/luci-static/resources/view/detour/exits.js:547 root/www/luci-static/resources/view/detour/policies.js:98 root/www/luci-static/resources/view/detour/policy.js:251 root/www/luci-static/resources/detour/addexit.js:205 root/www/luci-static/resources/detour/addexit.js:227 root/www/luci-static/resources/detour/listsui.js:185
 msgid "Name"
 msgstr ""
 
@@ -1283,6 +1393,10 @@ msgstr ""
 msgid "Never through a tunnel: an exception for the policies below."
 msgstr ""
 
+#: root/www/luci-static/resources/detour/addexit.js:245
+msgid "New Cloudflare WARP exit"
+msgstr ""
+
 #: root/www/luci-static/resources/detour/msg.js:158
 msgid "New addresses, devices or ports under a policy: their open direct connections were reset"
 msgstr ""
@@ -1299,15 +1413,15 @@ msgstr ""
 msgid "New policy"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:586
+#: root/www/luci-static/resources/view/detour/exits.js:592
 msgid "New subscription"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:76 root/www/luci-static/resources/view/detour/exits.js:177 root/www/luci-static/resources/view/detour/exits.js:219 root/www/luci-static/resources/view/detour/exits.js:232 root/www/luci-static/resources/view/detour/exits.js:271 root/www/luci-static/resources/view/detour/exits.js:311 root/www/luci-static/resources/view/detour/exits.js:350 root/www/luci-static/resources/view/detour/exits.js:438 root/www/luci-static/resources/view/detour/exits.js:495 root/www/luci-static/resources/view/detour/exits.js:505 root/www/luci-static/resources/view/detour/exits.js:601 root/www/luci-static/resources/view/detour/settings.js:65 root/www/luci-static/resources/view/detour/settings.js:75 root/www/luci-static/resources/detour/addexit.js:69 root/www/luci-static/resources/detour/addexit.js:192 root/www/luci-static/resources/detour/backupui.js:121 root/www/luci-static/resources/detour/backupui.js:149 root/www/luci-static/resources/detour/backupui.js:222 root/www/luci-static/resources/detour/pkg.js:87 root/www/luci-static/resources/detour/sitecheckui.js:127 root/www/luci-static/resources/detour/sitecheckui.js:143
+#: root/www/luci-static/resources/view/detour/exits.js:77 root/www/luci-static/resources/view/detour/exits.js:179 root/www/luci-static/resources/view/detour/exits.js:222 root/www/luci-static/resources/view/detour/exits.js:235 root/www/luci-static/resources/view/detour/exits.js:274 root/www/luci-static/resources/view/detour/exits.js:314 root/www/luci-static/resources/view/detour/exits.js:353 root/www/luci-static/resources/view/detour/exits.js:444 root/www/luci-static/resources/view/detour/exits.js:501 root/www/luci-static/resources/view/detour/exits.js:511 root/www/luci-static/resources/view/detour/exits.js:607 root/www/luci-static/resources/view/detour/settings.js:65 root/www/luci-static/resources/view/detour/settings.js:75 root/www/luci-static/resources/detour/addexit.js:69 root/www/luci-static/resources/detour/addexit.js:192 root/www/luci-static/resources/detour/backupui.js:121 root/www/luci-static/resources/detour/backupui.js:149 root/www/luci-static/resources/detour/backupui.js:222 root/www/luci-static/resources/detour/pkg.js:87 root/www/luci-static/resources/detour/sitecheckui.js:127 root/www/luci-static/resources/detour/sitecheckui.js:143 root/www/luci-static/resources/detour/warpui.js:90 root/www/luci-static/resources/detour/warpui.js:98 root/www/luci-static/resources/detour/warpui.js:104 root/www/luci-static/resources/detour/warpui.js:234
 msgid "No answer from the router"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:177 root/www/luci-static/resources/view/detour/exits.js:505
+#: root/www/luci-static/resources/view/detour/exits.js:179 root/www/luci-static/resources/view/detour/exits.js:511
 msgid "No answer through this exit (%s)."
 msgstr ""
 
@@ -1335,8 +1449,12 @@ msgstr ""
 msgid "No exit: the traffic of this policy is blocked."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:640
+#: root/www/luci-static/resources/view/detour/exits.js:647
 msgid "No exits yet."
+msgstr ""
+
+#: root/www/luci-static/resources/detour/warpui.js:128
+msgid "No filters: any point."
 msgstr ""
 
 #: root/www/luci-static/resources/view/detour/policies.js:79 root/www/luci-static/resources/detour/msg.js:69 root/www/luci-static/resources/detour/msg.js:89
@@ -1347,6 +1465,10 @@ msgstr ""
 msgid "No lists in this policy yet."
 msgstr ""
 
+#: root/www/luci-static/resources/view/detour/exits.js:647
+msgid "No other exits yet."
+msgstr ""
+
 #: root/www/luci-static/resources/detour/pkg.js:30
 msgid "No package chosen"
 msgstr ""
@@ -1355,7 +1477,7 @@ msgstr ""
 msgid "No policies yet: everything goes directly."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:648
+#: root/www/luci-static/resources/view/detour/exits.js:660
 msgid "No subscriptions yet."
 msgstr ""
 
@@ -1411,7 +1533,7 @@ msgstr ""
 msgid "Not managed (provider DNS)"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:68
+#: root/www/luci-static/resources/view/detour/exits.js:69
 msgid "Not started: no policy uses it. It starts by itself once a policy does."
 msgstr ""
 
@@ -1459,8 +1581,12 @@ msgstr ""
 msgid "Now through %s (pinned)"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:479
+#: root/www/luci-static/resources/view/detour/exits.js:485
 msgid "Now: %s"
+msgstr ""
+
+#: root/www/luci-static/resources/detour/warpui.js:127
+msgid "Now: %s, point %s."
 msgstr ""
 
 #: root/www/luci-static/resources/detour/outform.js:65
@@ -1503,8 +1629,16 @@ msgstr ""
 msgid "Only if api.telegram.org is blocked for you and you run a Bot API proxy."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:547
+#: root/www/luci-static/resources/view/detour/exits.js:553
 msgid "Only if your provider counts devices."
+msgstr ""
+
+#: root/www/luci-static/resources/detour/warpui.js:186 root/www/luci-static/resources/detour/warpui.js:214
+msgid "Only these countries"
+msgstr ""
+
+#: root/www/luci-static/resources/detour/warpui.js:184 root/www/luci-static/resources/detour/warpui.js:213
+msgid "Only these points"
 msgstr ""
 
 #: root/www/luci-static/resources/detour/msg.js:20 root/www/luci-static/resources/detour/msg.js:41
@@ -1535,11 +1669,11 @@ msgstr ""
 msgid "Packet mark bits"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:368
+#: root/www/luci-static/resources/view/detour/exits.js:371
 msgid "Packet size inside the tunnel. Lower it (1280) if some sites hang while others work."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:49
+#: root/www/luci-static/resources/view/detour/exits.js:50
 msgid "Packet type numbers (H1–H4) replace the standard WireGuard ones. Must match the server; WARP uses 1, 2, 3, 4."
 msgstr ""
 
@@ -1551,7 +1685,7 @@ msgstr ""
 msgid "Password again"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:334
+#: root/www/luci-static/resources/view/detour/exits.js:337
 msgid "Paste a link to replace the server of this exit. Policies keep using the exit."
 msgstr ""
 
@@ -1569,6 +1703,18 @@ msgstr ""
 
 #: root/www/luci-static/resources/view/detour/policy.js:230
 msgid "Pin"
+msgstr ""
+
+#: root/www/luci-static/resources/detour/warpui.js:111 root/www/luci-static/resources/detour/warpui.js:120
+msgid "Ping"
+msgstr ""
+
+#: root/www/luci-static/resources/detour/warpui.js:111 root/www/luci-static/resources/detour/warpui.js:119
+msgid "Point"
+msgstr ""
+
+#: root/www/luci-static/resources/detour/warpui.js:69 root/www/luci-static/resources/detour/warpui.js:74
+msgid "Point %s"
 msgstr ""
 
 #: root/www/luci-static/resources/view/detour/policies.js:215 root/www/luci-static/resources/view/detour/policy.js:417 root/usr/share/luci/menu.d/luci-app-detour.json:37
@@ -1615,6 +1761,20 @@ msgstr ""
 msgid "Policy %s: the exit is chosen automatically again"
 msgstr ""
 
+#: root/www/luci-static/resources/detour/warpui.js:189 root/www/luci-static/resources/detour/warpui.js:220
+msgid "Pool size"
+msgstr ""
+
+#: root/www/luci-static/resources/detour/warpui.js:75
+msgid "Pool: %d address to move to"
+msgid_plural "Pool: %d addresses to move to"
+msgstr[0] ""
+msgstr[1] ""
+
+#: root/www/luci-static/resources/detour/warpui.js:75
+msgid "Pool: empty"
+msgstr ""
+
 #: root/www/luci-static/resources/detour/listsui.js:182
 msgid "Popular categories, kept up to date by their authors (runetfreedom, v2fly). Or give your own sources below."
 msgstr ""
@@ -1627,11 +1787,19 @@ msgstr ""
 msgid "Ports"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:546
+#: root/www/luci-static/resources/detour/warpui.js:193
+msgid "Ports to try"
+msgstr ""
+
+#: root/www/luci-static/resources/detour/warpui.js:225
+msgid "Ports to try: «%s» is not a port"
+msgstr ""
+
+#: root/www/luci-static/resources/view/detour/exits.js:552
 msgid "Present as app (User-Agent)"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/settings.js:177 root/www/luci-static/resources/detour/addexit.js:201
+#: root/www/luci-static/resources/view/detour/settings.js:177 root/www/luci-static/resources/detour/addexit.js:201 root/www/luci-static/resources/detour/warpui.js:179 root/www/luci-static/resources/detour/warpui.js:180
 msgid "Protocol"
 msgstr ""
 
@@ -1655,11 +1823,11 @@ msgstr ""
 msgid "QR codes of exits in «Share»"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:48
+#: root/www/luci-static/resources/view/detour/exits.js:49
 msgid "Random bytes added to the handshake answer. Must match the server."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:47
+#: root/www/luci-static/resources/view/detour/exits.js:48
 msgid "Random bytes added to the handshake start. Must match the server."
 msgstr ""
 
@@ -1683,6 +1851,10 @@ msgstr ""
 msgid "Received"
 msgstr ""
 
+#: root/www/luci-static/resources/detour/warpui.js:190 root/www/luci-static/resources/detour/warpui.js:221
+msgid "Refill below"
+msgstr ""
+
 #: root/www/luci-static/resources/detour/listsui.js:273
 msgid "Refresh the list of categories"
 msgstr ""
@@ -1699,7 +1871,7 @@ msgstr ""
 msgid "Registers a new free WARP device at Cloudflare and adds it as an exit."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:190 root/www/luci-static/resources/view/detour/exits.js:274 root/www/luci-static/resources/view/detour/exits.js:510 root/www/luci-static/resources/view/detour/packages.js:62 root/www/luci-static/resources/view/detour/policy.js:191 root/www/luci-static/resources/detour/addexit.js:242 root/www/luci-static/resources/detour/listsui.js:134 root/www/luci-static/resources/detour/listsui.js:135
+#: root/www/luci-static/resources/view/detour/exits.js:193 root/www/luci-static/resources/view/detour/exits.js:277 root/www/luci-static/resources/view/detour/exits.js:516 root/www/luci-static/resources/view/detour/packages.js:62 root/www/luci-static/resources/view/detour/policy.js:191 root/www/luci-static/resources/detour/addexit.js:242 root/www/luci-static/resources/detour/listsui.js:134 root/www/luci-static/resources/detour/listsui.js:135
 msgid "Remove"
 msgstr ""
 
@@ -1713,6 +1885,10 @@ msgstr ""
 
 #: root/www/luci-static/resources/detour/addexit.js:236
 msgid "Remove WARP exit %s and its registration?"
+msgstr ""
+
+#: root/www/luci-static/resources/detour/warpui.js:116
+msgid "Remove from the pool"
 msgstr ""
 
 #: root/www/luci-static/resources/view/detour/policy.js:233
@@ -1731,7 +1907,7 @@ msgstr ""
 msgid "Remove the policy «%s»?"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:262
+#: root/www/luci-static/resources/view/detour/exits.js:265
 msgid "Remove «%s»?"
 msgstr ""
 
@@ -1749,6 +1925,10 @@ msgstr ""
 
 #: root/www/luci-static/resources/detour/backupui.js:145
 msgid "Replace the current Detour settings with the backup? The tunnels restart; for a few seconds the internet may pause."
+msgstr ""
+
+#: root/www/luci-static/resources/detour/warpui.js:192 root/www/luci-static/resources/detour/warpui.js:223
+msgid "Rescan every, h"
 msgstr ""
 
 #: root/www/luci-static/resources/view/detour/settings.js:154
@@ -1803,7 +1983,7 @@ msgstr ""
 msgid "SSH"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/devices.js:121 root/www/luci-static/resources/view/detour/exits.js:116 root/www/luci-static/resources/detour/listsui.js:42 root/www/luci-static/resources/detour/listsui.js:215
+#: root/www/luci-static/resources/view/detour/devices.js:121 root/www/luci-static/resources/view/detour/exits.js:117 root/www/luci-static/resources/detour/listsui.js:42 root/www/luci-static/resources/detour/listsui.js:215
 msgid "Save"
 msgstr ""
 
@@ -1825,6 +2005,14 @@ msgstr ""
 
 #: root/www/luci-static/resources/view/detour/settings.js:81
 msgid "Saved: %s (%s)."
+msgstr ""
+
+#: root/www/luci-static/resources/detour/warpui.js:94
+msgid "Scan now"
+msgstr ""
+
+#: root/www/luci-static/resources/detour/warpui.js:194 root/www/luci-static/resources/detour/warpui.js:227
+msgid "Scan time, s"
 msgstr ""
 
 #: root/www/luci-static/resources/detour/outform.js:78
@@ -1855,23 +2043,23 @@ msgstr ""
 msgid "Sent"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:332 root/www/luci-static/resources/detour/addexit.js:202
+#: root/www/luci-static/resources/view/detour/exits.js:335 root/www/luci-static/resources/detour/addexit.js:202
 msgid "Server"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:366 root/www/luci-static/resources/detour/outform.js:50
+#: root/www/luci-static/resources/view/detour/exits.js:369 root/www/luci-static/resources/detour/outform.js:50
 msgid "Server address"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:367 root/www/luci-static/resources/detour/outform.js:50
+#: root/www/luci-static/resources/view/detour/exits.js:370 root/www/luci-static/resources/detour/outform.js:50
 msgid "Server port"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:165
+#: root/www/luci-static/resources/view/detour/exits.js:167
 msgid "Server: %s"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:516
+#: root/www/luci-static/resources/view/detour/exits.js:522
 msgid "Servers and the choice"
 msgstr ""
 
@@ -1887,15 +2075,15 @@ msgstr ""
 msgid "Settings imported"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:184
+#: root/www/luci-static/resources/view/detour/exits.js:186
 msgid "Share"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:229
+#: root/www/luci-static/resources/view/detour/exits.js:232
 msgid "Share «%s»"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:330 root/www/luci-static/resources/view/detour/exits.js:365 root/www/luci-static/resources/view/detour/exits.js:541
+#: root/www/luci-static/resources/view/detour/exits.js:333 root/www/luci-static/resources/view/detour/exits.js:368 root/www/luci-static/resources/view/detour/exits.js:547
 msgid "Shown in policies, on the overview and in notifications."
 msgstr ""
 
@@ -1919,11 +2107,11 @@ msgstr ""
 msgid "Sites, addresses, devices and lists are added on the policy's page: it opens right after."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:45
+#: root/www/luci-static/resources/view/detour/exits.js:46
 msgid "Smallest junk packet, bytes."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:546
+#: root/www/luci-static/resources/view/detour/exits.js:552
 msgid "Some providers give servers only to certain apps (Happ, v2rayNG…). Empty: v2rayNG."
 msgstr ""
 
@@ -1935,15 +2123,15 @@ msgstr ""
 msgid "Sources"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:153 root/www/luci-static/resources/view/detour/exits.js:468 root/www/luci-static/resources/view/detour/overview.js:129 root/www/luci-static/resources/view/detour/overview.js:261
+#: root/www/luci-static/resources/view/detour/exits.js:154 root/www/luci-static/resources/view/detour/exits.js:474 root/www/luci-static/resources/view/detour/overview.js:129 root/www/luci-static/resources/view/detour/overview.js:261
 msgid "Speed"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:88
+#: root/www/luci-static/resources/view/detour/exits.js:89
 msgid "Start for 10 minutes"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:69
+#: root/www/luci-static/resources/view/detour/exits.js:70
 msgid "Started for a check until %s."
 msgstr ""
 
@@ -1971,19 +2159,19 @@ msgstr ""
 msgid "Stopped. Names asked: %d, requests: %d."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:603
+#: root/www/luci-static/resources/view/detour/exits.js:609
 msgid "Subscription %s added: %d servers."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:542
+#: root/www/luci-static/resources/view/detour/exits.js:548
 msgid "Subscription address"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:567
+#: root/www/luci-static/resources/view/detour/exits.js:573
 msgid "Subscription «%s»"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:644
+#: root/www/luci-static/resources/view/detour/exits.js:656
 msgid "Subscriptions"
 msgstr ""
 
@@ -2051,7 +2239,7 @@ msgstr ""
 msgid "The checked devices get no internet at all."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:490
+#: root/www/luci-static/resources/view/detour/exits.js:496
 msgid "The chosen server is no longer in the subscription - the choice is automatic until you choose again."
 msgstr ""
 
@@ -2059,7 +2247,7 @@ msgstr ""
 msgid "The components were not installed (%s): install them in Components - %s."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:313
+#: root/www/luci-static/resources/view/detour/exits.js:316
 msgid "The configuration could not be read."
 msgstr ""
 
@@ -2079,23 +2267,23 @@ msgstr ""
 msgid "The devices of your home network. For each: whether it is online, how it is connected, how much it downloaded and uploaded in the period chosen, where its internet goes, and what it asks for."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:211
+#: root/www/luci-static/resources/view/detour/exits.js:214
 msgid "The engine cannot make its tunnel: the kernel module kmod-tun is missing (apk add kmod-tun)."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:421
+#: root/www/luci-static/resources/view/detour/exits.js:427
 msgid "The engine chosen for this subscription is not installed - the previous servers are kept."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:210
+#: root/www/luci-static/resources/view/detour/exits.js:213
 msgid "The engine did not start: its tunnel device is missing. See the router's log."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:240
+#: root/www/luci-static/resources/view/detour/exits.js:243
 msgid "The engine's settings (JSON)."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:264
+#: root/www/luci-static/resources/view/detour/exits.js:267
 msgid "The exit and everything it owns are removed (its tunnel settings, its configuration). Policies that use only this exit are left without an exit - their traffic is blocked until you choose another one."
 msgstr ""
 
@@ -2103,7 +2291,7 @@ msgstr ""
 msgid "The exit was not chosen: %s"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:336
+#: root/www/luci-static/resources/view/detour/exits.js:339
 msgid "The exit's settings as the engine sees them (%s). A wrong value stops the exit. Changed here, it wins over the fields above."
 msgstr ""
 
@@ -2119,11 +2307,11 @@ msgstr ""
 msgid "The file is too big for a config (over 256 KB)."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:422
+#: root/www/luci-static/resources/view/detour/exits.js:428
 msgid "The last update failed - the previous servers are kept."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:542
+#: root/www/luci-static/resources/view/detour/exits.js:548
 msgid "The link your VPN provider gives for apps. Kept secret: shown only here, never logged."
 msgstr ""
 
@@ -2183,6 +2371,10 @@ msgstr ""
 msgid "The policy is switched off"
 msgstr ""
 
+#: root/www/luci-static/resources/detour/warpui.js:130
+msgid "The pool is empty: no address that passes the filters was found yet."
+msgstr ""
+
 #: root/www/luci-static/resources/detour/outform.js:128
 msgid "The port must be 1-65535"
 msgstr ""
@@ -2215,27 +2407,27 @@ msgstr ""
 msgid "The server address is empty"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:206
+#: root/www/luci-static/resources/view/detour/exits.js:209
 msgid "The server answers neither directly nor through another exit: it is down, or blocked everywhere."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:208
+#: root/www/luci-static/resources/view/detour/exits.js:211
 msgid "The server answers: the connection itself fails - wrong keys or settings, or the provider filters this protocol."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:207
+#: root/www/luci-static/resources/view/detour/exits.js:210
 msgid "The server does not answer. There is no other working exit to tell whether the provider blocks it."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:212
+#: root/www/luci-static/resources/view/detour/exits.js:215
 msgid "The server works over UDP: the router cannot tell from here whether the provider blocks it."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:205
+#: root/www/luci-static/resources/view/detour/exits.js:208
 msgid "The server's address seems blocked by the provider: directly it is silent, through «%s» it answers."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:209
+#: root/www/luci-static/resources/view/detour/exits.js:212
 msgid "The server's name is not found in DNS."
 msgstr ""
 
@@ -2255,15 +2447,15 @@ msgstr ""
 msgid "The site name shown in the handshake. For Reality - the site it pretends to be."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:151
+#: root/www/luci-static/resources/view/detour/exits.js:152
 msgid "The speed of one download, not of the whole line."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:568 root/www/luci-static/resources/view/detour/exits.js:590
+#: root/www/luci-static/resources/view/detour/exits.js:574 root/www/luci-static/resources/view/detour/exits.js:596
 msgid "The subscription address must start with http:// or https://"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:263
+#: root/www/luci-static/resources/view/detour/exits.js:266
 msgid "The subscription, its servers and the exit are removed. Policies that use only this exit are left without an exit - their traffic is blocked until you choose another one."
 msgstr ""
 
@@ -2295,7 +2487,7 @@ msgstr ""
 msgid "There is no policy «%s»"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:326
+#: root/www/luci-static/resources/view/detour/exits.js:329
 msgid "This exit runs on Xray: its settings are edited as JSON below, or replaced by a link (it stays on Xray when Xray runs that link, else moves to sing-box)."
 msgstr ""
 
@@ -2303,7 +2495,7 @@ msgstr ""
 msgid "This exit runs only on Xray."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:242
+#: root/www/luci-static/resources/view/detour/exits.js:245
 msgid "This holds the keys of the exit: whoever has it can use your server. Share it only with your own devices."
 msgstr ""
 
@@ -2315,11 +2507,11 @@ msgstr ""
 msgid "This is not a site name, an address or a link."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:327
+#: root/www/luci-static/resources/view/detour/exits.js:330
 msgid "This kind of server is edited as JSON below."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:589 root/www/luci-static/resources/view/detour/policies.js:75 root/www/luci-static/resources/detour/listsui.js:197
+#: root/www/luci-static/resources/view/detour/exits.js:595 root/www/luci-static/resources/view/detour/policies.js:75 root/www/luci-static/resources/detour/listsui.js:197
 msgid "This name is already used"
 msgstr ""
 
@@ -2335,11 +2527,11 @@ msgstr ""
 msgid "Through another exit (for example WARP) when the server itself is blocked by the provider. If that exit fails, this one stops too - nothing goes directly."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:544
+#: root/www/luci-static/resources/view/detour/exits.js:550
 msgid "Through another exit when the provider blocks these servers."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:331
+#: root/www/luci-static/resources/view/detour/exits.js:334
 msgid "Through another exit when the provider blocks this server (for example through WARP). If that exit stops, this one stops too - nothing goes directly."
 msgstr ""
 
@@ -2375,7 +2567,7 @@ msgstr ""
 msgid "Times"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:89
+#: root/www/luci-static/resources/view/detour/exits.js:90
 msgid "To check it or measure its speed before a policy uses it"
 msgstr ""
 
@@ -2407,11 +2599,11 @@ msgstr ""
 msgid "Traffic goes by your policies: through the exits, blocked when they are down."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:401
+#: root/www/luci-static/resources/view/detour/exits.js:407
 msgid "Traffic: %s GB, no limit"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:400
+#: root/www/luci-static/resources/view/detour/exits.js:406
 msgid "Traffic: %s of %s GB"
 msgstr ""
 
@@ -2419,11 +2611,11 @@ msgstr ""
 msgid "Transport"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:189 root/www/luci-static/resources/view/detour/policy.js:156 root/www/luci-static/resources/detour/listsui.js:126
+#: root/www/luci-static/resources/view/detour/exits.js:192 root/www/luci-static/resources/view/detour/policy.js:156 root/www/luci-static/resources/detour/listsui.js:126
 msgid "Turn off"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:189 root/www/luci-static/resources/view/detour/policy.js:156 root/www/luci-static/resources/view/detour/policy.js:166 root/www/luci-static/resources/detour/listsui.js:126
+#: root/www/luci-static/resources/view/detour/exits.js:192 root/www/luci-static/resources/view/detour/policy.js:156 root/www/luci-static/resources/view/detour/policy.js:166 root/www/luci-static/resources/detour/listsui.js:126
 msgid "Turn on"
 msgstr ""
 
@@ -2431,12 +2623,16 @@ msgstr ""
 msgid "Two-factor login"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/msg.js:169
+#: root/www/luci-static/resources/detour/msg.js:176
 msgid "Two-factor login protection: %s"
 msgstr ""
 
 #: root/www/luci-static/resources/view/detour/policies.js:64
 msgid "Type of policy"
+msgstr ""
+
+#: root/www/luci-static/resources/detour/warpui.js:193
+msgid "UDP ports of WARP the scanner tries. Empty: the usual list."
 msgstr ""
 
 #: root/www/luci-static/resources/detour/outform.js:130
@@ -2451,11 +2647,11 @@ msgstr ""
 msgid "Unpin"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:543
+#: root/www/luci-static/resources/view/detour/exits.js:549
 msgid "Update every"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:498 root/www/luci-static/resources/detour/listsui.js:121
+#: root/www/luci-static/resources/view/detour/exits.js:504 root/www/luci-static/resources/detour/listsui.js:121
 msgid "Update now"
 msgstr ""
 
@@ -2481,6 +2677,10 @@ msgstr ""
 
 #: root/www/luci-static/resources/view/detour/overview.js:192
 msgid "Uploading"
+msgstr ""
+
+#: root/www/luci-static/resources/detour/warpui.js:114
+msgid "Use"
 msgstr ""
 
 #: root/www/luci-static/resources/detour/listsui.js:189
@@ -2515,15 +2715,15 @@ msgstr ""
 msgid "Verbose level"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/msg.js:171
+#: root/www/luci-static/resources/detour/msg.js:178
 msgid "Verbose log switched off"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/msg.js:170
+#: root/www/luci-static/resources/detour/msg.js:177
 msgid "Verbose log switched on for %d h"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/msg.js:172
+#: root/www/luci-static/resources/detour/msg.js:179
 msgid "Verbose log: its time is over, the normal level again"
 msgstr ""
 
@@ -2539,12 +2739,36 @@ msgstr ""
 msgid "WARP %s moved to point %s (was %s)"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/msg.js:160
+#: root/www/luci-static/resources/detour/msg.js:167
 msgid "WARP %s: %s"
+msgstr ""
+
+#: root/www/luci-static/resources/detour/msg.js:165
+msgid "WARP %s: no address answered - WARP seems unreachable, the pool is kept"
+msgstr ""
+
+#: root/www/luci-static/resources/detour/msg.js:166
+msgid "WARP %s: no address answered through the tunnel"
+msgstr ""
+
+#: root/www/luci-static/resources/detour/msg.js:162
+msgid "WARP %s: no address passes the filters of points and countries"
+msgstr ""
+
+#: root/www/luci-static/resources/detour/msg.js:164
+msgid "WARP %s: no address with a suitable point answered - the working one stays (%s)"
+msgstr ""
+
+#: root/www/luci-static/resources/detour/msg.js:161
+msgid "WARP %s: the address pool was checked - %d tried, %d added, %d removed, %d in the pool"
 msgstr ""
 
 #: root/www/luci-static/resources/detour/addexit.js:223
 msgid "WARP exit %s registered (address %s, server %s)."
+msgstr ""
+
+#: root/www/luci-static/resources/detour/warpui.js:133
+msgid "Waiting for another WARP exit's check…"
 msgstr ""
 
 #: root/www/luci-static/resources/view/detour/devices.js:154
@@ -2583,8 +2807,12 @@ msgstr ""
 msgid "What matches no policy above goes directly through your provider."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:545
+#: root/www/luci-static/resources/view/detour/exits.js:551
 msgid "What runs the servers. sing-box by default; Xray also runs XHTTP and servers sing-box cannot connect to. Servers the engine cannot run are skipped."
+msgstr ""
+
+#: root/www/luci-static/resources/detour/warpui.js:174
+msgid "What the first packet looks like to the provider. If WARP stops shaking hands, try another one."
 msgstr ""
 
 #: root/www/luci-static/resources/view/detour/policy.js:180
@@ -2599,12 +2827,20 @@ msgstr ""
 msgid "When plain WARP is blocked by the provider. Needs the AmneziaWG kernel module and openssl-util."
 msgstr ""
 
+#: root/www/luci-static/resources/detour/warpui.js:132
+msgid "When the point is wrong or the tunnel stops, Detour moves to the best address of the pool (a few seconds). The pool is refilled through a second tunnel with the same key - the working one is not interrupted. Last scan: %s."
+msgstr ""
+
 #: root/www/luci-static/resources/detour/sitecheckui.js:156
 msgid "Where a site or an address goes by your rules, and why; does it open directly and through the VPN. The router opens it itself, the same way a device would."
 msgstr ""
 
 #: root/www/luci-static/resources/detour/sitecheckui.js:128
 msgid "Where it goes:"
+msgstr ""
+
+#: root/www/luci-static/resources/detour/warpui.js:183
+msgid "Where the WARP tunnel lands decides what it can open: the Moscow point DME filters sites. Points are airport codes (HEL - Helsinki, ARN - Stockholm, WAW - Warsaw), countries are two-letter codes."
 msgstr ""
 
 #: root/www/luci-static/resources/detour/outform.js:88
@@ -2631,7 +2867,7 @@ msgstr ""
 msgid "With a login and a password the proxy asks for them; without, anyone in the home network can use it."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:176 root/www/luci-static/resources/view/detour/exits.js:504
+#: root/www/luci-static/resources/view/detour/exits.js:178 root/www/luci-static/resources/view/detour/exits.js:510
 msgid "Works: answer in %d ms, the internet sees the address %s (%s)."
 msgstr ""
 
@@ -2647,7 +2883,7 @@ msgstr ""
 msgid "Xray exits: XHTTP, Xray configs, VLESS encryption, Amnezia vpn:// keys of Xray"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:597
+#: root/www/luci-static/resources/view/detour/exits.js:603
 msgid "Xray is not installed: install it here or choose sing-box."
 msgstr ""
 
@@ -2699,7 +2935,7 @@ msgstr ""
 msgid "a subscription failed to update"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:471
+#: root/www/luci-static/resources/view/detour/exits.js:477
 msgid "a working, fast server is chosen and re-checked every few minutes"
 msgstr ""
 
@@ -2719,7 +2955,7 @@ msgstr ""
 msgid "add an address or a subnet of a device"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/msg.js:162
+#: root/www/luci-static/resources/detour/msg.js:169
 msgid "add an exit from a link"
 msgstr ""
 
@@ -2755,11 +2991,11 @@ msgstr ""
 msgid "and %d more: narrow the search"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/msg.js:165
+#: root/www/luci-static/resources/detour/msg.js:172
 msgid "another server for an exit"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:466
+#: root/www/luci-static/resources/view/detour/exits.js:472
 msgid "another test is running"
 msgstr ""
 
@@ -2815,15 +3051,19 @@ msgstr ""
 msgid "by month"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:449 root/www/luci-static/resources/view/detour/overview.js:99
+#: root/www/luci-static/resources/detour/warpui.js:77
+msgid "checking now…"
+msgstr ""
+
+#: root/www/luci-static/resources/view/detour/exits.js:455 root/www/luci-static/resources/view/detour/overview.js:99
 msgid "checking…"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/msg.js:164
+#: root/www/luci-static/resources/detour/msg.js:171
 msgid "choose a server of a subscription"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/msg.js:165
+#: root/www/luci-static/resources/detour/msg.js:172
 msgid "collect the logs"
 msgstr ""
 
@@ -2831,7 +3071,11 @@ msgstr ""
 msgid "connected, but the TLS handshake never starts (cut by the site name)"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:523
+#: root/www/luci-static/resources/detour/warpui.js:46
+msgid "cut after the handshake"
+msgstr ""
+
+#: root/www/luci-static/resources/view/detour/exits.js:529
 msgid "day"
 msgstr ""
 
@@ -2847,7 +3091,11 @@ msgstr ""
 msgid "device state only"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/devices.js:81 root/www/luci-static/resources/view/detour/devices.js:148 root/www/luci-static/resources/view/detour/exits.js:291 root/www/luci-static/resources/detour/addexit.js:172
+#: root/www/luci-static/resources/detour/warpui.js:122
+msgid "did not answer"
+msgstr ""
+
+#: root/www/luci-static/resources/view/detour/devices.js:81 root/www/luci-static/resources/view/detour/devices.js:148 root/www/luci-static/resources/view/detour/exits.js:294 root/www/luci-static/resources/detour/addexit.js:172
 msgid "directly"
 msgstr ""
 
@@ -2867,11 +3115,11 @@ msgstr ""
 msgid "domains and addresses"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/msg.js:166
+#: root/www/luci-static/resources/detour/msg.js:173
 msgid "done"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:62 root/www/luci-static/resources/view/detour/overview.js:221
+#: root/www/luci-static/resources/view/detour/exits.js:63 root/www/luci-static/resources/view/detour/overview.js:221
 msgid "down"
 msgstr ""
 
@@ -2883,7 +3131,7 @@ msgstr ""
 msgid "downloaded %s, uploaded %s"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/msg.js:164
+#: root/www/luci-static/resources/detour/msg.js:171
 msgid "edit an exit"
 msgstr ""
 
@@ -2895,12 +3143,16 @@ msgstr ""
 msgid "empty: no obfuscation"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/msg.js:189
+#: root/www/luci-static/resources/detour/msg.js:196
 msgid "encrypted DNS: the dnsproxy package is not installed - the provider's DNS is used unencrypted"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:402
+#: root/www/luci-static/resources/view/detour/exits.js:408
 msgid "ended %s"
+msgstr ""
+
+#: root/www/luci-static/resources/detour/warpui.js:47
+msgid "error"
 msgstr ""
 
 #: root/www/luci-static/resources/view/detour/devices.js:97
@@ -2911,7 +3163,7 @@ msgstr ""
 msgid "exit «%s»"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:147 root/www/luci-static/resources/view/detour/exits.js:466 root/www/luci-static/resources/detour/msg.js:166 root/www/luci-static/resources/detour/sitecheckui.js:73
+#: root/www/luci-static/resources/view/detour/exits.js:148 root/www/luci-static/resources/view/detour/exits.js:472 root/www/luci-static/resources/detour/msg.js:173 root/www/luci-static/resources/detour/sitecheckui.js:73
 msgid "failed"
 msgstr ""
 
@@ -2939,11 +3191,15 @@ msgstr ""
 msgid "gRPC service name"
 msgstr ""
 
+#: root/www/luci-static/resources/detour/warpui.js:47
+msgid "handshake, no answer"
+msgstr ""
+
 #: root/www/luci-static/resources/view/detour/settings.js:303 root/www/luci-static/resources/view/detour/settings.js:319
 msgid "http(s) address"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/msg.js:163
+#: root/www/luci-static/resources/detour/msg.js:170
 msgid "import settings"
 msgstr ""
 
@@ -2955,23 +3211,31 @@ msgstr ""
 msgid "it was installed on the router of the backup"
 msgstr ""
 
+#: root/www/luci-static/resources/detour/warpui.js:33
+msgid "just now"
+msgstr ""
+
 #: root/www/luci-static/resources/view/detour/overview.js:41
 msgid "kbit/s"
+msgstr ""
+
+#: root/www/luci-static/resources/detour/warpui.js:171
+msgid "keep the current one"
 msgstr ""
 
 #: root/www/luci-static/resources/view/detour/policy.js:261
 msgid "let it go directly through the provider"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:99
+#: root/www/luci-static/resources/view/detour/exits.js:100
 msgid "masking"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:461
+#: root/www/luci-static/resources/view/detour/exits.js:467
 msgid "measuring…"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/packages.js:81
+#: root/www/luci-static/resources/view/detour/packages.js:81 root/www/luci-static/resources/detour/warpui.js:31
 msgid "never"
 msgstr ""
 
@@ -3007,16 +3271,20 @@ msgstr ""
 msgid "no address now"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:453 root/www/luci-static/resources/view/detour/exits.js:486 root/www/luci-static/resources/view/detour/overview.js:100 root/www/luci-static/resources/detour/sitecheckui.js:68
+#: root/www/luci-static/resources/view/detour/exits.js:459 root/www/luci-static/resources/view/detour/exits.js:492 root/www/luci-static/resources/view/detour/overview.js:100 root/www/luci-static/resources/detour/sitecheckui.js:68
 msgid "no answer"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:403
+#: root/www/luci-static/resources/view/detour/exits.js:409
 msgid "no end date"
 msgstr ""
 
 #: root/www/luci-static/resources/view/detour/policy.js:200 root/www/luci-static/resources/detour/policyutil.js:85
 msgid "no exit"
+msgstr ""
+
+#: root/www/luci-static/resources/detour/warpui.js:47
+msgid "no handshake"
 msgstr ""
 
 #: root/www/luci-static/resources/view/detour/devices.js:98 root/www/luci-static/resources/view/detour/devices.js:208
@@ -3067,7 +3335,7 @@ msgstr ""
 msgid "not in the repositories of this firmware"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:60 root/www/luci-static/resources/view/detour/overview.js:221
+#: root/www/luci-static/resources/view/detour/exits.js:61 root/www/luci-static/resources/view/detour/overview.js:221
 msgid "not in use"
 msgstr ""
 
@@ -3079,7 +3347,7 @@ msgstr ""
 msgid "not loaded yet"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:62 root/www/luci-static/resources/view/detour/overview.js:221
+#: root/www/luci-static/resources/view/detour/exits.js:63 root/www/luci-static/resources/view/detour/overview.js:221
 msgid "not responding"
 msgstr ""
 
@@ -3115,7 +3383,7 @@ msgstr ""
 msgid "notifications (%s)"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:486 root/www/luci-static/resources/view/detour/policy.js:226
+#: root/www/luci-static/resources/view/detour/exits.js:492 root/www/luci-static/resources/view/detour/policy.js:226 root/www/luci-static/resources/detour/warpui.js:118
 msgid "now"
 msgstr ""
 
@@ -3139,8 +3407,16 @@ msgstr ""
 msgid "only %d entries (minimum %d)"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:453 root/www/luci-static/resources/view/detour/exits.js:465
+#: root/www/luci-static/resources/detour/warpui.js:109
+msgid "only countries %s"
+msgstr ""
+
+#: root/www/luci-static/resources/view/detour/exits.js:459 root/www/luci-static/resources/view/detour/exits.js:471
 msgid "only in the automatic mode"
+msgstr ""
+
+#: root/www/luci-static/resources/detour/warpui.js:107
+msgid "only points %s"
 msgstr ""
 
 #: root/www/luci-static/resources/detour/sitecheckui.js:62
@@ -3159,39 +3435,43 @@ msgstr ""
 msgid "pinned"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/msg.js:179
+#: root/www/luci-static/resources/detour/warpui.js:46
+msgid "point filtered"
+msgstr ""
+
+#: root/www/luci-static/resources/detour/msg.js:186
 msgid "policy %s has no exit - its traffic is blocked"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/msg.js:180
+#: root/www/luci-static/resources/detour/msg.js:187
 msgid "policy %s refers to a missing exit %s"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/msg.js:184
+#: root/www/luci-static/resources/detour/msg.js:191
 msgid "policy %s: the network «%s» is missing or down - its devices are not under the policy now"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/msg.js:183
+#: root/www/luci-static/resources/detour/msg.js:190
 msgid "policy %s: wrong device address «%s»"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/msg.js:182
+#: root/www/luci-static/resources/detour/msg.js:189
 msgid "policy %s: wrong domain «%s»"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/msg.js:185
+#: root/www/luci-static/resources/detour/msg.js:192
 msgid "policy %s: wrong network name «%s»"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/msg.js:181
+#: root/www/luci-static/resources/detour/msg.js:188
 msgid "policy %s: wrong port «%s»"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:94
+#: root/www/luci-static/resources/view/detour/exits.js:95
 msgid "proxy (Xray)"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:94
+#: root/www/luci-static/resources/view/detour/exits.js:95
 msgid "proxy (sing-box)"
 msgstr ""
 
@@ -3203,15 +3483,15 @@ msgstr ""
 msgid "refuse all IPv6 of the network"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/msg.js:163
+#: root/www/luci-static/resources/detour/msg.js:170
 msgid "register WARP"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/msg.js:163
+#: root/www/luci-static/resources/detour/msg.js:170
 msgid "remove WARP"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/msg.js:164
+#: root/www/luci-static/resources/detour/msg.js:171
 msgid "remove an exit"
 msgstr ""
 
@@ -3223,6 +3503,10 @@ msgstr ""
 msgid "runetfreedom, domains: %s"
 msgstr ""
 
+#: root/www/luci-static/resources/detour/warpui.js:76
+msgid "scanned %s"
+msgstr ""
+
 #: root/www/luci-static/resources/detour/listsui.js:234
 msgid "size unknown until added"
 msgstr ""
@@ -3231,7 +3515,7 @@ msgstr ""
 msgid "started loading and froze"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:95
+#: root/www/luci-static/resources/view/detour/exits.js:96
 msgid "subscription"
 msgstr ""
 
@@ -3239,8 +3523,12 @@ msgstr ""
 msgid "subscription address"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:59 root/www/luci-static/resources/view/detour/overview.js:221 root/www/luci-static/resources/view/detour/policies.js:113 root/www/luci-static/resources/view/detour/policies.js:113 root/www/luci-static/resources/view/detour/policies.js:136 root/www/luci-static/resources/view/detour/policy.js:148 root/www/luci-static/resources/view/detour/policy.js:148 root/www/luci-static/resources/detour/listsui.js:139
+#: root/www/luci-static/resources/view/detour/exits.js:60 root/www/luci-static/resources/view/detour/overview.js:221 root/www/luci-static/resources/view/detour/policies.js:113 root/www/luci-static/resources/view/detour/policies.js:113 root/www/luci-static/resources/view/detour/policies.js:136 root/www/luci-static/resources/view/detour/policy.js:148 root/www/luci-static/resources/view/detour/policy.js:148 root/www/luci-static/resources/detour/listsui.js:139
 msgid "switched off"
+msgstr ""
+
+#: root/www/luci-static/resources/detour/warpui.js:46
+msgid "taken"
 msgstr ""
 
 #: root/www/luci-static/resources/detour/pkg.js:56
@@ -3315,7 +3603,7 @@ msgstr ""
 msgid "the one the rules choose"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/msg.js:186
+#: root/www/luci-static/resources/detour/msg.js:193
 msgid "the packet mark bits %s are also used by %s - set other bits in Settings → Packet mark bits"
 msgstr ""
 
@@ -3407,7 +3695,7 @@ msgstr ""
 msgid "through the policy «%s»"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:295
+#: root/www/luci-static/resources/view/detour/exits.js:298
 msgid "through «%s»"
 msgstr ""
 
@@ -3421,11 +3709,11 @@ msgstr[1] ""
 msgid "unknown policy %s"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:402
+#: root/www/luci-static/resources/view/detour/exits.js:408
 msgid "until %s"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/msg.js:162
+#: root/www/luci-static/resources/detour/msg.js:169
 msgid "update a subscription"
 msgstr ""
 
@@ -3437,15 +3725,15 @@ msgstr ""
 msgid "update failed"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/msg.js:162
+#: root/www/luci-static/resources/detour/msg.js:169
 msgid "update lists"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:416 root/www/luci-static/resources/detour/listsui.js:108
+#: root/www/luci-static/resources/view/detour/exits.js:422 root/www/luci-static/resources/detour/listsui.js:108
 msgid "updated %s"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:417
+#: root/www/luci-static/resources/view/detour/exits.js:423
 msgid "updates every %s"
 msgstr ""
 
@@ -3461,7 +3749,7 @@ msgstr ""
 msgid "v2fly category «%s»"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:523
+#: root/www/luci-static/resources/view/detour/exits.js:529
 msgid "week"
 msgstr ""
 
@@ -3477,7 +3765,15 @@ msgstr ""
 msgid "wired"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:61 root/www/luci-static/resources/view/detour/overview.js:221
+#: root/www/luci-static/resources/detour/warpui.js:110
+msgid "without countries %s"
+msgstr ""
+
+#: root/www/luci-static/resources/detour/warpui.js:108
+msgid "without points %s"
+msgstr ""
+
+#: root/www/luci-static/resources/view/detour/exits.js:62 root/www/luci-static/resources/view/detour/overview.js:221
 msgid "working"
 msgstr ""
 
@@ -3489,7 +3785,7 @@ msgstr ""
 msgid "works · %d ms"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/msg.js:187
+#: root/www/luci-static/resources/detour/msg.js:194
 msgid "wrong packet mark bits «%s» - the default ones are used"
 msgstr ""
 

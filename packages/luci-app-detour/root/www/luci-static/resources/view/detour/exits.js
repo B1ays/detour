@@ -8,6 +8,7 @@
 'require detour.outform as outform';
 'require detour.pkg as pkg';
 'require detour.addexit as addexit';
+'require detour.warpui as warpui';
 
 // Text from the router (names of exits and servers come from subscriptions and links) never becomes HTML:
 // LuCI's E() puts a string child in with innerHTML, here it always goes in as a text node.
@@ -159,12 +160,13 @@ return view.extend({
 		const result = E('div', { 'class': 'detour-check' });
 		const lines = [];
 		// a tunnel's protocol already names it ("AmneziaWG · masking"); a proxy says which engine runs it
-		const what = (x.kind == 'wireguard' || x.kind == 'amneziawg') ? [ protoText(x.proto) || kindText(x) ] : [ kindText(x) ];
+		const what = x.warp ? [ 'Cloudflare WARP', kindText(x) ]
+			: (x.kind == 'wireguard' || x.kind == 'amneziawg') ? [ protoText(x.proto) || kindText(x) ] : [ kindText(x) ];
 		if (x.proto && x.kind != 'wireguard' && x.kind != 'amneziawg') what.push(protoText(x.proto));
 		lines.push(E('div', {}, [ E('strong', {}, what.join(' · ')) ]));
 		if (x.server) lines.push(E('div', {}, _('Server: %s').format(x.server + (x.port ? ':' + x.port : ''))));
 		if (x.via) lines.push(E('div', {}, _('Connects to its server through «%s»: if that exit stops, this one stops too.').format(x.via_label || x.via)));
-		if (x.warp) lines.push(E('div', {}, x.colo ? _('Cloudflare WARP, point %s').format(x.colo) : _('Cloudflare WARP')));
+		if (x.warp) lines.push(warpui.summary(x));
 		if (x.last_ok && !x.idle) lines.push(E('div', { 'class': 'detour-muted' }, _('Last successful automatic check: %s').format(fmtTime(x.last_ok))));
 		const il = idleLine(x);
 		if (il) lines.push(il);
@@ -182,6 +184,11 @@ return view.extend({
 		} }, _('Check'));
 		const bSpeed = this.speedButton(x, result);
 		const bShare = E('button', { 'class': 'btn', 'click': function() { self.exportExit(x); } }, _('Share'));
+		const bPool = x.warp ? E('button', { 'class': 'btn', 'click': function(ev) {
+			// closed: only this card is drawn again (the address, the point, the pool may have changed)
+			const card = ev.currentTarget.closest('.detour-card');
+			warpui.poolDialog(x, function() { return self.redrawCard(card, x.name, by); });
+		} }, _('Address pool')) : '';
 		const bEdit = E('button', { 'class': 'btn', 'click': function() { self.editExit(x, by); } }, _('Edit'));
 		const bToggle = E('button', { 'class': 'btn', 'click': function() {
 			uci.set('detour', x.name, 'enabled', x.enabled ? '0' : '1');
@@ -194,8 +201,16 @@ return view.extend({
 				E('span', { 'class': 'detour-muted', 'title': _('Internal name: used in the configuration and the log') }, x.name) ]),
 			E('div', { 'class': 'detour-card-body' }, lines),
 			result,
-			E('div', { 'class': 'detour-actions detour-card-actions' }, (x.idle && x.enabled) ? [ wakeButton(x), bEdit, bShare, bToggle, bRemove ] : [ bCheck, bSpeed, bEdit, bShare, bToggle, bRemove ])
+			E('div', { 'class': 'detour-actions detour-card-actions' }, (x.idle && x.enabled) ? [ wakeButton(x), bPool, bEdit, bShare, bToggle, bRemove ] : [ bCheck, bSpeed, bPool, bEdit, bShare, bToggle, bRemove ])
 		]);
+	},
+
+	redrawCard: function(card, name, by) {
+		const self = this;
+		return L.resolveDefault(callInfo(), null).then(function(info) {
+			const nx = ((info || {}).exits || []).filter(function(e) { return e.name == name; })[0];
+			if (nx && card && card.parentNode) card.replaceWith(self.renderExit(nx, by));
+		});
 	},
 
 	// what diag_exit found, in words; for a blocked address of a proxy exit - connect it through the exit that works
@@ -363,7 +378,7 @@ return view.extend({
 		const fields = {};
 		const body = [
 			row(_('Name'), label, _('Shown in policies, on the overview and in notifications.')),
-			row(_('Server address'), host, x.warp ? _('A Cloudflare WARP address. Detour moves it away from a bad point (DME) by itself.') : ''),
+			row(_('Server address'), host, x.warp ? _('A Cloudflare WARP address. Detour changes it by itself: to the best address of the pool when the point is wrong or the tunnel stops.') : ''),
 			row(_('Server port'), port),
 			row('MTU', mtu, _('Packet size inside the tunnel. Lower it (1280) if some sites hang while others work.'))
 		];
@@ -376,7 +391,10 @@ return view.extend({
 				body.push(row(a[1], fields[a[0]], a[2]));
 			});
 		}
+		const wf = x.warp ? warpui.fields(x) : null;
+		if (wf) wf.nodes.forEach(function(n) { body.push(n); });
 		modal(_('Exit «%s»').format(x.label), body, function() {
+			if (wf) wf.save();   // throws with the reason of a wrong field, before anything else is staged
 			if (label.value.trim() && label.value.trim() != x.label) uci.set('detour', x.name, 'label', label.value.trim());
 			if (peer) {
 				if (host.value.trim()) uci.set('network', peer['.name'], 'endpoint_host', host.value.trim());
@@ -387,7 +405,7 @@ return view.extend({
 				const v = fields[k].value.trim();
 				if (v) uci.set('network', iface, 'awg_' + k, v); else uci.unset('network', iface, 'awg_' + k);
 			});
-			return applyUci().then(function() { return true; });
+			return applyUci().then(function() { return wf ? wf.after() : null; }).then(function() { return true; });
 		});
 	},
 
@@ -625,7 +643,8 @@ return view.extend({
 		const subState = {};
 		((data.status || {}).subscriptions || []).forEach(function(s) { subState[s.name] = s; });
 		const by = this.exitsBy(info);
-		const plain = info.exits.filter(function(x) { return x.kind != 'subscription'; });
+		const plain = info.exits.filter(function(x) { return x.kind != 'subscription' && !x.warp; });
+		const warps = info.exits.filter(function(x) { return x.warp; });
 		const subs = info.exits.filter(function(x) { return x.kind == 'subscription'; });
 		const done = function(text) { return self.refresh(text); };
 
@@ -637,9 +656,14 @@ return view.extend({
 				E('h3', {}, _('Exits')),
 				E('div', { 'class': 'cbi-section-node detour-node' }, [
 					plain.length ? E('div', { 'class': 'detour-cards' }, plain.map(function(x) { return self.renderExit(x, by); }))
-						: E('div', { 'class': 'detour-result' }, E('em', {}, _('No exits yet.')))
+						: E('div', { 'class': 'detour-result' }, E('em', {}, warps.length ? _('No other exits yet.') : _('No exits yet.')))
 				])
 			]),
+			warps.length ? E('div', { 'class': 'cbi-section' }, [
+				E('h3', {}, 'Cloudflare WARP'),
+				E('div', { 'class': 'cbi-section-descr' }, _('Free Cloudflare tunnels. Each keeps a pool of checked addresses and moves to the next one by itself when its point is wrong (DME by default) or the tunnel stops.')),
+				E('div', { 'class': 'cbi-section-node detour-node' }, E('div', { 'class': 'detour-cards' }, warps.map(function(x) { return self.renderExit(x, by); })))
+			]) : '',
 			E('div', { 'class': 'cbi-section' }, [
 				E('h3', {}, _('Subscriptions')),
 				E('div', { 'class': 'cbi-section-descr' }, _('A subscription is an address from your VPN provider that gives the current list of its servers. All of them form one exit: it picks a working server by itself, or you choose one.')),

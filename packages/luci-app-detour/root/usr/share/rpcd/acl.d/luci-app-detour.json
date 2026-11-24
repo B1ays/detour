@@ -12,7 +12,8 @@
 					"catalog_names",
 					"dns_providers",
 					"rates",
-					"rates_history"
+					"rates_history",
+						"warp_pool"
 				],
 				"luci": [
 					"getFeatures"
@@ -65,6 +66,10 @@
 					"engine_add",
 					"warp_register",
 					"warp_unregister",
+						"warp_scan",
+						"warp_proto",
+						"warp_use",
+						"warp_drop",
 					"backup_create",
 					"backup_check",
 					"backup_restore",
