@@ -448,3 +448,290 @@ textarea.detour-code.detour-json {
 	padding: .5rem 1rem .75rem;
 	margin-bottom: 1rem;
 }
+
+/* ---- Policies and a policy's page ---- */
+/* semantic colours that read on light and dark themes */
+.detour-policies-page, .detour-policy-page, .detour-kinds {
+	--dt-ok: #2f9e55;
+	--dt-warn: #c98a00;
+	--dt-bad: #e0453a;
+	--dt-line: rgba(128, 128, 128, .3);
+	--dt-soft: rgba(128, 128, 128, .1);
+}
+.detour-dim { opacity: .62; }
+/* the state of a policy: a filled dot is on, a hollow one off */
+.detour-dot {
+	display: inline-block;
+	flex: none;
+	width: .6rem;
+	height: .6rem;
+	border-radius: 50%;
+	box-sizing: border-box;
+	background: var(--dt-ok, #2f9e55);
+}
+.detour-dot.off { background: transparent; border: 1.5px solid rgba(128, 128, 128, .8); }
+.detour-dot.bad { background: var(--dt-bad, #e0453a); }
+.detour-dot.sm { width: .45rem; height: .45rem; }
+/* the type of a policy: a neutral tag */
+.detour-type {
+	display: inline-block;
+	font-size: .75em;
+	font-weight: 600;
+	line-height: 1.6;
+	padding: 0 .45em;
+	border: 1px solid var(--dt-line, rgba(128, 128, 128, .3));
+	border-radius: 4px;
+	white-space: nowrap;
+	opacity: .85;
+}
+
+/* the list of policies: a card is a link to the policy's page; the arrows beside it */
+.detour-add-row { padding: 0; margin: .25rem 0 .75rem; }
+.detour-mem-section { padding-bottom: .5rem; }
+.detour-mem .detour-share { display: flex; }
+.detour-policies-page .detour-mem, .detour-policy-page .detour-mem { flex-direction: column; align-items: stretch; gap: .4rem; }
+.detour-policies-page .detour-mem .detour-share, .detour-policy-page .detour-mem .detour-share { width: 100%; max-width: 32rem; height: .5rem; border-radius: 999px; }
+/* inside a card's body: the same left edge as the buttons above it */
+.detour-node > .detour-mem { padding: 0 var(--section-inset, 1rem); }
+.detour-mem .detour-share > .rest { background: rgba(128, 128, 128, .45); }
+.detour-list-head {
+	display: flex;
+	align-items: center;
+	gap: .5rem;
+	padding: 0 var(--section-inset, 1rem);
+}
+.detour-list-head h3 { margin-right: auto; }
+.detour-list-head > .btn { display: none; }
+.detour-pcard {
+	position: relative;
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr);
+	gap: .75rem;
+	align-items: center;
+	padding: .6rem .75rem;
+	border: 1px solid var(--dt-line);
+	border-radius: 8px;
+}
+.detour-pcard.warn { border-color: var(--dt-warn); }
+.detour-pcard.bad { border-color: var(--dt-bad); }
+.detour-pcard.rest { border-style: dashed; }
+.detour-pcard:not(.rest):hover { border-color: currentColor; }
+.detour-order { display: flex; flex-direction: column; gap: .35rem; align-items: center; min-width: 1.75rem; position: relative; z-index: 1; }
+.detour-pcard .detour-order .btn {
+	box-sizing: border-box;
+	width: 1.75rem !important;
+	min-width: 0 !important;
+	height: 1.4rem !important;
+	min-height: 0 !important;
+	padding: 0 !important;
+	margin: 0;
+	display: inline-grid;
+	place-items: center;
+	font-size: .75rem;
+	line-height: 1;
+	border-radius: 6px;
+}
+.detour-rest-mark { justify-content: center; opacity: .6; }
+.detour-pcard-link {
+	display: flex;
+	align-items: center;
+	gap: .75rem;
+	min-width: 0;
+	color: inherit !important;
+	text-decoration: none !important;
+	border-radius: 6px;
+	padding: .2rem .3rem;
+}
+/* the whole card opens the policy: the link's box covers it */
+.detour-pcard-link::after { content: ""; position: absolute; inset: 0; border-radius: 8px; }
+.detour-pcard-link:focus-visible { outline: none; }
+.detour-pcard:has(.detour-pcard-link:focus-visible) { outline: 2px solid currentColor; outline-offset: 2px; }
+.detour-pcard-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .2rem; }
+.detour-pcard-head { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.detour-pcard-sum { font-size: .9em; opacity: .85; overflow-wrap: anywhere; }
+.detour-pcard-go { font-size: 1.4rem; line-height: 1; opacity: .6; }
+
+/* what the policy is doing now */
+.detour-live { font-size: .9em; font-weight: 500; }
+.detour-live.ok { color: var(--dt-ok); }
+.detour-live.warn { color: var(--dt-warn); }
+.detour-live.bad { color: var(--dt-bad); }
+.detour-live.warn::before, .detour-live.bad::before { content: "⚠ "; }
+/* the «Change the order» mode: big arrows, nothing to open by mistake */
+.detour-rrow {
+	display: flex;
+	align-items: center;
+	gap: .6rem;
+	padding: .4rem .5rem .4rem .75rem;
+	border: 1px solid var(--dt-line);
+	border-radius: 8px;
+}
+.detour-rrow-pos { min-width: 1.2em; text-align: right; }
+.detour-rrow-name { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.btn.detour-big { min-width: 2.75rem; min-height: 2.75rem; font-size: 1.1rem; padding: 0; }
+
+/* a new policy: its type as three cards */
+.detour-kinds { border: 0; margin: 0 0 .75rem; padding: 0; display: flex; flex-direction: column; gap: .5rem; }
+.detour-kinds legend { font-weight: 600; margin-bottom: .5rem; padding: 0; }
+.detour-kind {
+	display: flex;
+	gap: .75rem;
+	align-items: flex-start;
+	padding: .55rem .75rem;
+	border: 1.5px solid var(--dt-line);
+	border-radius: 8px;
+	cursor: pointer;
+}
+.detour-kind.on { border-color: currentColor; background: var(--dt-soft); }
+.detour-kind input { margin-top: .2rem; }
+.detour-kind > span { display: flex; flex-direction: column; gap: .15rem; }
+.detour-kind-head { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+
+/* a policy's page */
+.detour-crumbs { display: flex; gap: .4rem; align-items: center; font-size: .9em; opacity: .9; margin: .25rem 0 .5rem; }
+.detour-backbar { display: none; }
+.detour-policy-head { display: flex; flex-direction: column; gap: .5rem; margin-bottom: .75rem; }
+.detour-policy-title { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; margin: 0; }
+.detour-policy-title .detour-dot { width: .7rem; height: .7rem; }
+.detour-policy-head .detour-actions { padding: 0; }
+.detour-off-banner {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: .75rem 1rem;
+	padding: .75rem 1rem;
+	border: 1px dashed var(--dt-line);
+	border-radius: 8px;
+	background: var(--dt-soft);
+	margin-bottom: .75rem;
+}
+.detour-off-banner > div { flex: 1 1 16rem; }
+.detour-policy-page h3.detour-group { font-size: 1.3rem; margin: 1.25rem 0 .5rem; padding: 0; border: 0; background: none; }
+/* Basic: folded; its head is the switch, with a line of what is inside */
+.detour-fold { padding: 0 !important; overflow: hidden; }
+.detour-fold-head {
+	all: unset;
+	box-sizing: border-box;
+	width: 100%;
+	display: flex;
+	align-items: center;
+	gap: .75rem;
+	min-height: 3rem;
+	padding: .6rem var(--section-inset, 1rem);
+	cursor: pointer;
+	font: inherit;
+}
+.detour-fold-head:hover { background: var(--dt-soft); }
+.detour-fold-head:focus-visible { outline: 2px solid currentColor; outline-offset: -2px; }
+.detour-fold-title { font-weight: 650; font-size: 1.05em; flex: none; }
+.detour-fold-peek { opacity: .7; font-size: .9em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.detour-fold-head[aria-expanded="true"] .detour-fold-peek { display: none; }
+.detour-chevron {
+	flex: none;
+	width: .5rem;
+	height: .5rem;
+	border-right: 2px solid currentColor;
+	border-bottom: 2px solid currentColor;
+	transform: rotate(-45deg);
+	opacity: .7;
+	margin: 0 .2rem;
+	transition: transform .15s;
+}
+.detour-fold-head[aria-expanded="true"] .detour-chevron { transform: rotate(45deg); }
+.detour-fold-body { border-top: 1px solid var(--dt-line); padding: .25rem var(--section-inset, 1rem) .75rem; }
+@media (prefers-reduced-motion: reduce) { .detour-chevron { transition: none; } }
+/* the exits of a policy: their state, the one in use, a pinned one */
+.detour-exits { display: flex; flex-direction: column; gap: .4rem; max-width: 36rem; }
+.detour-exit-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: .5rem;
+	padding: .35rem .4rem .35rem .75rem;
+	border: 1px solid var(--dt-line);
+	border-radius: 8px;
+}
+.detour-exit-row.pinned { border-color: currentColor; }
+.detour-exit-main { flex: 1 1 10rem; min-width: 0; display: flex; flex-direction: column; gap: .1rem; }
+.detour-exit-main > div:first-child { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; }
+.detour-chip { font-size: .75em; font-weight: 600; padding: 0 .5em; border-radius: 999px; line-height: 1.6; border: 1px solid var(--dt-line); }
+.detour-chip.now { background: var(--dt-soft); }
+.detour-chip.pin { border-color: currentColor; }
+.detour-health { display: flex; align-items: center; gap: .4rem; font-size: .85em; opacity: .9; }
+.detour-health.ok { color: var(--dt-ok); }
+.detour-health.bad { color: var(--dt-bad); }
+.detour-health .detour-dot.ok { background: var(--dt-ok); }
+.detour-health .detour-dot.off { opacity: .7; }
+/* sites, addresses, ports: tags with a remove button, an "add" box, or a text box for many at once */
+.detour-tags-field { display: flex; flex-direction: column; gap: .5rem; max-width: 36rem; }
+.detour-tags { display: flex; flex-wrap: wrap; gap: .35rem; }
+.detour-tag {
+	display: inline-flex;
+	align-items: center;
+	gap: .1rem;
+	padding-left: .6rem;
+	border: 1px solid var(--dt-line);
+	border-radius: 999px;
+	background: var(--dt-soft);
+	font-family: monospace;
+	font-size: .9em;
+	overflow-wrap: anywhere;
+}
+.detour-tag-x {
+	all: unset;
+	cursor: pointer;
+	display: inline-grid;
+	place-items: center;
+	width: 1.8rem;
+	height: 1.8rem;
+	border-radius: 999px;
+	opacity: .65;
+}
+.detour-tag-x:hover, .detour-tag-x:focus-visible { opacity: 1; background: var(--dt-soft); outline: none; }
+.detour-tag-add { display: flex; flex-wrap: wrap; gap: .4rem; }
+.detour-tag-add input { flex: 1 1 12rem; min-width: 0; }
+.detour-link { all: unset; cursor: pointer; font-size: .9em; text-decoration: underline; text-underline-offset: 2px; opacity: .85; align-self: flex-start; }
+.detour-link:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.detour-tags-text { width: 100%; font-family: monospace; }
+.detour-field-error { color: var(--dt-bad, #e0453a); font-size: .9em; }
+.detour-field-error:empty { display: none; }
+.detour-list-card.off { opacity: .75; }
+.detour-missing { text-align: center; padding: 2rem 1rem !important; display: flex; flex-direction: column; align-items: center; gap: .75rem; }
+/* the footer: a line about changes not saved */
+.cbi-page-actions .detour-unsaved { margin-right: auto; font-size: .9em; color: var(--dt-warn, #c98a00); align-self: center; }
+.cbi-page-actions .detour-unsaved.ok { color: var(--dt-ok, #2f9e55); }
+.cbi-page-actions .detour-unsaved:empty { display: none; }
+
+/* narrow screens: «Change the order» instead of the arrows; a policy's page gets a bar with the way back, and
+   the footer shows only with something to save */
+@media (max-width: 700px) {
+	.detour-list-head > .btn { display: inline-flex; align-items: center; min-height: 2.75rem; }
+	.detour-pcard { grid-template-columns: minmax(0, 1fr); }
+	.detour-pcard > .detour-order { display: none; }
+	.detour-pcard-name { display: none; }
+	.detour-backbar {
+		display: flex;
+		align-items: center;
+		gap: .75rem;
+		position: sticky;
+		top: 0;
+		z-index: 5;
+		margin: 0 calc(-1 * var(--section-inset, 0px)) .5rem;
+		padding: .5rem 0;
+		background: inherit;
+	}
+	.detour-back {
+		display: inline-grid;
+		place-items: center;
+		width: 2.75rem;
+		height: 2.75rem;
+		border: 1px solid var(--dt-line);
+		border-radius: 8px;
+		color: inherit !important;
+		flex: none;
+	}
+	.detour-back-arrow { width: .6rem; height: .6rem; border-left: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: translateX(2px) rotate(45deg); }
+	.detour-crumbs { display: none; }
+	.detour-tag-x { width: 2.4rem; height: 2.4rem; }
+	body.detour-page-clean .cbi-page-actions { display: none; }
+}

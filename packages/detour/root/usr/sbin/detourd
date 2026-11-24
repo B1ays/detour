@@ -209,7 +209,8 @@ function probe(e) {
 		const h = health[e.name] ??= { ok: false, fails: 0, seen: false };
 		const was = h.ok && h.fails < cfg.main.fails;
 		h.seen = true;
-		if (code == 0) { h.ok = true; h.fails = 0; h.last_ok = time(); }
+		// the time a good probe took: LuCI shows it beside the exit (the policy page)
+		if (code == 0) { const t = clock(true); h.ok = true; h.fails = 0; h.last_ok = time(); h.ms = (t[0] - t_start[0]) * 1000 + int((t[1] - t_start[1]) / 1000000); }
 		else { h.fails++; if (h.fails >= cfg.main.fails) h.ok = false; }
 		const now = h.ok && h.fails < cfg.main.fails;
 		if (was != now) {
@@ -346,7 +347,7 @@ function status() {
 	for (let e in cfg.exits) {
 		const h = health[e.name] ?? {};
 		push(ex, { name: e.name, id: e.id, device: e.device, enabled: e.enabled, idle: e.idle, warm: e.warm, up: net.dev_up(e.device),
-			healthy: healthy(e), probe: e.probe, fails: h.fails ?? 0, last_ok: h.last_ok, drops: nft.counter_drops(e.id),
+			healthy: healthy(e), probe: e.probe, fails: h.fails ?? 0, last_ok: h.last_ok, ms: h.ms, drops: nft.counter_drops(e.id),
 			colo: trim(fs.readfile(sprintf('%s/warp-%s.colo', core.RUN, e.name)) ?? '') || null,
 			rx: int(fs.readfile(sprintf('/sys/class/net/%s/statistics/rx_bytes', e.device)) ?? 0),
 			tx: int(fs.readfile(sprintf('/sys/class/net/%s/statistics/tx_bytes', e.device)) ?? 0) });

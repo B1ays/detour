@@ -22,6 +22,17 @@
 			"path": "detour/overview"
 		}
 	},
+	"admin/services/detour/policies/*": {
+		"action": {
+			"type": "view",
+			"path": "detour/policy"
+		},
+		"depends": {
+			"acl": [
+				"luci-app-detour-admin"
+			]
+		}
+	},
 	"admin/services/detour/policies": {
 		"title": "Policies",
 		"order": 2,
@@ -54,19 +65,6 @@
 		"action": {
 			"type": "view",
 			"path": "detour/settings"
-		},
-		"depends": {
-			"acl": [
-				"luci-app-detour-admin"
-			]
-		}
-	},
-	"admin/services/detour/lists": {
-		"title": "Lists",
-		"order": 3,
-		"action": {
-			"type": "view",
-			"path": "detour/lists"
 		},
 		"depends": {
 			"acl": [

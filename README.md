@@ -47,7 +47,7 @@ Detour ships as regular OpenWrt packages (`apk`) plus a section in the LuCI web 
 
 **Lists**
 - Ready-made [v2fly](https://github.com/v2fly/domain-list-community) and [runetfreedom](https://github.com/runetfreedom/russia-blocked-geosite) categories, any URL or file.
-- A searchable category catalogue with entry counts and memory cost.
+- Each list belongs to a policy and is on that policy's page; a searchable category catalogue with entry counts and memory cost.
 - Nightly updates; on failure the previous data is kept.
 - Memory limits: all lists together take at most 35 % of RAM, and at least 15 % of RAM (64 MB minimum) stays free after loading. A list that does not fit is not loaded, and LuCI shows why.
 
@@ -160,8 +160,8 @@ On install and upgrade the package scripts set up cron jobs, reload the rules in
 | Page | What it has |
 |---|---|
 | **Overview** | VPN switch, external address directly and through the exits, configuration errors; a chart in two modes - the speed now and the traffic statistics of a period (today ... 12 months); traffic by exit, state of the exits, event log. |
-| **Policies** | Policies in check order: what they match and where it goes; choosing an exit by hand is in a policy's settings. Last, the site check: where an address goes and why, whether it opens. |
-| **Lists** | Large lists, ready-made categories and the catalogue. |
+| **Policies** | Policies in check order: each with its state, type, what it holds and what it does now (the exit in use, no exit working, a list that did not update), then «Everything else» - what goes directly. One «Add policy» button, its type chosen in the dialog; the order with the arrows (on a phone, in the «Change the order» mode). Memory for lists; lists whose policy is gone. Last, the site check: where an address goes and why, whether it opens. |
+| **A policy's page** (`…/policies/<name>`) | Its settings (name, exits with their state and delay, pinning an exit, what happens when they fail), what goes through it (sites, addresses, ports as tags, or a text box for many at once; devices, networks) and its lists: ready-made categories, the catalogue, any URL or file. Applied with the page's own buttons; leaving with changes not saved is asked. |
 | **Devices** | Home network devices, how much they downloaded and uploaded in the period chosen, where their internet goes, DNS log. |
 | **Exits** | Exits and subscriptions: check, speed, export, editing. Adding through one field: a subscription address, a link, a key, a config or a file; WARP registration. |
 | **Settings** | Check frequency, router DNS, the SOCKS5 proxy, notifications (Telegram, ntfy), logs; last, the backup: saving and restoring Detour's settings. |

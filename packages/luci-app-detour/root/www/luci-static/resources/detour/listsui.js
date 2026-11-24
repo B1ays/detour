@@ -1,23 +1,22 @@
 'use strict';
-'require view';
+'require baseclass';
 'require detour.load as pdata';
 'require rpc';
 'require ui';
 'require uci';
 'require detour.msg as msg';
 
-// Text from the router (names of exits and servers come from subscriptions and links) never becomes HTML:
-// LuCI's E() puts a string child in with innerHTML, here it always goes in as a text node.
+// Big lists (config "detour", sections "list"): a list's card, its dialog, the catalogue of categories, the memory
+// they take. Each list belongs to a policy and is shown on that policy's page; the Policies page shows the lists
+// whose policy is gone. Changes are staged like the rest of the page (its «Save» / «Apply» take them); only
+// «Update now» acts at once.
+
+// Text from the router never becomes HTML: LuCI's E() puts a string child in with innerHTML, here a text node.
 const E = function(tag, attr, data) {
 	if (!(attr instanceof Object) || Array.isArray(attr)) { data = attr; attr = {}; }
 	return L.dom.create(tag, attr, (typeof data == 'string' || typeof data == 'number') ? [ data ] : data);
 };
 
-// Big lists as cards: a readable name (its label, else what its source is), where it goes (the policy by its
-// name, or never through a tunnel), its sources, its state; Update now / Edit / Turn off / Remove in one row.
-// Adding: a ready-made category in one click, or own sources.
-
-const callStatus = rpc.declare({ object: 'detour', method: 'status' });
 const callUpdate = rpc.declare({ object: 'detour', method: 'lists_update', params: [ 'name' ] });
 const callCatNames = rpc.declare({ object: 'detour', method: 'catalog_names' });
 const callCatRefresh = rpc.declare({ object: 'detour', method: 'catalog_refresh' });
@@ -25,7 +24,6 @@ const callCatRefresh = rpc.declare({ object: 'detour', method: 'catalog_refresh'
 function busy(btn, on) { btn.disabled = on; btn.classList.toggle('spinning', on); }
 function note(text, cls) { return E('div', { 'class': 'alert-message ' + (cls || 'notice') }, text); }
 function arr(v) { return Array.isArray(v) ? v : (v ? String(v).split(/\s+/) : []); }
-function applyUci() { return uci.save().then(function() { return ui.changes.apply(); }); }
 
 function row(title, field, descr) {
 	return E('div', { 'class': 'cbi-value' }, [
@@ -60,29 +58,50 @@ function failText(m) {
 	return kept ? t + '; ' + _('the previous list stays in use') : t;
 }
 
+
 function mbs(b) { const m = Math.max(0, b / 1048576); return m < 10 ? m.toFixed(1) : String(Math.round(m)); }
 
-function policyLabel(n) {
-	if (uci.get('detour', n, '.type') != 'policy') return _('nowhere: its policy «%s» no longer exists - choose another in «Edit»').format(n);
-	if (uci.get('detour', n, 'action') == 'block') return _('blocked (the policy «%s»)').format(uci.get('detour', n, 'label') || n);
-	if (uci.get('detour', n, 'action') == 'direct') return _('never through a tunnel (the policy «%s»)').format(uci.get('detour', n, 'label') || n);
-	return _('through the policy «%s»').format(uci.get('detour', n, 'label') || n);
-}
+return baseclass.extend({
+	failText: failText,
+	mbs: mbs,
 
-return view.extend({
-	load: function() {
-		return pdata.all({ cfg: uci.load('detour'), status: L.resolveDefault(callStatus(), {}) });
+	// list name -> its state from the daemon's status (count, kind, ts, ok, message)
+	states: function(status) {
+		const st = {};
+		((status || {}).lists || []).forEach(function(l) { st[l.name] = l; });
+		return st;
 	},
 
-	renderList: function(l, st) {
+	// about how much memory a loaded list takes (its entries times what an entry costs on this router)
+	bytes: function(s, mem) {
+		if (!s || !s.count || !mem || !mem.per) return 0;
+		return s.count * (mem.per[s.kind] || 300);
+	},
+
+	// the memory of the lists as a bar and a line: own (bytes of one policy's lists) shows that part too
+	memory: function(m, own) {
+		if (!m) return '';
+		const cap = Math.max(1, m.cap), pct = function(b) { return Math.min(100, b * 100 / cap) + '%'; };
+		return E('div', { 'class': 'detour-mem' }, [
+			E('div', { 'class': 'detour-share', 'title': Math.round(m.used * 100 / cap) + '%' }, own != null
+				? [ E('div', { 'style': 'width:' + pct(own) }), E('div', { 'class': 'rest', 'style': 'width:' + pct(Math.max(0, m.used - own)) }) ]
+				: E('div', { 'style': 'width:' + pct(m.used) })),
+			E('span', { 'class': 'detour-muted' }, own != null
+				? _('The lists of this policy: ~%s MB · all lists: ~%s MB · up to %s MB more can be added').format(mbs(own), mbs(m.used), mbs(m.left))
+				: _('Memory: the lists take ~%s MB; up to %s MB more can be added (the router has %s MB, %s MB of it stay free for everything else).').format(mbs(m.used), mbs(m.left), mbs(m.total), mbs(m.reserve)))
+		]);
+	},
+
+	// a list as a card: what it is, how many entries, when updated, the last failure; opts: { onChange, onRefresh, edit }
+	card: function(l, st, opts) {
 		const self = this;
+		opts = opts || {};
 		const name = l['.name'];
 		const s = st[name];
 		const enabled = l.enabled != '0';
-		const body = [ E('div', {}, [ E('strong', {}, (_('Goes:') + ' ')), policyLabel(l.policy || '') ]) ];
+		const body = [];
 		const srcs = arr(l.url).map(function(u) { return msg.sourceText(u); });
 		if (l.file) srcs.push(_('file %s').format(l.file));
-		if (srcs.length) body.push(E('div', { 'class': 'detour-muted' }, _('Source: %s').format(srcs.join(', '))));
 		if (s) {
 			const kind = { 'cidr': _('addresses'), 'domain': _('domains') }[s.kind] || '';
 			body.push(E('div', {}, [ N_(s.count || 0, '%d entry', '%d entries').format(s.count || 0), kind ? ' · ' + kind : '',
@@ -91,25 +110,31 @@ return view.extend({
 			if (!s.ok && s.message) body.push(note(failText(s.message), 'warning'));
 		}
 		else if (enabled) body.push(E('em', {}, _('not loaded yet')));
+		if (srcs.length) body.push(E('div', { 'class': 'detour-muted' }, _('Source: %s').format(srcs.join(', '))));
 
 		const bUpdate = E('button', { 'class': 'btn cbi-button-action', 'click': function() {
 			busy(bUpdate, true);
 			return callUpdate(name).then(function(r) {
 				if (r && r.error) ui.addNotification(null, E('p', r.error), 'danger');
-				else location.reload();
+				else if (opts.onRefresh) return opts.onRefresh();
 			}).finally(function() { busy(bUpdate, false); });
 		} }, _('Update now'));
-		const bEdit = E('button', { 'class': 'btn', 'click': function() { self.edit(l); } }, _('Edit'));
-		const bToggle = E('button', { 'class': 'btn', 'click': function() { uci.set('detour', name, 'enabled', enabled ? '0' : '1'); return applyUci(); } },
-			enabled ? _('Turn off') : _('Turn on'));
+		const bEdit = E('button', { 'class': 'btn', 'click': function() { self.edit(l, null, opts); } }, _('Edit'));
+		const bToggle = E('button', { 'class': 'btn', 'click': function() {
+			uci.set('detour', name, 'enabled', enabled ? '0' : '1');
+			if (opts.onChange) opts.onChange(name);
+		} }, enabled ? _('Turn off') : _('Turn on'));
 		const bRemove = E('button', { 'class': 'btn cbi-button-negative', 'click': function() {
 			ui.showModal([ _('Remove the list «%s»?').format(msg.listTitle(l)) ], [
 				E('p', {}, _('What came only from this list goes directly from now on.')),
 				E('div', { 'class': 'right' }, [ E('button', { 'class': 'btn', 'click': ui.hideModal }, _('Cancel')), ' ',
-					E('button', { 'class': 'btn cbi-button-negative', 'click': function() { uci.remove('detour', name); ui.hideModal(); return applyUci(); } }, _('Remove')) ]) ]);
+					E('button', { 'class': 'btn cbi-button-negative', 'click': function() {
+						uci.remove('detour', name); ui.hideModal();
+						if (opts.onChange) opts.onChange(name);
+					} }, _('Remove')) ]) ]);
 		} }, _('Remove'));
 
-		return E('div', { 'class': 'detour-card' }, [
+		return E('div', { 'class': 'detour-card detour-list-card' + (enabled ? '' : ' off') }, [
 			E('div', { 'class': 'detour-card-head' }, [ E('span', { 'class': 'detour-card-title' }, msg.listTitle(l)), ' ',
 				E('span', { 'class': 'detour-badge ' + (!enabled ? 'off' : (s && !s.ok ? 'bad' : 'ok')) }, !enabled ? _('switched off') : (s && !s.ok ? _('update failed') : _('on'))),
 				E('span', { 'class': 'detour-muted', 'title': _('Internal name: used in the configuration and the log') }, name) ]),
@@ -130,15 +155,17 @@ return view.extend({
 		return E('select', { 'class': 'cbi-input-select' }, opts);
 	},
 
+
 	// pre: { name, url, kind, label } - a new list from the catalogue
-	edit: function(l, pre) {
+	edit: function(l, pre, opts) {
+		opts = opts || {};
 		const isNew = !l;
 		l = l || {};
 		const name = E('input', { 'class': 'cbi-input-text', 'placeholder': 'yt', 'maxlength': 20 });
 		const preset = E('select', { 'class': 'cbi-input-select' }, [ E('option', { 'value': '' }, _('— own sources (below) —')) ]
 			.concat(msg.PRESETS.map(function(p) { return E('option', { 'value': p[0] }, p[1]); })));
 		const label = E('input', { 'class': 'cbi-input-text', 'value': l.label || '', 'placeholder': isNew ? '' : msg.listTitle(l) });
-		const policy = this.policySelect(l.policy || (uci.sections('detour', 'policy')[0] || {})['.name']);
+		const policy = this.policySelect(l.policy || opts.policy || (uci.sections('detour', 'policy')[0] || {})['.name']);
 		const url = E('textarea', { 'class': 'cbi-input-textarea', 'rows': 3, 'placeholder': 'https://…\nv2fly:youtube' }, arr(l.url).join('\n'));
 		const file = E('input', { 'class': 'cbi-input-text', 'value': l.file || '', 'placeholder': '/etc/detour/lists/my.txt' });
 		const kind = E('select', { 'class': 'cbi-input-select' }, [ [ 'auto', _('detect by itself') ], [ 'cidr', _('addresses') ], [ 'domain', _('domains') ] ].map(function(k) {
@@ -182,13 +209,17 @@ return view.extend({
 			set('file', file.value.trim());
 			set('kind', kind.value == 'auto' ? '' : kind.value);
 			set('min_lines', minl.value.trim());
-			return applyUci().then(function() { return callUpdate(n); }).then(function() { return true; });
+			// staged with the rest of the page: «Save» / «Apply» below take it (the router loads a new list once applied)
+			if (opts.onChange) opts.onChange(n);
+			return true;
 		}, isNew ? _('Add') : _('Save'));
 	},
 
+
 	// the catalogue: every category of v2fly and runetfreedom with how many entries it has (counted when the
 	// package was built, tools/geo-catalog.py) and about how much memory it takes on the router
-	catalog: function() {
+	catalog: function(opts) {
+		opts = opts || {};
 		const self = this;
 		const search = E('input', { 'class': 'cbi-input-text', 'placeholder': _('youtube, telegram, openai, steam…') });
 		const kindSel = E('select', { 'class': 'cbi-input-select' }, [ [ '', _('domains and addresses') ], [ 'domain', _('domains') ], [ 'cidr', _('addresses') ] ].map(function(k) { return E('option', { 'value': k[0] }, k[1]); }));
@@ -197,7 +228,7 @@ return view.extend({
 		const have = {};
 		uci.sections('detour', 'list').forEach(function(l) { arr(l.url).forEach(function(u) { have[u] = msg.listTitle(l); }); });
 		// memory: what an entry costs on this router and how much the lists may still take (lists_memory of status)
-		const mem = self.mem || null;
+		const mem = opts.mem || null;
 		const bytes = function(e) { return e.n * (mem ? mem.per[e.kind] : (e.kind == 'cidr' ? 250 : 300)); };
 		const size = function(e) {
 			if (e.n == null) return _('size unknown until added');
@@ -222,7 +253,7 @@ return view.extend({
 					big ? E('span', { 'class': 'detour-delay bad' }, _('takes most of the %s MB left for lists').format(mbs(mem.left))) : '',
 					have[e.url] ? E('span', { 'class': 'detour-muted' }, _('already added')) : E('button', { 'class': 'btn', 'disabled': nofit ? '' : null, 'click': function() {
 						ui.hideModal();
-						self.edit(null, { url: e.url, kind: e.kind, label: e.title, name: ('l_' + e.key.replace(/[^a-z0-9_]/g, '_')).slice(0, 20) });
+						self.edit(null, { url: e.url, kind: e.kind, label: e.title, name: ('l_' + e.key.replace(/[^a-z0-9_]/g, '_')).slice(0, 20) }, opts);
 					} }, _('Add'))
 				]);
 			});
@@ -278,34 +309,4 @@ return view.extend({
 		}).catch(function() { out.replaceChildren(E('em', {}, _('The catalogue is missing from this build.'))); });
 	},
 
-	render: function(data) {
-		const self = this;
-		const st = {};
-		((data.status || {}).lists || []).forEach(function(l) { st[l.name] = l; });
-		this.mem = (data.status || {}).lists_memory || null;
-		const m = this.mem;
-		const all = uci.sections('detour', 'list');
-		return E('div', {}, [
-			E('link', { 'rel': 'stylesheet', 'href': L.resource('detour/detour.css') + '?v=' + encodeURIComponent(L.env.resource_version || '') }),
-			E('h2', {}, _('Lists')),
-			E('div', { 'class': 'cbi-map-descr' }, _('Big sets of sites or addresses from the internet: everything blocked in Russia, a service (YouTube, Telegram…). Each list goes through a policy or never through a tunnel. They are updated every night; if a source does not answer, the previous list stays in use.')),
-			m ? E('div', { 'class': 'cbi-map-descr detour-mem' }, [
-				E('div', { 'class': 'detour-share', 'title': Math.round(m.used * 100 / Math.max(1, m.cap)) + '%' }, E('div', { 'style': 'width:' + Math.min(100, m.used * 100 / Math.max(1, m.cap)) + '%' })),
-				E('span', {}, _('Memory: the lists take ~%s MB; up to %s MB more can be added (the router has %s MB, %s MB of it stay free for everything else).')
-					.format(mbs(m.used), mbs(m.left), mbs(m.total), mbs(m.reserve)))
-			]) : '',
-			E('div', { 'class': 'cbi-section' }, [
-				E('div', { 'class': 'cbi-section-node detour-node' }, [
-					all.length ? E('div', { 'class': 'detour-cards' }, all.map(function(l) { return self.renderList(l, st); }))
-						: E('div', { 'class': 'detour-result' }, E('em', {}, _('No lists yet.'))),
-					E('div', { 'class': 'detour-actions' }, [ E('button', { 'class': 'btn cbi-button-add', 'click': function() { self.edit(null); } }, _('Add list')),
-						E('button', { 'class': 'btn', 'click': function() { self.catalog(); } }, _('Catalogue of categories…')) ])
-				])
-			])
-		]);
-	},
-
-	handleSave: null,
-	handleSaveApply: null,
-	handleReset: null
 });
