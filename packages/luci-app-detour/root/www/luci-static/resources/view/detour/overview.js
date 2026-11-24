@@ -19,9 +19,10 @@ const E = function(tag, attr, data) {
 
 const callStatus = rpc.declare({ object: 'detour', method: 'status' });
 const callRates = rpc.declare({ object: 'detour', method: 'rates' });
+const callRatesHist = rpc.declare({ object: 'detour', method: 'rates_history' });
 
-const RATE_EVERY = 3;          // s between two readings of the counters
-const RATE_POINTS = 100;       // 100 x 3 s = 5 min
+const RATE_EVERY = 5;          // s between two readings of the counters (as the daemon keeps them)
+const RATE_POINTS = 120;       // 120 x 5 s = 10 min
 
 // bytes in LuCI's own units (as on the Traffic page)
 function bytes(b) { return '%1024.2mB'.format(b || 0); }
@@ -59,7 +60,10 @@ function fmtTime(ts) {
 
 return view.extend({
 	load: function() {
-		return pdata.all({ status: callStatus().catch(function() { return null; }), cfg: L.resolveDefault(uci.load('detour'), null) }).then(function(r) { return r.status; });
+		const self = this;
+		// the last 10 minutes of the counters the daemon keeps: the speed chart starts with them, not empty
+		return pdata.all({ status: callStatus().catch(function() { return null; }), cfg: L.resolveDefault(uci.load('detour'), null),
+			rhist: L.resolveDefault(callRatesHist(), null) }).then(function(r) { self.rhist = r.rhist; return r.status; });
 	},
 
 	// names people gave to exits and policies (internal names otherwise)
@@ -116,9 +120,10 @@ return view.extend({
 		this.srcSel = E('select', { 'class': 'cbi-input-select', 'change': function() { self.src = self.srcSel.value; self.drawRates(); } },
 			[ E('option', { 'value': '' }, _('All the traffic')) ]);
 		this.rateNow = E('div', { 'class': 'detour-chart-now' });
-		this.rateSub = E('div', { 'class': 'detour-chart-sub' }, _('the last 5 minutes, every %d s').format(RATE_EVERY));
+		this.rateSub = E('div', { 'class': 'detour-chart-sub' }, _('the last 10 minutes, every %d s').format(RATE_EVERY));
 		this.rateFoot = E('div', { 'class': 'detour-chart-foot' });
 		this.chart = chart.create(function() { self.drawRates(); });
+		this.seedRates(this.rhist);
 		return E('div', { 'class': 'detour-chart-card' }, [
 			E('div', { 'class': 'detour-chart-head' }, [
 				E('div', {}, [ E('div', { 'class': 'detour-chart-title' }, _('Speed')), this.rateSub ]),
@@ -127,19 +132,33 @@ return view.extend({
 			this.chart.el, this.rateFoot ]);
 	},
 
+	// a reading of the counters -> a point of the chart (bits per second since the reading before); at: the clock
+	// of the browser (the router's t is its uptime)
+	addRate: function(r, at) {
+		if (this.last && r.t > this.last.t) {
+			const last = this.last, dt = (r.t - last.t) / 1000;
+			const d = function(a, b) { return (a && b && a[0] >= b[0] && a[1] >= b[1]) ? [ (a[0] - b[0]) * 8 / dt, (a[1] - b[1]) * 8 / dt ] : null; };
+			const p = { t: r.t, at: at, wan: r.wan && last.wan ? d([ r.wan.rx, r.wan.tx ], [ last.wan.rx, last.wan.tx ]) : null, exits: {} };
+			for (const n in r.exits) { const v = d(r.exits[n], (last.exits || {})[n]); if (v) p.exits[n] = v; }
+			this.hist.push(p);
+			if (this.hist.length > RATE_POINTS) { this.hist.shift(); if (this.chart.hover != null) this.chart.hover = Math.max(0, this.chart.hover - 1); }
+		}
+		this.last = r;
+	},
+
+	// the history the daemon kept: its times from the newest reading back, by the router's uptime
+	seedRates: function(h) {
+		const s = (h && h.samples) || [];
+		if (!s.length) return;
+		const newest = s[s.length - 1].t, now = Date.now();
+		s.forEach(function(r) { if (r && r.t) this.addRate(r, now - (newest - r.t)); }, this);
+	},
+
 	pollRates: function() {
 		const self = this;
 		return callRates().then(function(r) {
 			if (!r || !r.t) return;
-			if (self.last && r.t > self.last.t) {
-				const dt = (r.t - self.last.t) / 1000;
-				const d = function(a, b) { return (a && b && a[0] >= b[0] && a[1] >= b[1]) ? [ (a[0] - b[0]) * 8 / dt, (a[1] - b[1]) * 8 / dt ] : null; };
-				const p = { t: r.t, at: Date.now(), wan: r.wan && self.last.wan ? d([ r.wan.rx, r.wan.tx ], [ self.last.wan.rx, self.last.wan.tx ]) : null, exits: {} };
-				for (const n in r.exits) { const v = d(r.exits[n], (self.last.exits || {})[n]); if (v) p.exits[n] = v; }
-				self.hist.push(p);
-				if (self.hist.length > RATE_POINTS) { self.hist.shift(); if (self.chart.hover != null) self.chart.hover = Math.max(0, self.chart.hover - 1); }
-			}
-			self.last = r;
+			self.addRate(r, Date.now());
 			self.drawRates();
 		});
 	},
@@ -173,7 +192,7 @@ return view.extend({
 		dom.content(this.rateNow, [ chartPill('mute', '↓', _('Downloading'), show ? mbit(show[0]) : '—'), chartPill('acc', '↑', _('Uploading'), show ? mbit(show[1]) : '—') ]);
 		let max = 0;
 		seen.forEach(function(v) { max = Math.max(max, v[0], v[1]); });
-		if (h.length > 1) this.rateSub.textContent = _('the last 5 minutes, every %d s').format(RATE_EVERY) + ' · ' + _('peak %s').format(mbit(max));
+		if (h.length > 1) this.rateSub.textContent = _('the last 10 minutes, every %d s').format(RATE_EVERY) + ' · ' + _('peak %s').format(mbit(max));
 		chart.draw(this.chart, {
 			n: h.length, slots: RATE_POINTS, minTop: 1e5, fmt: mbit,
 			series: [ { cls: 'mute', vals: vals.map(function(v) { return v ? v[0] : null; }) }, { cls: 'acc', vals: vals.map(function(v) { return v ? v[1] : null; }) } ],

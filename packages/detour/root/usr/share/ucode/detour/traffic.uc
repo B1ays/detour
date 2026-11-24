@@ -5,7 +5,9 @@
 // Through VPN = the exits' download, minus what an exit carries for another one riding through it.
 // Directly = all devices minus through VPN (approximate: the router's own downloads through a tunnel count as VPN).
 //
-// Every tick (5 min) adds the growth of each counter to today. A counter that went down was reset
+// Every tick (5 min) adds the growth of each counter to today and to its hour (day.h['HH']: the devices' total t,
+// through VPN v, each exit x - not each device: a month of hours per device would make the file many times bigger
+// and it is written to flash every 30 min). A counter that went down was reset
 // (nlbwmon restarted or began its next period, a tunnel came up again): its new value is all growth.
 // A month is one file: in RAM every tick, on flash every 30 min, when the month ends and when the daemon stops.
 'use strict';
@@ -145,10 +147,11 @@ export function tick(cfg, via_of) {
 	// the first step after start only takes the starting point
 	if (last) {
 		const today = (data[day] ??= { d: {}, x: {}, v: [ 0, 0 ] });
+		const hour = ((today.h ??= {})[pad(localtime(now).hour)] ??= { t: [ 0, 0 ], v: [ 0, 0 ], x: {} });
 		for (let mac, v in cur.d ?? {}) {
 			const l = last.d?.[mac];
 			const rx = grow(v[0], l?.[0]), tx = grow(v[1], l?.[1]);
-			if (rx || tx) add(today.d, mac, rx, tx);
+			if (rx || tx) { add(today.d, mac, rx, tx); hour.t[0] += rx; hour.t[1] += tx; }
 		}
 		let vrx = 0, vtx = 0;   // through VPN this step
 		for (let name, v in cur.x) {
@@ -157,7 +160,7 @@ export function tick(cfg, via_of) {
 			const same = l && l[0] == v[0];
 			const rx = grow(v[1], same ? l[1] : 0), tx = grow(v[2], same ? l[2] : 0);
 			if (!same && l == null) continue;   // an exit seen for the first time: starting point only
-			if (rx || tx) add(today.x, name, rx, tx);
+			if (rx || tx) { add(today.x, name, rx, tx); add(hour.x, name, rx, tx); }
 			// an exit riding through another one is in that one's counter as well: counted once, there
 			const carrier = via_of(name);
 			if (carrier && cur.x[carrier]) continue;
@@ -165,6 +168,8 @@ export function tick(cfg, via_of) {
 		}
 		today.v[0] += vrx;
 		today.v[1] += vtx;
+		hour.v[0] += vrx;
+		hour.v[1] += vtx;
 	}
 	core.write_json(STATE, { d: cur.d ?? last?.d ?? {}, x: cur.x, home: cur.home, at: now });
 	core.write_json(RAMDIR + '/' + m + '.json', data);
@@ -188,7 +193,10 @@ function days_back(n) {
 	return out;
 }
 
-// period: day | days3 | week | month | year
+// period: day | days3 | week | month | year. The bars: a year by month; the other periods by hours of their days -
+// today by the hour, 3 days by the hour, 7 days by 4 hours, 30 days by 6 hours (bar: label 'YYYY-MM-DD', h: its
+// first hour, span: its hours), up to the hour now. What a day counted before its hours were kept (an older
+// version) is in its first bar, so the bars add up to the days.
 export function report(period) {
 	const files = {};
 	const get = (m) => (m == month && data) ? data : (files[m] ??= load_month(m));
@@ -212,10 +220,27 @@ export function report(period) {
 		}
 	}
 	else {
+		const span = { day: 1, days3: 1, week: 4 }[period] ?? 6;
+		const now = time(), nl = localtime(now), td = ymd(now);
 		for (let x in days_back({ day: 1, days3: 3, week: 7 }[period] ?? 30)) {
-			const bar = { label: x[0] + '-' + x[1], rx: 0, tx: 0, vrx: 0, vtx: 0 };
-			take(get(x[0])[x[1]], bar);
-			push(bars, bar);
+			const d = get(x[0])[x[1]];
+			const whole = { rx: 0, tx: 0, vrx: 0, vtx: 0 };
+			take(d, whole);
+			const is_today = x[0] == td[0] && x[1] == td[1];
+			const mine = [], sum = { rx: 0, tx: 0, vrx: 0, vtx: 0 };
+			for (let s = 0; s < 24; s += span) {
+				if (is_today && s > nl.hour) break;
+				const bar = { label: x[0] + '-' + x[1], h: s, span, rx: 0, tx: 0, vrx: 0, vtx: 0 };
+				for (let k = s; k < s + span; k++) {
+					const H = d?.h?.[pad(k)];
+					if (!H) continue;
+					bar.rx += H.t[0]; bar.tx += H.t[1]; bar.vrx += H.v[0]; bar.vtx += H.v[1];
+				}
+				for (let f in [ 'rx', 'tx', 'vrx', 'vtx' ]) sum[f] += bar[f];
+				push(mine, bar);
+			}
+			if (length(mine)) for (let f in [ 'rx', 'tx', 'vrx', 'vtx' ]) if (whole[f] > sum[f]) mine[0][f] += whole[f] - sum[f];
+			for (let b in mine) push(bars, b);
 		}
 	}
 	for (let b in bars) { total[0] += b.rx; total[1] += b.tx; vpn[0] += b.vrx; vpn[1] += b.vtx; }

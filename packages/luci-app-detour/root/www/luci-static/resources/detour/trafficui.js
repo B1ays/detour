@@ -27,15 +27,28 @@ function size(b) { return '%1024.2mB'.format(b || 0); }
 function pct(a, b) { return b > 0 ? Math.round(a * 100 / b) + '%' : '—'; }
 function exitName(n) { return uci.get('detour', n, 'label') || n; }
 
-function barLabel(l, period) {
-	const p = l.split('-').map(Number);
+// a bar: { label: 'YYYY-MM' (a year by month) or 'YYYY-MM-DD', h: its first hour, span: its hours } (the hours of
+// a day: the daemon keeps them since this version; a bar without h is a whole day)
+function hh(h) { return (h < 10 ? '0' : '') + h + ':00'; }
+function barLabel(b, period) {
+	const p = b.label.split('-').map(Number);
 	if (period == 'year') return new Date(p[0], p[1] - 1, 1).toLocaleDateString(undefined, { month: 'short' });
-	return String(p[2]);
+	if (b.h == null) return String(p[2]);
+	// the first bar of a day names the day, the others their hour
+	if (b.h == 0 && period != 'day') return new Date(p[0], p[1] - 1, p[2]).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+	return hh(b.h);
 }
-function longLabel(l, period) {
-	const p = l.split('-').map(Number);
+function longLabel(b, period) {
+	const p = b.label.split('-').map(Number);
 	if (period == 'year') return new Date(p[0], p[1] - 1, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
-	return new Date(p[0], p[1] - 1, p[2]).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'long' });
+	const day = new Date(p[0], p[1] - 1, p[2]).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'long' });
+	return b.h == null ? day : day + ', ' + hh(b.h) + '–' + hh((b.h + (b.span || 1)) % 24);
+}
+function byText(bars, period) {
+	if (period == 'year') return _('by month');
+	const b = bars[0] || {};
+	if (b.h == null) return _('by day');
+	return b.span == 4 ? _('by 4 hours') : b.span == 6 ? _('by 6 hours') : _('by hour');
 }
 
 return baseclass.extend({
@@ -98,19 +111,19 @@ return baseclass.extend({
 					note ? E('div', { 'class': 'detour-chart-note' }, note) : '' ]);
 			};
 			dom.content(cFoot, [ stat(_('Downloaded'), size(t.rx)), stat(_('Uploaded'), size(t.tx)), stat(_('Through VPN'), size(v.rx), pct(v.rx, t.rx)), stat(_('Directly'), size(d.rx), pct(d.rx, t.rx)) ]);
-			cSub.textContent = self.periodLabel(period) + (bars.length > 1 ? ' · ' + (period == 'year' ? _('by month') : _('by day')) : '');
+			cSub.textContent = self.periodLabel(period) + (bars.length > 1 ? ' · ' + byText(bars, period) : '');
 			const all = bars.map(function(b) { return b.rx; }), vpn = bars.map(function(b) { return Math.min(b.vrx, b.rx); });
 			const hv = ch.hover != null ? ch.hover : bars.length - 1;
 			const pill = function(cls, label, value) { return E('span', {}, [ E('span', { 'class': 'detour-c-' + cls }, '● '), label + ' ', E('strong', {}, value) ]); };
-			dom.content(cNow, bars.length > 1 ? [ E('span', { 'class': 'detour-muted' }, longLabel(bars[hv].label, period)),
+			dom.content(cNow, bars.length > 1 ? [ E('span', { 'class': 'detour-muted' }, longLabel(bars[hv], period)),
 				pill('mute', _('All the traffic'), size(all[hv])), pill('acc', _('Through VPN'), size(vpn[hv])) ] : []);
 			chart.draw(ch, {
 				n: bars.length, fmt: size, minTop: 1048576, binary: true,
-				empty: _('Today is a single point: the chart starts with the 3 days period.'),
-				labels: bars.map(function(b) { return barLabel(b.label, period); }),
+				empty: _('The day has just begun: the chart starts with its second hour.'),
+				labels: bars.map(function(b) { return barLabel(b, period); }),
 				series: [ { cls: 'mute', vals: all }, { cls: 'acc', vals: vpn } ],
 				tip: function(i) {
-					return [ E('div', { 'class': 'detour-muted' }, longLabel(bars[i].label, period)),
+					return [ E('div', { 'class': 'detour-muted' }, longLabel(bars[i], period)),
 						E('div', {}, [ E('span', { 'class': 'detour-c-mute' }, '● '), _('All the traffic') + ': ' + size(all[i]) ]),
 						E('div', {}, [ E('span', { 'class': 'detour-c-acc' }, '● '), _('Through VPN') + ': ' + size(vpn[i]) ]),
 						E('div', {}, [ E('span', { 'class': 'detour-muted' }, '○ '), _('Directly') + ': ' + size(all[i] - vpn[i]) ]) ];

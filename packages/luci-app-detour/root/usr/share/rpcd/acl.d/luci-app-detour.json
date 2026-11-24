@@ -11,7 +11,8 @@
 					"devices",
 					"catalog_names",
 					"dns_providers",
-					"rates"
+					"rates",
+					"rates_history"
 				],
 				"luci": [
 					"getFeatures"
