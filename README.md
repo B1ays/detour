@@ -428,13 +428,13 @@ git tag v0.2.0 && git push origin v0.2.0
 
 ### Interface translation
 
-Interface strings and the texts of the notifications are written in English inside `_('…')`; the Russian translation is a dictionary in `tools/i18n-ru.py`:
+As in LuCI (gettext): interface strings are written in English inside `_('…')` / `N_(n, '…', '…')`; `packages/luci-app-detour/po/templates/detour.pot` is the template made from the code, and `po/<lang>/detour.po` is the translation - edit it by hand, in Poedit or in Weblate. A new language is a new `po/<lang>/detour.po` with `Language` and `Plural-Forms` in its header. After a change in the strings:
 
 ```sh
-python tools/i18n-ru.py packages/luci-app-detour
+python tools/i18n.py packages/luci-app-detour
 ```
 
-The command generates `po/ru/detour.po` for LuCI and `packages/detour/root/usr/share/detour/i18n/ru.json` for the notifications, and fails if any string is left untranslated. The language of the notifications is set in **Settings → Notifications** (by default, the language of LuCI).
+The command makes the template anew and brings every `.po` in line with it (like `msgmerge`: a new message comes in with an empty `msgstr`, one the code no longer has goes, translations and translators' comments stay). It fails while a Russian message is untranslated or a translation's placeholders (`%s`, `%d`) differ from the English; other languages may have gaps, shown in English. The build compiles each `.po` into `detour.<lang>.lmo`. The texts of the notifications are a dictionary in `tools/i18n.py` (`RU_NOTIFY`) -> `packages/detour/root/usr/share/detour/i18n/ru.json`. The language of the notifications is set in **Settings → Notifications** (by default, the language of LuCI).
 
 ## Testing
 

@@ -1,6 +1,6 @@
 // Translations of the messages Detour sends to people (Telegram notifications). The texts are written in
 // English inside _('…'); a language is a JSON dictionary English -> translation in /usr/share/detour/i18n,
-// made by tools/i18n-ru.py from the same dictionary as the LuCI translation. The log stays English.
+// made by tools/i18n.py (its RU_NOTIFY dictionary). The log stays English.
 // The language: option lang of the notify section ('en', 'ru'); empty = as LuCI (luci.main.lang),
 // and for LuCI's "auto" - Russian when the Russian LuCI translation is installed, else English.
 'use strict';

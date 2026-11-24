@@ -37,9 +37,9 @@ jobs:
 
       - name: Translations in sync
         run: |
-          python3 tools/i18n-ru.py packages/luci-app-detour
+          python3 tools/i18n.py packages/luci-app-detour
           git diff --exit-code -- packages/luci-app-detour/po packages/detour/root/usr/share/detour/i18n \
-            || { echo "::error::run python tools/i18n-ru.py packages/luci-app-detour and commit the result"; exit 1; }
+            || { echo "::error::run python tools/i18n.py packages/luci-app-detour and commit the result"; exit 1; }
 
       - name: Build the packages
         run: |

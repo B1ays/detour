@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Extract translatable strings of luci-app-detour: _('…'), N_(n, '…', '…') in the LuCI views (string
-literals joined with + are one message, as LuCI's xgettext does) and "title" in the menu JSON.
-usage: i18n-extract.py <luci-app-detour dir>   -> prints JSON [{"id":…, "plural":…|null, "where":…}]"""
+"""Extract translatable strings of luci-app-detour, as LuCI's build/i18n-scan.pl does: _('…'), N_(n, '…', '…') in the
+views and shared modules (string literals joined with + are one message) and "title" in the menu JSON.
+usage: i18n-extract.py <luci-app-detour dir>
+  -> prints JSON [{"id":…, "plural":…|null, "where":…, "refs": ["<path in the package>:<line>", …]}]"""
 import json, os, re, sys
 
 def js_string(src, i):
@@ -38,8 +39,10 @@ def extract(root):
     files = [ os.path.join(views, f) for f in sorted(os.listdir(views)) ] +         [ os.path.join(shared, f) for f in sorted(os.listdir(shared)) if f.endswith('.js') ]
     for path in files:
         f = os.path.basename(path)
+        rel = os.path.relpath(path, root).replace(os.sep, '/')
         src = open(path, encoding='utf-8').read()
         for m in re.finditer(r'(?<![\w.])(N_|_)\(', src):
+            ref = '%s:%d' % (rel, src.count('\n', 0, m.start()) + 1)
             i = m.end()
             if m.group(1) == '_':
                 s, _ = concat(src, i)
@@ -59,13 +62,20 @@ def extract(root):
                 s2, j = concat(src, j + 1)
                 key = (s1, s2)
             if key not in seen:
-                seen[key] = True
-                out.append({'id': key[0], 'plural': key[1], 'where': f})
+                seen[key] = { 'id': key[0], 'plural': key[1], 'where': f, 'refs': [] }
+                out.append(seen[key])
+            seen[key]['refs'].append(ref)
     menu = os.path.join(root, 'root/usr/share/luci/menu.d/luci-app-detour.json')
-    for k, v in json.load(open(menu, encoding='utf-8')).items():
+    mtext = open(menu, encoding='utf-8').read()
+    for k, v in json.loads(mtext).items():
         t = v.get('title')
-        if t and (t, None) not in seen:
-            seen[(t, None)] = True; out.append({'id': t, 'plural': None, 'where': 'menu'})
+        if not t: continue
+        at = mtext.find('"title": ' + json.dumps(t, ensure_ascii=False))
+        ref = 'root/usr/share/luci/menu.d/luci-app-detour.json:%d' % (mtext.count('\n', 0, at) + 1 if at >= 0 else 1)
+        if (t, None) not in seen:
+            seen[(t, None)] = { 'id': t, 'plural': None, 'where': 'menu', 'refs': [] }
+            out.append(seen[(t, None)])
+        seen[(t, None)]['refs'].append(ref)
     return out
 
 def extract_ucode(root):
