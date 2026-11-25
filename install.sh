@@ -53,6 +53,14 @@ fi
 PKGS="detour luci-app-detour"
 [ "${DETOUR_NO_LUCI:-0}" = 1 ] && PKGS=detour
 if apk info -e detour >/dev/null 2>&1; then
+	# installed from a file (a test build: "apk add ./detour.apk") it is pinned to that file in /etc/apk/world
+	# ("detour><checksum") and "apk upgrade" would keep it for ever; "apk add" makes it a plain name again
+	for p in $PKGS; do
+		if grep -q "^$p><" /etc/apk/world 2>/dev/null; then
+			say "$p was installed from a file: it follows the feed again"
+			apk add "$p" >/dev/null || die "could not unpin $p"
+		fi
+	done
 	say "upgrading $PKGS"
 	apk upgrade $PKGS
 else

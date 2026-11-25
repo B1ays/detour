@@ -37,6 +37,16 @@ refresh() {
 	return 0
 }
 
+# a package installed from a file ("apk add ./x.apk": a test build) is pinned to that file in /etc/apk/world
+# ("name><checksum"): "apk upgrade" keeps it for ever and says OK. "apk add name" turns it back into a plain name.
+unpin() {
+	for p in $pkgs; do
+		grep -q "^$p><" /etc/apk/world 2>/dev/null || continue
+		echo "$p was installed from a file: it follows the feeds again"
+		apk add $miss "$p" >/dev/null || return 1
+	done
+}
+
 rc=0; some=; miss=
 case "$act" in
 update)  refresh || rc=$? ;;
@@ -52,7 +62,7 @@ install)
 			for p in $pkgs; do apk add $miss "$p" && some=1; done
 		fi
 	fi ;;
-upgrade) refresh && apk upgrade $miss $pkgs || rc=$? ;;
+upgrade) refresh && unpin && apk upgrade $miss $pkgs || rc=$? ;;
 remove)  apk del $pkgs || rc=$? ;;
 *)       echo "unknown action: $act"; rc=2 ;;
 esac
