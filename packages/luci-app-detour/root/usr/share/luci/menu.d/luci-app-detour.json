@@ -34,7 +34,7 @@
 		}
 	},
 	"admin/services/detour/policies": {
-		"title": "Policies",
+		"title": "Routing",
 		"order": 2,
 		"action": {
 			"type": "view",

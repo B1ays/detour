@@ -140,7 +140,7 @@ return baseclass.extend({
 				self.confirmExit(text.value, usable[0], r.candidates[usable[0]], r.installed || {}, fileName, function(added) {
 					const names = (added.added || []).map(function(a) { return a.name; }).join(', ');
 					text.value = ''; fileName = '';
-					onDone(_('Exit %s added. Put it into a policy on the Policies page.').format(names) +
+					onDone(_('Exit %s added. Put it into a policy on the Routing page.').format(names) +
 						((added.notes && added.notes.length) ? ' (' + added.notes.map(errText).join('; ') + ')' : ''));
 				});
 			}).finally(function() { busy(bImport, false); });

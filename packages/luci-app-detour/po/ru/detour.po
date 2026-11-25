@@ -245,7 +245,7 @@ msgstr "Для QR-кода нужен qrencode."
 msgid "A backup saved on this page, on this router or another one. First you see what it holds; nothing changes until you confirm. Settings of an older Detour are brought up to date."
 msgstr "Копия, сохранённая на этой странице — на этом роутере или на другом. Сначала будет показано, что в ней; ничего не меняется, пока вы не подтвердите. Настройки старой версии Detour приводятся к текущей."
 
-#: root/www/luci-static/resources/view/detour/policy.js:252
+#: root/www/luci-static/resources/view/detour/policy.js:253
 msgid "A blocking policy: what matches it gets no internet at all. Sites get «no such name», addresses and ports are refused at once."
 msgstr "Политика блокировки: то, что под неё попадает, вообще не получает интернет. Сайты получают «нет такого имени», адреса и порты отклоняются сразу."
 
@@ -253,7 +253,7 @@ msgstr "Политика блокировки: то, что под неё поп
 msgid "A config for the WireGuard or AmneziaWG app."
 msgstr "Конфиг для приложения WireGuard или AmneziaWG."
 
-#: root/www/luci-static/resources/view/detour/policy.js:253
+#: root/www/luci-static/resources/view/detour/policy.js:254
 msgid "A direct policy: what matches it never goes through a tunnel, it goes directly through your provider. Put it above the policies it should make exceptions in."
 msgstr "Политика «напрямую»: то, что под неё подходит, никогда не идёт через туннель, только напрямую через провайдера. Поставьте её выше политик, в которых она должна делать исключения."
 
@@ -297,7 +297,7 @@ msgstr "Запрос только через этот сервер; подпис
 msgid "A subscription is an address from your VPN provider that gives the current list of its servers. All of them form one exit: it picks a working server by itself, or you choose one."
 msgstr "Подписка — это адрес от VPN-провайдера, по которому выдаётся актуальный список его серверов. Все они образуют один выход: он сам выбирает рабочий сервер, или вы выбираете конкретный."
 
-#: root/www/luci-static/resources/view/detour/settings.js:321
+#: root/www/luci-static/resources/view/detour/settings.js:326
 msgid "Access token"
 msgstr "Токен доступа"
 
@@ -313,7 +313,7 @@ msgstr "Добавить"
 msgid "Add an exit or a subscription"
 msgstr "Добавить выход или подписку"
 
-#: root/www/luci-static/resources/view/detour/policy.js:375
+#: root/www/luci-static/resources/view/detour/policy.js:376
 msgid "Add list"
 msgstr "Добавить список"
 
@@ -341,11 +341,11 @@ msgstr "Пул адресов «%s»"
 msgid "Address, link, key or config"
 msgstr "Адрес, ссылка, ключ или конфиг"
 
-#: root/www/luci-static/resources/view/detour/policy.js:344
+#: root/www/luci-static/resources/view/detour/policy.js:345
 msgid "Addresses"
 msgstr "Адреса"
 
-#: root/www/luci-static/resources/view/detour/policy.js:351
+#: root/www/luci-static/resources/view/detour/policy.js:352
 msgid "All devices of the checked networks get no internet at all."
 msgstr "Устройства отмеченных сетей остаются совсем без интернета."
 
@@ -357,19 +357,19 @@ msgstr "Весь трафик"
 msgid "All through the policy «%s»"
 msgstr "Весь через политику «%s»"
 
-#: root/www/luci-static/resources/view/detour/policy.js:347
+#: root/www/luci-static/resources/view/detour/policy.js:348
 msgid "All traffic of the checked devices goes directly."
 msgstr "Весь трафик отмеченных устройств идёт напрямую."
 
-#: root/www/luci-static/resources/view/detour/policy.js:347
+#: root/www/luci-static/resources/view/detour/policy.js:348
 msgid "All traffic of the checked devices goes through the policy."
 msgstr "Весь трафик отмеченных устройств идёт через политику."
 
-#: root/www/luci-static/resources/view/detour/policy.js:351
+#: root/www/luci-static/resources/view/detour/policy.js:352
 msgid "All traffic of the checked networks goes directly."
 msgstr "Весь трафик отмеченных сетей идёт напрямую."
 
-#: root/www/luci-static/resources/view/detour/policy.js:351
+#: root/www/luci-static/resources/view/detour/policy.js:352
 msgid "All traffic of the checked networks goes through the policy."
 msgstr "Весь трафик отмеченных сетей идёт через политику."
 
@@ -433,15 +433,15 @@ msgstr "Добавка к ответу (S2)"
 msgid "Anthropic (Claude)"
 msgstr "Anthropic (Claude)"
 
-#: root/www/luci-static/resources/view/detour/policy.js:338
+#: root/www/luci-static/resources/view/detour/policy.js:339
 msgid "Anything that matches one of these goes directly. Bigger sets (all Russian sites, a service) are lists, below."
 msgstr "Всё, что подходит под одно из этих условий, идёт напрямую. Большие наборы (все российские сайты, отдельный сервис) — списками ниже."
 
-#: root/www/luci-static/resources/view/detour/policy.js:339
+#: root/www/luci-static/resources/view/detour/policy.js:340
 msgid "Anything that matches one of these goes through the policy. Bigger sets (all blocked sites, a service) are lists, below."
 msgstr "Всё, что подходит под одно из этих условий, идёт через политику. Большие наборы (все заблокированные сайты, отдельный сервис) — списками ниже."
 
-#: root/www/luci-static/resources/view/detour/policy.js:337
+#: root/www/luci-static/resources/view/detour/policy.js:338
 msgid "Anything that matches one of these is blocked. Bigger sets (advertising, a service) are lists, below."
 msgstr "Всё, что подходит под одно из этих условий, блокируется. Большие наборы (реклама, отдельный сервис) — списками ниже."
 
@@ -461,7 +461,7 @@ msgstr "Автоматически"
 msgid "Average for the window"
 msgstr "Среднее за период"
 
-#: root/www/luci-static/resources/view/detour/policy.js:415
+#: root/www/luci-static/resources/view/detour/policy.js:416
 msgid "Back to the policies"
 msgstr "Назад к политикам"
 
@@ -469,7 +469,7 @@ msgstr "Назад к политикам"
 msgid "Backup:"
 msgstr "Копия:"
 
-#: root/www/luci-static/resources/view/detour/policy.js:276
+#: root/www/luci-static/resources/view/detour/policy.js:277
 msgid "Basic"
 msgstr "Основное"
 
@@ -477,7 +477,7 @@ msgstr "Основное"
 msgid "Big lists and subscriptions load in the background over the next minutes."
 msgstr "Большие списки и подписки загрузятся в фоне в ближайшие минуты."
 
-#: root/www/luci-static/resources/view/detour/policy.js:372
+#: root/www/luci-static/resources/view/detour/policy.js:373
 msgid "Big sets of sites or addresses from the internet. They are updated every night; if a source does not answer, the previous list stays in use."
 msgstr "Большие наборы сайтов или адресов из интернета. Обновляются каждую ночь; если источник не ответил, работает прежний список."
 
@@ -505,7 +505,7 @@ msgstr "Заблокированное в РФ (всё)"
 msgid "Blocked in Russia (community)"
 msgstr "Заблокированное в РФ (сообщество)"
 
-#: root/www/luci-static/resources/view/detour/policy.js:266
+#: root/www/luci-static/resources/view/detour/policy.js:267
 msgid "Blocked is safer: nothing goes past the tunnel. Directly keeps things working without the VPN, but the provider sees this traffic."
 msgstr "Блокировать надёжнее: мимо туннеля ничего не уйдёт. «Напрямую» сохраняет работу без VPN, но провайдер видит этот трафик."
 
@@ -545,7 +545,7 @@ msgstr "Отмена"
 msgid "Catalogue of categories"
 msgstr "Каталог категорий"
 
-#: root/www/luci-static/resources/view/detour/policy.js:376
+#: root/www/luci-static/resources/view/detour/policy.js:377
 msgid "Catalogue of categories…"
 msgstr "Каталог категорий…"
 
@@ -753,7 +753,7 @@ msgstr "Режим"
 msgid "DNS through the tunnel: the dnsproxy package is not installed - if the exits fail, the provider's DNS is used unencrypted"
 msgstr "DNS через туннель: не установлен пакет dnsproxy — при отказе выходов используется DNS провайдера без шифрования"
 
-#: root/www/luci-static/resources/view/detour/policy.js:353
+#: root/www/luci-static/resources/view/detour/policy.js:354
 msgid "Destination ports: 443 (TCP and UDP), udp/443, tcp/6000-6100. All traffic of the network to these ports goes through the policy."
 msgstr "Порты назначения: 443 (TCP и UDP), udp/443, tcp/6000-6100. Весь трафик сети на эти порты идёт через политику."
 
@@ -765,11 +765,11 @@ msgstr "Detour"
 msgid "Detour itself and its web interface"
 msgstr "Сам Detour и его веб-интерфейс"
 
-#: root/www/luci-static/resources/view/detour/settings.js:330
+#: root/www/luci-static/resources/view/detour/settings.js:335
 msgid "Detour log level"
 msgstr "Уровень"
 
-#: root/www/luci-static/resources/view/detour/settings.js:328
+#: root/www/luci-static/resources/view/detour/settings.js:333
 msgid "Detour logs"
 msgstr "Логи Detour"
 
@@ -793,11 +793,11 @@ msgstr "Идентификатор устройства (x-hwid)"
 msgid "Device name"
 msgstr "Имя устройства"
 
-#: root/www/luci-static/resources/view/detour/devices.js:255 root/www/luci-static/resources/view/detour/policy.js:346 root/usr/share/luci/menu.d/luci-app-detour.json:76
+#: root/www/luci-static/resources/view/detour/devices.js:255 root/www/luci-static/resources/view/detour/policy.js:347 root/usr/share/luci/menu.d/luci-app-detour.json:76
 msgid "Devices"
 msgstr "Устройства"
 
-#: root/www/luci-static/resources/view/detour/policy.js:348
+#: root/www/luci-static/resources/view/detour/policy.js:349
 msgid "Devices by address"
 msgstr "Устройства по адресу"
 
@@ -950,8 +950,8 @@ msgid "Exit"
 msgstr "Выход"
 
 #: root/www/luci-static/resources/detour/addexit.js:143
-msgid "Exit %s added. Put it into a policy on the Policies page."
-msgstr "Выход %s добавлен. Включите его в политику на странице «Политики»."
+msgid "Exit %s added. Put it into a policy on the Routing page."
+msgstr "Выход %s добавлен. Включите его в политику на странице «Маршрутизация»."
 
 #: root/www/luci-static/resources/detour/msg.js:144
 msgid "Exit %s stopped answering"
@@ -977,7 +977,7 @@ msgstr "Проверка выходов"
 msgid "Exit «%s»"
 msgstr "Выход «%s»"
 
-#: root/www/luci-static/resources/view/detour/exits.js:653 root/www/luci-static/resources/view/detour/exits.js:656 root/www/luci-static/resources/view/detour/overview.js:305 root/www/luci-static/resources/view/detour/overview.js:313 root/www/luci-static/resources/view/detour/policy.js:265 root/usr/share/luci/menu.d/luci-app-detour.json:50
+#: root/www/luci-static/resources/view/detour/exits.js:653 root/www/luci-static/resources/view/detour/exits.js:656 root/www/luci-static/resources/view/detour/overview.js:305 root/www/luci-static/resources/view/detour/overview.js:313 root/www/luci-static/resources/view/detour/policy.js:266 root/usr/share/luci/menu.d/luci-app-detour.json:50
 msgid "Exits"
 msgstr "Выходы"
 
@@ -1049,7 +1049,7 @@ msgstr "Добавка к рукопожатию (S1)"
 msgid "Hardware flow offloading works on this router: some traffic may bypass the counting, the numbers by device can be too low."
 msgstr "На роутере работает аппаратное ускорение: часть трафика может пройти мимо учёта, цифры по устройствам бывают занижены."
 
-#: root/www/luci-static/resources/view/detour/policies.js:124 root/www/luci-static/resources/view/detour/policies.js:138 root/www/luci-static/resources/view/detour/policy.js:231
+#: root/www/luci-static/resources/view/detour/policies.js:124 root/www/luci-static/resources/view/detour/policies.js:138 root/www/luci-static/resources/view/detour/policy.js:232
 msgid "Higher: %s"
 msgstr "Выше: %s"
 
@@ -1089,27 +1089,27 @@ msgstr "Как выход называется везде."
 msgid "How the list is shown everywhere. Empty: made from its source."
 msgstr "Как список называется везде. Пусто — название берётся из источника."
 
-#: root/www/luci-static/resources/view/detour/policies.js:98 root/www/luci-static/resources/view/detour/policy.js:251
+#: root/www/luci-static/resources/view/detour/policies.js:98 root/www/luci-static/resources/view/detour/policy.js:252
 msgid "How the policy is shown everywhere."
 msgstr "Как политика называется везде."
 
-#: root/www/luci-static/resources/view/detour/policy.js:345
+#: root/www/luci-static/resources/view/detour/policy.js:346
 msgid "IP addresses or ranges (CIDR), one per line."
 msgstr "IP-адреса или диапазоны (CIDR), по одному в строке."
 
-#: root/www/luci-static/resources/view/detour/policy.js:349
+#: root/www/luci-static/resources/view/detour/policy.js:350
 msgid "IP addresses or subnets of devices, one per line: a fixed address, a subnet, devices behind another router (where the router sees no MAC address)."
 msgstr "IP-адреса или подсети устройств, по одному в строке: постоянный адрес, подсеть, устройства за другим роутером (там роутер не видит MAC-адресов)."
 
-#: root/www/luci-static/resources/view/detour/policy.js:267
+#: root/www/luci-static/resources/view/detour/policy.js:268
 msgid "IPv6"
 msgstr "IPv6"
 
-#: root/www/luci-static/resources/view/detour/policy.js:268
+#: root/www/luci-static/resources/view/detour/policy.js:269
 msgid "IPv6 does not go through the tunnel. Sites of the policy lose their IPv6 addresses anyway; addresses and lists do not know the IPv6 addresses of a service, so a device could reach it directly over IPv6. With this on, devices use IPv4 for everything (the policies below this one too)."
 msgstr "IPv6 не идёт через туннель. У сайтов политики IPv6-адреса и так скрыты; адреса и списки не знают IPv6-адресов сервиса, и устройство могло бы открыть его напрямую по IPv6. Если включить, устройства используют IPv4 для всего (и для политик ниже этой)."
 
-#: root/www/luci-static/resources/view/detour/policy.js:266
+#: root/www/luci-static/resources/view/detour/policy.js:267
 msgid "If no exit works"
 msgstr "Если ни один выход не работает"
 
@@ -1117,7 +1117,7 @@ msgstr "Если ни один выход не работает"
 msgid "Imitation packet (I1)"
 msgstr "Пакет-имитация (I1)"
 
-#: root/www/luci-static/resources/view/detour/policy.js:265
+#: root/www/luci-static/resources/view/detour/policy.js:266
 msgid "In order: the traffic goes through the first working exit; when it fails, through the next one, and back when it works again. A pinned exit is used while it works; when it fails, the others take over in this order."
 msgstr "По порядку: трафик идёт через первый работающий выход; когда он отказывает — через следующий, и обратно, когда снова работает. Закреплённый выход используется, пока работает; при отказе его заменяют остальные по порядку."
 
@@ -1189,7 +1189,7 @@ msgstr "Открывается напрямую: VPN для него не нуж
 msgid "It opens neither directly nor through the VPN: the trouble seems to be the site itself."
 msgstr "Не открывается ни напрямую, ни через VPN: похоже, проблема в самом сайте."
 
-#: root/www/luci-static/resources/view/detour/policy.js:394
+#: root/www/luci-static/resources/view/detour/policy.js:395
 msgid "It was removed or renamed. The link to it no longer leads anywhere."
 msgstr "Её удалили или переименовали. Ссылка на неё больше никуда не ведёт."
 
@@ -1284,11 +1284,11 @@ msgstr "Ничего не пропускает."
 msgid "List «%s»"
 msgstr "Список «%s»"
 
-#: root/www/luci-static/resources/view/detour/policy.js:423
+#: root/www/luci-static/resources/view/detour/policy.js:424
 msgid "Lists"
 msgstr "Списки"
 
-#: root/www/luci-static/resources/view/detour/policy.js:371
+#: root/www/luci-static/resources/view/detour/policy.js:372
 msgid "Lists of this policy"
 msgstr "Списки этой политики"
 
@@ -1324,7 +1324,7 @@ msgstr "Смотрю правила…"
 msgid "Looks like 123456:ABC… from @BotFather"
 msgstr "Должен выглядеть как 123456:ABC… от @BotFather"
 
-#: root/www/luci-static/resources/view/detour/settings.js:324
+#: root/www/luci-static/resources/view/detour/settings.js:329
 msgid "Looks like tk_…"
 msgstr "Должен выглядеть как tk_…"
 
@@ -1336,7 +1336,7 @@ msgstr "Потери"
 msgid "Lower: %s"
 msgstr "Ниже: %s"
 
-#: root/www/luci-static/resources/view/detour/settings.js:350
+#: root/www/luci-static/resources/view/detour/settings.js:355
 msgid "Maintenance"
 msgstr "Обслуживание"
 
@@ -1392,7 +1392,7 @@ msgstr "Минимум записей"
 msgid "Minimum entries: a number"
 msgstr "Минимум записей — это число"
 
-#: root/www/luci-static/resources/view/detour/exits.js:345 root/www/luci-static/resources/view/detour/exits.js:380 root/www/luci-static/resources/view/detour/exits.js:559 root/www/luci-static/resources/view/detour/policies.js:98 root/www/luci-static/resources/view/detour/policy.js:251 root/www/luci-static/resources/detour/addexit.js:205 root/www/luci-static/resources/detour/addexit.js:227 root/www/luci-static/resources/detour/listsui.js:185
+#: root/www/luci-static/resources/view/detour/exits.js:345 root/www/luci-static/resources/view/detour/exits.js:380 root/www/luci-static/resources/view/detour/exits.js:559 root/www/luci-static/resources/view/detour/policies.js:98 root/www/luci-static/resources/view/detour/policy.js:252 root/www/luci-static/resources/detour/addexit.js:205 root/www/luci-static/resources/detour/addexit.js:227 root/www/luci-static/resources/detour/listsui.js:185
 msgid "Name"
 msgstr "Имя"
 
@@ -1400,7 +1400,7 @@ msgstr "Имя"
 msgid "Needs sing-box or Xray: install one on the Components page."
 msgstr "Нужен sing-box или Xray: установите один из них на странице «Компоненты»."
 
-#: root/www/luci-static/resources/view/detour/policy.js:350
+#: root/www/luci-static/resources/view/detour/policy.js:351
 msgid "Networks"
 msgstr "Сети"
 
@@ -1464,7 +1464,7 @@ msgstr "Ни один выход не работает — трафик забл
 msgid "No exit: its traffic is blocked"
 msgstr "Нет выхода — трафик заблокирован"
 
-#: root/www/luci-static/resources/view/detour/policy.js:239
+#: root/www/luci-static/resources/view/detour/policy.js:240
 msgid "No exit: the traffic of this policy is blocked."
 msgstr "Нет выхода: трафик этой политики заблокирован."
 
@@ -1480,7 +1480,7 @@ msgstr "Фильтров нет: любая точка."
 msgid "No free policy id: 250 policies is the limit"
 msgstr "Нет свободного номера политики: не больше 250 политик"
 
-#: root/www/luci-static/resources/view/detour/policy.js:379
+#: root/www/luci-static/resources/view/detour/policy.js:380
 msgid "No lists in this policy yet."
 msgstr "В этой политике пока нет списков."
 
@@ -1516,15 +1516,15 @@ msgstr "Стандартный."
 msgid "Normal; a verbose log of %s from before is kept until the router restarts."
 msgstr "Стандартный; подробные логи, записанные раньше (%s), хранятся до перезагрузки роутера."
 
-#: root/www/luci-static/resources/view/detour/policy.js:297
+#: root/www/luci-static/resources/view/detour/policy.js:298
 msgid "Not a MAC address: %s"
 msgstr "Не MAC-адрес: %s"
 
-#: root/www/luci-static/resources/view/detour/policy.js:352
+#: root/www/luci-static/resources/view/detour/policy.js:353
 msgid "Not a port: %s"
 msgstr "Не похоже на порт: %s"
 
-#: root/www/luci-static/resources/view/detour/policy.js:341
+#: root/www/luci-static/resources/view/detour/policy.js:342
 msgid "Not a site: %s"
 msgstr "Не похоже на сайт: %s"
 
@@ -1532,7 +1532,7 @@ msgstr "Не похоже на сайт: %s"
 msgid "Not a source: %s"
 msgstr "Не похоже на источник: %s"
 
-#: root/www/luci-static/resources/view/detour/policy.js:344 root/www/luci-static/resources/view/detour/policy.js:348
+#: root/www/luci-static/resources/view/detour/policy.js:345 root/www/luci-static/resources/view/detour/policy.js:349
 msgid "Not an address or a range: %s"
 msgstr "Не похоже на адрес или подсеть: %s"
 
@@ -1580,7 +1580,7 @@ msgstr "За этот период через выходы ничего не ш�
 msgid "Nothing yet. Use the device - open an app or a site."
 msgstr "Пока ничего. Воспользуйтесь устройством — откройте приложение или сайт."
 
-#: root/www/luci-static/resources/view/detour/settings.js:349
+#: root/www/luci-static/resources/view/detour/settings.js:354
 msgid "Notifications"
 msgstr "Уведомления"
 
@@ -1624,7 +1624,7 @@ msgstr "На ntfy.sh тему может читать любой, кто зна�
 msgid "One file with everything of Detour: exits (with their keys), policies, lists, subscriptions, notifications, router DNS, devices' names and modes, the panel tunnel key and the traffic history. The router's own settings (network, Wi-Fi, passwords) are not in it - those are saved in System → Backup / Flash Firmware."
 msgstr "Один файл со всем, что есть в Detour: выходы (с ключами), политики, списки, подписки, уведомления, DNS роутера, имена и режимы устройств, ключ туннеля к панели и история трафика. Собственных настроек роутера (сеть, Wi-Fi, пароли) в нём нет — их сохраняет «Система → Резервное копирование»."
 
-#: root/www/luci-static/resources/view/detour/policy.js:343
+#: root/www/luci-static/resources/view/detour/policy.js:344
 msgid "One per line. A site includes its subdomains (example.com covers www.example.com). Devices must use the router's DNS (they do by default)."
 msgstr "По одному в строке. Сайт включает поддомены (example.com охватывает www.example.com). Устройства должны пользоваться DNS роутера (так по умолчанию)."
 
@@ -1636,7 +1636,7 @@ msgstr "По одному в строке: адрес списка http(s) ил�
 msgid "Only Latin letters, digits and hyphens, up to 63."
 msgstr "Только латинские буквы, цифры и дефисы, до 63 знаков."
 
-#: root/www/luci-static/resources/view/detour/settings.js:321
+#: root/www/luci-static/resources/view/detour/settings.js:326
 msgid "Only for a topic with access control: a token tk_… from the account on the server."
 msgstr "Только для темы с ограниченным доступом: токен tk_… из учётной записи на сервере."
 
@@ -1672,7 +1672,7 @@ msgstr "Открываю напрямую и через выход (до 15 с)�
 msgid "Optional: a file on the router with more entries."
 msgstr "Необязательно: файл на роутере с дополнительными записями."
 
-#: root/www/luci-static/resources/view/detour/policy.js:287 root/www/luci-static/resources/view/detour/policy.js:306
+#: root/www/luci-static/resources/view/detour/policy.js:288 root/www/luci-static/resources/view/detour/policy.js:307
 msgid "Other devices by MAC address, separated by spaces:"
 msgstr "Другие устройства по MAC-адресу, через пробел:"
 
@@ -1716,11 +1716,11 @@ msgstr "Вставьте адрес подписки от VPN-провайдер
 msgid "Paste a subscription address, a link, a key or a config first, or choose a file."
 msgstr "Сначала вставьте адрес подписки, ссылку, ключ или конфиг либо выберите файл."
 
-#: root/www/luci-static/resources/view/detour/policy.js:418 root/www/luci-static/resources/detour/outform.js:110
+#: root/www/luci-static/resources/view/detour/policy.js:419 root/www/luci-static/resources/detour/outform.js:110
 msgid "Path"
 msgstr "Путь"
 
-#: root/www/luci-static/resources/view/detour/policy.js:230
+#: root/www/luci-static/resources/view/detour/policy.js:231
 msgid "Pin"
 msgstr "Закрепить"
 
@@ -1735,10 +1735,6 @@ msgstr "Точка"
 #: root/www/luci-static/resources/detour/warpui.js:69 root/www/luci-static/resources/detour/warpui.js:74
 msgid "Point %s"
 msgstr "Точка %s"
-
-#: root/www/luci-static/resources/view/detour/policies.js:215 root/www/luci-static/resources/view/detour/policy.js:417 root/usr/share/luci/menu.d/luci-app-detour.json:37
-msgid "Policies"
-msgstr "Политики"
 
 #: root/www/luci-static/resources/view/detour/policies.js:175
 msgid "Policies · %d"
@@ -1803,7 +1799,7 @@ msgstr "Популярные категории, их поддерживают �
 msgid "Port"
 msgstr "Порт"
 
-#: root/www/luci-static/resources/view/detour/policy.js:352
+#: root/www/luci-static/resources/view/detour/policy.js:353
 msgid "Ports"
 msgstr "Порты"
 
@@ -1911,7 +1907,7 @@ msgstr "Удалить выход WARP %s и его регистрацию?"
 msgid "Remove from the pool"
 msgstr "Убрать из пула"
 
-#: root/www/luci-static/resources/view/detour/policy.js:233
+#: root/www/luci-static/resources/view/detour/policy.js:234
 msgid "Remove the exit %s"
 msgstr "Убрать выход %s"
 
@@ -1979,7 +1975,7 @@ msgstr "DNS роутера снова идёт через туннель"
 msgid "Router DNS: the policy's exits are down - encrypted DNS directly"
 msgstr "DNS роутера: выходы политики не работают — шифрованный DNS напрямую"
 
-#: root/www/luci-static/resources/view/detour/settings.js:348
+#: root/www/luci-static/resources/view/detour/policies.js:215 root/www/luci-static/resources/view/detour/policy.js:418 root/www/luci-static/resources/view/detour/settings.js:353 root/usr/share/luci/menu.d/luci-app-detour.json:37
 msgid "Routing"
 msgstr "Маршрутизация"
 
@@ -2015,11 +2011,11 @@ msgstr "Сохранить копию"
 msgid "Save the settings"
 msgstr "Сохранить настройки"
 
-#: root/www/luci-static/resources/view/detour/policy.js:435
+#: root/www/luci-static/resources/view/detour/policy.js:436
 msgid "Saved. It takes effect with «Apply»."
 msgstr "Сохранено. Вступит в силу после «Применить»."
 
-#: root/www/luci-static/resources/view/detour/policy.js:435
+#: root/www/luci-static/resources/view/detour/policy.js:436
 msgid "Saved. The pinned exit takes effect with «Apply»."
 msgstr "Сохранено. Закреплённый выход вступит в силу после «Применить»."
 
@@ -2083,7 +2079,7 @@ msgstr "Сервер: %s"
 msgid "Servers and the choice"
 msgstr "Серверы и выбор"
 
-#: root/www/luci-static/resources/view/detour/policy.js:421 root/usr/share/luci/menu.d/luci-app-detour.json:63
+#: root/www/luci-static/resources/view/detour/policy.js:422 root/usr/share/luci/menu.d/luci-app-detour.json:63
 msgid "Settings"
 msgstr "Настройки"
 
@@ -2119,7 +2115,7 @@ msgstr "Сайт"
 msgid "Site or address"
 msgstr "Сайт или адрес"
 
-#: root/www/luci-static/resources/view/detour/policy.js:341
+#: root/www/luci-static/resources/view/detour/policy.js:342
 msgid "Sites"
 msgstr "Сайты"
 
@@ -2255,7 +2251,7 @@ msgstr "В этой сборке нет каталога."
 msgid "The changes on this page are not saved and will be lost."
 msgstr "Изменения на этой странице не сохранены и пропадут."
 
-#: root/www/luci-static/resources/view/detour/policy.js:347
+#: root/www/luci-static/resources/view/detour/policy.js:348
 msgid "The checked devices get no internet at all."
 msgstr "Отмеченные устройства не получают интернет вообще."
 
@@ -2307,7 +2303,7 @@ msgstr "Настройки движка (JSON)."
 msgid "The exit and everything it owns are removed (its tunnel settings, its configuration). Policies that use only this exit are left without an exit - their traffic is blocked until you choose another one."
 msgstr "Будет удалён выход и всё, что к нему относится (настройки туннеля, конфигурация). Политики, у которых это единственный выход, останутся без выхода — их трафик блокируется, пока вы не выберете другой."
 
-#: root/www/luci-static/resources/view/detour/policy.js:449 root/www/luci-static/resources/view/detour/policy.js:451
+#: root/www/luci-static/resources/view/detour/policy.js:450 root/www/luci-static/resources/view/detour/policy.js:452
 msgid "The exit was not chosen: %s"
 msgstr "Выход не выбран: %s"
 
@@ -2415,11 +2411,11 @@ msgstr "Роутер не ответил вовремя (%s). Восстанов
 msgid "The router does not answer - reload the page in a minute."
 msgstr "Роутер не отвечает — перезагрузите страницу через минуту."
 
-#: root/www/luci-static/resources/view/detour/policy.js:305
+#: root/www/luci-static/resources/view/detour/policy.js:306
 msgid "The router does not know any devices yet."
 msgstr "Роутер пока не знает ни одного устройства."
 
-#: root/www/luci-static/resources/view/detour/policy.js:327
+#: root/www/luci-static/resources/view/detour/policy.js:328
 msgid "The router has no other networks."
 msgstr "Других сетей у роутера нет."
 
@@ -2487,7 +2483,7 @@ msgstr "Проверочное сообщение отправлено: прид
 msgid "The traffic goes through the chosen exits."
 msgstr "Трафик идёт через выбранные выходы."
 
-#: root/www/luci-static/resources/view/detour/settings.js:329
+#: root/www/luci-static/resources/view/detour/settings.js:334
 msgid "The verbose level is only for diagnosing the system. It switches itself off after 24 hours."
 msgstr "Подробный уровень нужен только для диагностики системы. Он автоматически отключается через 24 часа."
 
@@ -2503,7 +2499,7 @@ msgstr "Здесь %d серверов. Выходы добавляются по
 msgid "There are no exits yet: add one on the Exits page. Without an exit the traffic of this policy is blocked."
 msgstr "Выходов пока нет: добавьте выход на странице «Выходы». Без выхода трафик этой политики блокируется."
 
-#: root/www/luci-static/resources/view/detour/policy.js:393
+#: root/www/luci-static/resources/view/detour/policy.js:394
 msgid "There is no policy «%s»"
 msgstr "Политики «%s» нет"
 
@@ -2663,7 +2659,7 @@ msgstr "UUID выглядит неверно"
 msgid "Unknown action"
 msgstr "Неизвестное действие"
 
-#: root/www/luci-static/resources/view/detour/policy.js:230
+#: root/www/luci-static/resources/view/detour/policy.js:231
 msgid "Unpin"
 msgstr "Открепить"
 
@@ -2799,15 +2795,15 @@ msgstr "Смотрю: осталось %d с. Разных имён: %d, зап�
 msgid "What came only from this list goes directly from now on."
 msgstr "То, что попадало только в этот список, теперь пойдёт напрямую."
 
-#: root/www/luci-static/resources/view/detour/policy.js:336
+#: root/www/luci-static/resources/view/detour/policy.js:337
 msgid "What goes directly"
 msgstr "Что идёт напрямую"
 
-#: root/www/luci-static/resources/view/detour/policy.js:336
+#: root/www/luci-static/resources/view/detour/policy.js:337
 msgid "What goes through"
 msgstr "Что пропускать"
 
-#: root/www/luci-static/resources/view/detour/policy.js:336
+#: root/www/luci-static/resources/view/detour/policy.js:337
 msgid "What is blocked"
 msgstr "Что блокировать"
 
@@ -2839,7 +2835,7 @@ msgstr "На что похож первый пакет для провайдер
 msgid "What went through it goes directly from now on."
 msgstr "То, что шло через неё, теперь пойдёт напрямую."
 
-#: root/www/luci-static/resources/view/detour/policy.js:256
+#: root/www/luci-static/resources/view/detour/policy.js:257
 msgid "When every exit of this policy fails, its traffic will go directly through your provider: the provider sees which sites these are, and blocked ones will not open anyway. Let it through?"
 msgstr "Когда откажут все выходы этой политики, её трафик пойдёт напрямую через провайдера: провайдер увидит, что это за сайты, а заблокированные всё равно не откроются. Пропускать?"
 
@@ -2907,7 +2903,7 @@ msgstr "Выходы Xray: XHTTP, конфиги Xray, шифрование VLES
 msgid "Xray is not installed: install it here or choose sing-box."
 msgstr "Xray не установлен: установите его здесь или выберите sing-box."
 
-#: root/www/luci-static/resources/view/detour/settings.js:316
+#: root/www/luci-static/resources/view/detour/settings.js:321
 msgid "Your own server, if you run one."
 msgstr "Свой сервер, если он у вас есть."
 
@@ -2959,19 +2955,19 @@ msgstr "подписка не обновилась"
 msgid "a working, fast server is chosen and re-checked every few minutes"
 msgstr "выбирается рабочий и быстрый сервер, проверка каждые несколько минут"
 
-#: root/www/luci-static/resources/view/detour/policy.js:352
+#: root/www/luci-static/resources/view/detour/policy.js:353
 msgid "add a port: 443, udp/443, tcp/6000-6100"
 msgstr "добавить порт: 443, udp/443, tcp/6000-6100"
 
-#: root/www/luci-static/resources/view/detour/policy.js:341
+#: root/www/luci-static/resources/view/detour/policy.js:342
 msgid "add a site, for example example.com"
 msgstr "добавить сайт, например example.com"
 
-#: root/www/luci-static/resources/view/detour/policy.js:344
+#: root/www/luci-static/resources/view/detour/policy.js:345
 msgid "add an address or a range"
 msgstr "добавить адрес или подсеть"
 
-#: root/www/luci-static/resources/view/detour/policy.js:348
+#: root/www/luci-static/resources/view/detour/policy.js:349
 msgid "add an address or a subnet of a device"
 msgstr "добавить адрес или подсеть устройства"
 
@@ -3039,7 +3035,7 @@ msgstr "заблокировать"
 msgid "block (the policy «%s»)"
 msgstr "заблокировать (политика «%s»)"
 
-#: root/www/luci-static/resources/view/detour/policy.js:260
+#: root/www/luci-static/resources/view/detour/policy.js:261
 msgid "block it (nothing leaks)"
 msgstr "блокировать (ничего не утечёт)"
 
@@ -3215,7 +3211,7 @@ msgstr "Имя сервиса gRPC"
 msgid "handshake, no answer"
 msgstr "рукопожатие есть, ответа нет"
 
-#: root/www/luci-static/resources/view/detour/settings.js:303 root/www/luci-static/resources/view/detour/settings.js:319
+#: root/www/luci-static/resources/view/detour/settings.js:303 root/www/luci-static/resources/view/detour/settings.js:324
 msgid "http(s) address"
 msgstr "адрес http(s)"
 
@@ -3243,7 +3239,7 @@ msgstr "кбит/с"
 msgid "keep the current one"
 msgstr "оставить текущий"
 
-#: root/www/luci-static/resources/view/detour/policy.js:261
+#: root/www/luci-static/resources/view/detour/policy.js:262
 msgid "let it go directly through the provider"
 msgstr "пускать напрямую через провайдера"
 
@@ -3335,15 +3331,15 @@ msgstr "это не конфиг WireGuard (нет ключей или адре�
 msgid "not a link"
 msgstr "не ссылка"
 
-#: root/www/luci-static/resources/view/detour/policy.js:220
+#: root/www/luci-static/resources/view/detour/policy.js:222
 msgid "not answering"
 msgstr "не отвечает"
 
-#: root/www/luci-static/resources/view/detour/policy.js:220
+#: root/www/luci-static/resources/view/detour/policy.js:222
 msgid "not answering since %s"
 msgstr "не отвечает с %s"
 
-#: root/www/luci-static/resources/view/detour/policy.js:217
+#: root/www/luci-static/resources/view/detour/policy.js:219
 msgid "not applied yet"
 msgstr "ещё не применено"
 
@@ -3375,7 +3371,7 @@ msgstr "не отвечает"
 msgid "not set"
 msgstr "нет"
 
-#: root/www/luci-static/resources/view/detour/policy.js:218
+#: root/www/luci-static/resources/view/detour/policy.js:220
 msgid "not started"
 msgstr "не запущен"
 
@@ -3403,11 +3399,11 @@ msgstr "пока ничего"
 msgid "notifications (%s)"
 msgstr "уведомления (%s)"
 
-#: root/www/luci-static/resources/view/detour/exits.js:504 root/www/luci-static/resources/view/detour/policy.js:226 root/www/luci-static/resources/detour/warpui.js:118
+#: root/www/luci-static/resources/view/detour/exits.js:504 root/www/luci-static/resources/view/detour/policy.js:227 root/www/luci-static/resources/detour/warpui.js:118
 msgid "now"
 msgstr "сейчас"
 
-#: root/www/luci-static/resources/view/detour/settings.js:316
+#: root/www/luci-static/resources/view/detour/settings.js:321
 msgid "ntfy server"
 msgstr "Сервер ntfy"
 
@@ -3451,7 +3447,7 @@ msgstr "вход только по паролю через /ubus открыт"
 msgid "peak %s"
 msgstr "пик %s"
 
-#: root/www/luci-static/resources/view/detour/policy.js:227
+#: root/www/luci-static/resources/view/detour/policy.js:228
 msgid "pinned"
 msgstr "закреплён"
 
@@ -3499,7 +3495,7 @@ msgstr "прокси (sing-box)"
 msgid "quic://, tls://, https:// or sdns:// addresses, asked in parallel."
 msgstr "Адреса quic://, tls://, https:// или sdns://, запрашиваются параллельно."
 
-#: root/www/luci-static/resources/view/detour/policy.js:267
+#: root/www/luci-static/resources/view/detour/policy.js:268
 msgid "refuse all IPv6 of the network"
 msgstr "отклонять весь IPv6 домашней сети"
 
@@ -3798,11 +3794,11 @@ msgstr "без точек %s"
 msgid "working"
 msgstr "работает"
 
-#: root/www/luci-static/resources/view/detour/policy.js:219
+#: root/www/luci-static/resources/view/detour/policy.js:221
 msgid "works"
 msgstr "работает"
 
-#: root/www/luci-static/resources/view/detour/policy.js:219
+#: root/www/luci-static/resources/view/detour/policy.js:221
 msgid "works · %d ms"
 msgstr "работает · %d мс"
 
@@ -3822,11 +3818,11 @@ msgstr "~%d КБ"
 msgid "~%s MB"
 msgstr "~%s МБ"
 
-#: root/www/luci-static/resources/view/detour/policy.js:237 root/www/luci-static/resources/view/detour/policy.js:238
+#: root/www/luci-static/resources/view/detour/policy.js:238 root/www/luci-static/resources/view/detour/policy.js:239
 msgid "— add an exit —"
 msgstr "— добавить выход —"
 
-#: root/www/luci-static/resources/view/detour/policy.js:238
+#: root/www/luci-static/resources/view/detour/policy.js:239
 msgid "— no more exits —"
 msgstr "— других выходов нет —"
 
@@ -3834,11 +3830,11 @@ msgstr "— других выходов нет —"
 msgid "— own sources (below) —"
 msgstr "— свои источники (ниже) —"
 
-#: root/www/luci-static/resources/view/detour/policy.js:395
+#: root/www/luci-static/resources/view/detour/policy.js:396
 msgid "← All policies"
 msgstr "← Все политики"
 
-#: root/www/luci-static/resources/view/detour/policy.js:419
+#: root/www/luci-static/resources/view/detour/policy.js:420
 msgid "← Policies"
 msgstr "← Политики"
 

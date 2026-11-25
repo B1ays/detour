@@ -415,7 +415,7 @@ return view.extend({
 			E('div', { 'class': 'detour-backbar' }, [
 				E('a', { 'class': 'detour-back', 'href': L.url(LIST_URL), 'aria-label': _('Back to the policies'), 'click': back },
 					E('span', { 'class': 'detour-back-arrow', 'aria-hidden': 'true' })),
-				E('div', {}, [ E('strong', {}, this.p.label || name), E('div', { 'class': 'detour-muted' }, _('Policies')) ]) ]),
+				E('div', {}, [ E('strong', {}, this.p.label || name), E('div', { 'class': 'detour-muted' }, _('Routing')) ]) ]),
 			E('nav', { 'class': 'detour-crumbs', 'aria-label': _('Path') }, [
 				E('a', { 'href': L.url(LIST_URL), 'click': back }, _('← Policies')), E('span', { 'aria-hidden': 'true' }, '›'), E('span', {}, this.p.label || name) ]),
 			this.head, this.banner,

@@ -212,7 +212,7 @@ return view.extend({
 		window.addEventListener('beforeunload', function(ev) { if (self.pending) { ev.preventDefault(); ev.returnValue = ''; } });
 		this.root = E('div', { 'class': 'detour-policies-page' }, [
 			E('link', { 'rel': 'stylesheet', 'href': L.resource('detour/detour.css') + '?v=' + encodeURIComponent(L.env.resource_version || '') }),
-			E('h2', {}, _('Policies')),
+			E('h2', {}, _('Routing')),
 			E('div', { 'class': 'cbi-map-descr' }, _('A policy says where devices, sites, addresses, ports and lists go: through VPN exits, directly (never through a tunnel) or nowhere (blocked). Policies are checked from top to bottom, the first that matches takes the traffic; what matches none goes directly through your provider.')),
 			E('div', { 'class': 'detour-actions detour-add-row' }, [ E('button', { 'class': 'btn cbi-button-add', 'click': function() { self.addPolicy(); } }, _('Add policy')) ]),
 			this.mem ? E('div', { 'class': 'cbi-section detour-mem-section' }, [ E('h3', {}, _('Memory for lists')), lists.memory(this.mem) ]) : '',
