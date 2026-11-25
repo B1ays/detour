@@ -312,6 +312,11 @@ return view.extend({
 		// a new topic: a name nobody guesses (shown and saved only while ntfy is on)
 		o.default = 'detour-' + Array.from({ length: 16 }, function() { return 'abcdefghijkmnpqrstuvwxyz23456789'.charAt(Math.floor(Math.random() * 32)); }).join('');
 		o.validate = function(section_id, v) { return /^[-_A-Za-z0-9]{1,64}$/.test(v) ? true : _('Latin letters, digits, - and _, up to 64'); };
+		// the generated topic must be written although it is the option's default: LuCI (older form.js) removes a
+		// value equal to the default (rmempty) and also takes the default as the stored value, so nothing changed -
+		// the topic was never saved, a new one on every visit, nothing sent. Written once, it is a plain value.
+		o.rmempty = false;
+		Object.defineProperty(o, 'forcewrite', { get: function() { return !uci.get('detour', 'notify', 'ntfy_topic'); } });
 		o.depends(nf);
 		o = s.option(form.Value, 'ntfy_url', _('ntfy server'), _('Your own server, if you run one.'));
 		o.placeholder = 'https://ntfy.sh';
