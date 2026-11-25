@@ -24,7 +24,13 @@ const KEEP_MONTHS = 13;
 let month = null;     // 'YYYY-MM' of the loaded month
 let data = null;      // { 'DD': { d: { mac: [rx, tx] }, x: { exit: [rx, tx] }, v: [rx, tx] } }
 let saved_at = 0;
-let src = { nlbwmon: false, running: false, hw_offload: false };
+let src = { nlbwmon: false, process: false, running: false, hung: false, restarted: 0, hw_offload: false };
+// nlbwmon hangs: its process is there and sleeps, nlbw gets no answer (OpenWrt 25.12, after many reloads - its
+// hotplug script reloads it on every ifup, Detour's tunnels included). Two silent ticks in a row (10 min): it is
+// restarted, at most every 30 min. The counters after a restart start again - counted as growth (above).
+const NLBW_STATE = RAMDIR + '/nlbwmon.json';
+const NLBW_RESTART_EVERY = 1800;
+let nlbw_silent = 0;
 
 function pad(n) { return (n < 10 ? '0' : '') + n; }
 function ymd(t) { const l = localtime(t); return [ sprintf('%d-%s', l.year, pad(l.mon)), pad(l.mday) ]; }
@@ -94,16 +100,36 @@ function classify(known) {
 	return known;
 }
 
+// what LuCI "Components" shows of it: { process, running, hung, restarted } (pkgs.uc reads the file)
+function nlbw_note() {
+	fs.mkdir(core.RUN); fs.mkdir(RAMDIR);
+	core.write_json(NLBW_STATE, { installed: src.nlbwmon, process: src.process, running: src.running, hung: src.hung, restarted: src.restarted, ts: time() });
+}
+
 function nlbw() {
 	src.nlbwmon = !!fs.access('/usr/sbin/nlbw');
-	if (!src.nlbwmon) { src.running = false; return null; }
+	src.process = src.nlbwmon && core.run('pidof nlbwmon >/dev/null 2>&1').code == 0;
+	if (!src.process) { src.running = false; src.hung = false; nlbw_silent = 0; nlbw_note(); return null; }
 	// nlbwmon can stop answering (seen with 25.12 after many reloads): nlbw then waits forever, and so would the
 	// daemon - a bounded wait, the step goes on without the devices' counters
 	const r = core.run_for(5, 'nlbw -c json -g mac');
 	let j = null;
 	try { j = json(r.out); } catch (e) { }
 	src.running = r.code == 0 && type(j?.data) == 'array';
-	if (!src.running) return null;
+	src.hung = !src.running;
+	if (!src.running) {
+		if (++nlbw_silent >= 2 && time() - src.restarted >= NLBW_RESTART_EVERY) {
+			nlbw_silent = 0;
+			src.restarted = time();
+			core.log('nlbwmon does not answer: restarted');
+			// a stuck process may not end on the service's stop: what is left is killed before the start
+			core.run('/etc/init.d/nlbwmon stop >/dev/null 2>&1; sleep 1; kill -9 $(pidof nlbwmon) 2>/dev/null; /etc/init.d/nlbwmon start >/dev/null 2>&1');
+		}
+		nlbw_note();
+		return null;
+	}
+	nlbw_silent = 0;
+	nlbw_note();
 	const col = {};
 	for (let i, c in j.columns) col[c] = i;
 	const own = own_macs(), out = {};
@@ -177,6 +203,9 @@ export function tick(cfg, via_of) {
 };
 
 // the daemon stops (reboot, upgrade): today so far goes to flash
+// one check of nlbwmon as a tick does it (tests): its devices' counters or null; the state in RAMDIR/nlbwmon.json
+export function nlbw_check() { return nlbw(); };
+
 export function flush() { if (month && data) save_disk(); };
 
 // the history on flash was replaced (a restore from a backup): what is in memory is dropped, the next step loads

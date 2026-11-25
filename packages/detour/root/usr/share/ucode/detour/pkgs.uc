@@ -161,6 +161,15 @@ function install_set(c, pk) {
 	return map(filter(pk, (x) => !x.installed), (x) => x.name);
 }
 
+// nlbwmon as the traffic counting saw it last (traffic.uc, every 5 min): ok | hung (its process is there and does
+// not answer) | stopped; restarted: when Detour restarted it for not answering. null: not seen yet
+function nlbw_service() {
+	let s = null;
+	try { s = json(fs.readfile(RUN + '/traffic/nlbwmon.json') ?? 'null'); } catch (e) { }
+	if (!s) return null;
+	return { state: s.running ? 'ok' : (s.process ? 'hung' : 'stopped'), restarted: s.restarted || null, ts: s.ts };
+}
+
 function list_now() {
 	const st = apk_state(names());
 	// the sizes: of what is installed, and of the repositories' versions (for an update)
@@ -201,7 +210,8 @@ function list_now() {
 			}
 		}
 		push(out, { id: c.id, core: !!c.core, installed, available: can, upgradable,
-			packages: pk, used: installed ? used_by(c.id) : [], size, need, upgrade_need: up });
+			packages: pk, used: installed ? used_by(c.id) : [], size, need, upgrade_need: up,
+			service: (c.id == 'nlbwmon' && installed) ? nlbw_service() : null });
 	}
 	return { components: out, index_ts: index_time(), space: space() };
 }

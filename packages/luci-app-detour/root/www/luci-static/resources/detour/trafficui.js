@@ -74,6 +74,9 @@ return baseclass.extend({
 		const out = [];
 		const s = r.source || {};
 		if (!s.nlbwmon) out.push(pkg.offer('nlbwmon', _('nlbwmon is not installed: devices are not counted.')));
+		else if (s.hung) out.push(E('div', { 'class': 'alert-message warning' }, (s.restarted
+			? _('nlbwmon is running but does not answer: devices are not counted now. Detour restarted it at %s and restarts it again after 10 minutes of silence.').format(new Date(s.restarted * 1000).toLocaleTimeString())
+			: _('nlbwmon is running but does not answer: devices are not counted now. Detour restarts it by itself after 10 minutes of silence.'))));
 		else if (!s.running) out.push(E('div', { 'class': 'alert-message warning' }, _('nlbwmon is not running: devices are not counted now (System → Startup: nlbwmon).')));
 		if (s.hw_offload) out.push(E('div', { 'class': 'alert-message notice' }, _('Hardware flow offloading works on this router: some traffic may bypass the counting, the numbers by device can be too low.')));
 		if (r.since) {

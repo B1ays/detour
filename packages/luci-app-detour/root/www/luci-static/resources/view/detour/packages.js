@@ -32,9 +32,19 @@ return view.extend({
 			const to = c.packages.filter(function(p) { return p.upgrade; }).map(function(p) { return p.upgrade; })[0];
 			return E('div', { 'class': 'detour-pkg-state' }, [ E('span', { 'class': 'detour-badge warn' }, _('update available')), E('span', {}, (v || '') + ' → ' + (to || '')) ]);
 		}
-		if (c.installed) return E('div', { 'class': 'detour-pkg-state' }, [ E('span', { 'class': 'detour-badge ok' }, _('installed')), E('span', {}, v || '') ]);
+		if (c.installed) return E('div', {}, [ E('div', { 'class': 'detour-pkg-state' }, [ E('span', { 'class': 'detour-badge ok' }, _('installed')), E('span', {}, v || '') ]), this.service(c) ]);
 		if (c.available) return E('div', { 'class': 'detour-pkg-state' }, E('span', { 'class': 'detour-badge off' }, _('not installed')));
 		return E('span', { 'class': 'detour-muted' }, _('not in the repositories of this firmware'));
+	},
+
+	// a component that runs as a service (nlbwmon): does it work, as the traffic counting saw it last
+	service: function(c) {
+		const s = c.service;
+		if (!s) return '';
+		const when = s.restarted ? ' ' + _('Detour restarted it at %s.').format(new Date(s.restarted * 1000).toLocaleString()) : '';
+		if (s.state == 'ok') return E('div', { 'class': 'detour-muted' }, _('Running, counts the traffic.') + when);
+		if (s.state == 'hung') return E('div', { 'class': 'detour-bad' }, _('Running but does not answer: the traffic is not counted. Detour restarts it by itself after 10 minutes of silence.') + when);
+		return E('div', { 'class': 'detour-bad' }, _('Not running: the traffic is not counted (System → Startup: nlbwmon).'));
 	},
 
 	actions: function(c, space) {

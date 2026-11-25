@@ -127,7 +127,7 @@ msgstr ""
 msgid "%s is not removed from here"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/packages.js:88
+#: root/www/luci-static/resources/view/detour/packages.js:98
 msgid "%s of %s"
 msgstr ""
 
@@ -139,7 +139,7 @@ msgstr ""
 msgid "%s, router «%s», Detour %s"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/packages.js:108
+#: root/www/luci-static/resources/view/detour/packages.js:118
 msgid "%s: %s"
 msgstr ""
 
@@ -179,7 +179,7 @@ msgstr ""
 msgid "(pinned)"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/trafficui.js:145
+#: root/www/luci-static/resources/detour/trafficui.js:148
 msgid "(rides through «%s»: counted there too)"
 msgstr ""
 
@@ -343,7 +343,7 @@ msgstr ""
 msgid "All devices of the checked networks get no internet at all."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/overview.js:121 root/www/luci-static/resources/detour/trafficui.js:119 root/www/luci-static/resources/detour/trafficui.js:127
+#: root/www/luci-static/resources/view/detour/overview.js:121 root/www/luci-static/resources/detour/trafficui.js:122 root/www/luci-static/resources/detour/trafficui.js:130
 msgid "All the traffic"
 msgstr ""
 
@@ -647,11 +647,11 @@ msgstr ""
 msgid "Compatibility with other programs"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/packages.js:71 root/www/luci-static/resources/view/detour/packages.js:75
+#: root/www/luci-static/resources/view/detour/packages.js:81 root/www/luci-static/resources/view/detour/packages.js:85
 msgid "Component"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/packages.js:68 root/www/luci-static/resources/view/detour/packages.js:98 root/usr/share/luci/menu.d/luci-app-detour.json:89
+#: root/www/luci-static/resources/view/detour/packages.js:78 root/www/luci-static/resources/view/detour/packages.js:108 root/usr/share/luci/menu.d/luci-app-detour.json:89
 msgid "Components"
 msgstr ""
 
@@ -707,7 +707,7 @@ msgstr ""
 msgid "Copy"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/trafficui.js:82
+#: root/www/luci-static/resources/detour/trafficui.js:85
 msgid "Counted since %s."
 msgstr ""
 
@@ -767,6 +767,10 @@ msgstr ""
 msgid "Detour logs"
 msgstr ""
 
+#: root/www/luci-static/resources/view/detour/packages.js:44
+msgid "Detour restarted it at %s."
+msgstr ""
+
 #: root/www/luci-static/resources/view/detour/settings.js:114
 msgid "Detour settings"
 msgstr ""
@@ -795,7 +799,7 @@ msgstr ""
 msgid "Devices by address"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/policies.js:49 root/www/luci-static/resources/view/detour/policies.js:49 root/www/luci-static/resources/view/detour/policies.js:82 root/www/luci-static/resources/view/detour/policies.js:159 root/www/luci-static/resources/detour/msg.js:94 root/www/luci-static/resources/detour/policyutil.js:75 root/www/luci-static/resources/detour/trafficui.js:113 root/www/luci-static/resources/detour/trafficui.js:129
+#: root/www/luci-static/resources/view/detour/policies.js:49 root/www/luci-static/resources/view/detour/policies.js:49 root/www/luci-static/resources/view/detour/policies.js:82 root/www/luci-static/resources/view/detour/policies.js:159 root/www/luci-static/resources/detour/msg.js:94 root/www/luci-static/resources/detour/policyutil.js:75 root/www/luci-static/resources/detour/trafficui.js:116 root/www/luci-static/resources/detour/trafficui.js:132
 msgid "Directly"
 msgstr ""
 
@@ -847,7 +851,7 @@ msgstr ""
 msgid "Download the previous settings"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/trafficui.js:97 root/www/luci-static/resources/detour/trafficui.js:113 root/www/luci-static/resources/detour/trafficui.js:141 root/www/luci-static/resources/detour/trafficui.js:146
+#: root/www/luci-static/resources/detour/trafficui.js:100 root/www/luci-static/resources/detour/trafficui.js:116 root/www/luci-static/resources/detour/trafficui.js:144 root/www/luci-static/resources/detour/trafficui.js:149
 msgid "Downloaded"
 msgstr ""
 
@@ -939,7 +943,7 @@ msgstr ""
 msgid "Exclude points"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/overview.js:211 root/www/luci-static/resources/view/detour/overview.js:219 root/www/luci-static/resources/detour/trafficui.js:141 root/www/luci-static/resources/detour/trafficui.js:145
+#: root/www/luci-static/resources/view/detour/overview.js:211 root/www/luci-static/resources/view/detour/overview.js:219 root/www/luci-static/resources/detour/trafficui.js:144 root/www/luci-static/resources/detour/trafficui.js:148
 msgid "Exit"
 msgstr ""
 
@@ -1011,7 +1015,7 @@ msgstr ""
 msgid "Free Cloudflare tunnels. Each keeps a pool of checked addresses and moves to the next one by itself when its point is wrong (DME by default) or the tunnel stops."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/packages.js:88
+#: root/www/luci-static/resources/view/detour/packages.js:98
 msgid "Free for packages:"
 msgstr ""
 
@@ -1039,7 +1043,7 @@ msgstr ""
 msgid "Handshake padding (S1)"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/trafficui.js:78
+#: root/www/luci-static/resources/detour/trafficui.js:81
 msgid "Hardware flow offloading works on this router: some traffic may bypass the counting, the numbers by device can be too low."
 msgstr ""
 
@@ -1115,15 +1119,15 @@ msgstr ""
 msgid "In order: the traffic goes through the first working exit; when it fails, through the next one, and back when it works again. A pinned exit is used while it works; when it fails, the others take over in this order."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/packages.js:60
+#: root/www/luci-static/resources/view/detour/packages.js:70
 msgid "In use now: %s. These stop working without it."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/packages.js:76
+#: root/www/luci-static/resources/view/detour/packages.js:86
 msgid "In use: %s"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/packages.js:50
+#: root/www/luci-static/resources/view/detour/packages.js:60
 msgid "Install"
 msgstr ""
 
@@ -1139,7 +1143,7 @@ msgstr ""
 msgid "Installed after the restore (the router downloads them):"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/packages.js:50 root/www/luci-static/resources/detour/pkg.js:153
+#: root/www/luci-static/resources/view/detour/packages.js:60 root/www/luci-static/resources/detour/pkg.js:153
 msgid "Installing %s"
 msgstr ""
 
@@ -1293,7 +1297,7 @@ msgstr ""
 msgid "Lists:"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/packages.js:95
+#: root/www/luci-static/resources/view/detour/packages.js:105
 msgid "Little space is left: %s. Installing or updating a component may fail, and a full flash can stop the router from saving its settings. Remove what is not used, or move the overlay to a USB drive (extroot)."
 msgstr ""
 
@@ -1529,7 +1533,7 @@ msgstr ""
 msgid "Not an address or a range: %s"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/packages.js:45 root/www/luci-static/resources/detour/pkg.js:147
+#: root/www/luci-static/resources/view/detour/packages.js:55 root/www/luci-static/resources/detour/pkg.js:147
 msgid "Not enough space: it needs %s, %s is free."
 msgstr ""
 
@@ -1545,11 +1549,15 @@ msgstr ""
 msgid "Not managed (provider DNS)"
 msgstr ""
 
+#: root/www/luci-static/resources/view/detour/packages.js:47
+msgid "Not running: the traffic is not counted (System → Startup: nlbwmon)."
+msgstr ""
+
 #: root/www/luci-static/resources/view/detour/exits.js:69
 msgid "Not started: no policy uses it. It starts by itself once a policy does."
 msgstr ""
 
-#: root/www/luci-static/resources/detour/trafficui.js:84
+#: root/www/luci-static/resources/detour/trafficui.js:87
 msgid "Nothing counted yet: the first numbers appear within 5 minutes."
 msgstr ""
 
@@ -1565,7 +1573,7 @@ msgstr ""
 msgid "Nothing here can become an exit."
 msgstr ""
 
-#: root/www/luci-static/resources/detour/trafficui.js:140
+#: root/www/luci-static/resources/detour/trafficui.js:143
 msgid "Nothing went through the exits in this period."
 msgstr ""
 
@@ -1819,7 +1827,7 @@ msgstr ""
 msgid "Proxy exits: VLESS, VMess, Trojan, Shadowsocks, Hysteria2, TUIC; provider subscriptions"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/packages.js:71 root/www/luci-static/resources/view/detour/packages.js:76
+#: root/www/luci-static/resources/view/detour/packages.js:81 root/www/luci-static/resources/view/detour/packages.js:86
 msgid "Purpose"
 msgstr ""
 
@@ -1879,7 +1887,7 @@ msgstr ""
 msgid "Registers a new free WARP device at Cloudflare and adds it as an exit."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:197 root/www/luci-static/resources/view/detour/exits.js:289 root/www/luci-static/resources/view/detour/exits.js:528 root/www/luci-static/resources/view/detour/packages.js:62 root/www/luci-static/resources/view/detour/policy.js:191 root/www/luci-static/resources/detour/addexit.js:242 root/www/luci-static/resources/detour/listsui.js:143 root/www/luci-static/resources/detour/listsui.js:144
+#: root/www/luci-static/resources/view/detour/exits.js:197 root/www/luci-static/resources/view/detour/exits.js:289 root/www/luci-static/resources/view/detour/exits.js:528 root/www/luci-static/resources/view/detour/packages.js:72 root/www/luci-static/resources/view/detour/policy.js:191 root/www/luci-static/resources/detour/addexit.js:242 root/www/luci-static/resources/detour/listsui.js:143 root/www/luci-static/resources/detour/listsui.js:144
 msgid "Remove"
 msgstr ""
 
@@ -1887,7 +1895,7 @@ msgstr ""
 msgid "Remove %s"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/packages.js:59
+#: root/www/luci-static/resources/view/detour/packages.js:69
 msgid "Remove %s (%s)?"
 msgstr ""
 
@@ -1923,7 +1931,7 @@ msgstr ""
 msgid "Removed%s."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/packages.js:62
+#: root/www/luci-static/resources/view/detour/packages.js:72
 msgid "Removing %s"
 msgstr ""
 
@@ -1973,6 +1981,14 @@ msgstr ""
 
 #: root/www/luci-static/resources/detour/sitecheckui.js:159
 msgid "Rules for devices count only for the chosen one."
+msgstr ""
+
+#: root/www/luci-static/resources/view/detour/packages.js:46
+msgid "Running but does not answer: the traffic is not counted. Detour restarts it by itself after 10 minutes of silence."
+msgstr ""
+
+#: root/www/luci-static/resources/view/detour/packages.js:45
+msgid "Running, counts the traffic."
 msgstr ""
 
 #: root/www/luci-static/resources/detour/pkg.js:95
@@ -2147,7 +2163,7 @@ msgstr ""
 msgid "Starting…"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/overview.js:213 root/www/luci-static/resources/view/detour/overview.js:221 root/www/luci-static/resources/view/detour/packages.js:72 root/www/luci-static/resources/view/detour/packages.js:77
+#: root/www/luci-static/resources/view/detour/overview.js:213 root/www/luci-static/resources/view/detour/overview.js:221 root/www/luci-static/resources/view/detour/packages.js:82 root/www/luci-static/resources/view/detour/packages.js:87
 msgid "State"
 msgstr ""
 
@@ -2159,7 +2175,7 @@ msgstr ""
 msgid "Stay"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/packages.js:108
+#: root/www/luci-static/resources/view/detour/packages.js:118
 msgid "Still running… the page reloads when it is done."
 msgstr ""
 
@@ -2211,7 +2227,7 @@ msgstr ""
 msgid "The DNS log of a device («what it asks for»)"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/devices.js:235 root/www/luci-static/resources/view/detour/overview.js:298 root/www/luci-static/resources/view/detour/packages.js:69 root/www/luci-static/resources/detour/trafficui.js:102 root/www/luci-static/resources/detour/trafficui.js:138
+#: root/www/luci-static/resources/view/detour/devices.js:235 root/www/luci-static/resources/view/detour/overview.js:298 root/www/luci-static/resources/view/detour/packages.js:79 root/www/luci-static/resources/detour/trafficui.js:105 root/www/luci-static/resources/detour/trafficui.js:141
 msgid "The Detour service is not running."
 msgstr ""
 
@@ -2259,7 +2275,7 @@ msgstr ""
 msgid "The configuration could not be read."
 msgstr ""
 
-#: root/www/luci-static/resources/detour/trafficui.js:122
+#: root/www/luci-static/resources/detour/trafficui.js:125
 msgid "The day has just begun: the chart starts with its second hour."
 msgstr ""
 
@@ -2359,11 +2375,11 @@ msgstr ""
 msgid "The other exits, their order and what happens when they fail are set on the policy's page."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/packages.js:91
+#: root/www/luci-static/resources/view/detour/packages.js:101
 msgid "The package list of the repositories: %s"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/packages.js:99
+#: root/www/luci-static/resources/view/detour/packages.js:109
 msgid "The packages Detour uses. Only these are installed, updated or removed here - never the rest of the firmware. An update of Detour itself restarts it: the page reloads after it."
 msgstr ""
 
@@ -2523,11 +2539,11 @@ msgstr ""
 msgid "This name is already used"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/policies.js:48 root/www/luci-static/resources/detour/trafficui.js:113 root/www/luci-static/resources/detour/trafficui.js:119 root/www/luci-static/resources/detour/trafficui.js:128
+#: root/www/luci-static/resources/view/detour/policies.js:48 root/www/luci-static/resources/detour/trafficui.js:116 root/www/luci-static/resources/detour/trafficui.js:122 root/www/luci-static/resources/detour/trafficui.js:131
 msgid "Through VPN"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/trafficui.js:151
+#: root/www/luci-static/resources/detour/trafficui.js:154
 msgid "Through VPN and directly are counted from the tunnels: the router's own checks and downloads through a tunnel count as VPN, so the split is approximate."
 msgstr ""
 
@@ -2663,23 +2679,23 @@ msgstr ""
 msgid "Update now"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/packages.js:93
+#: root/www/luci-static/resources/view/detour/packages.js:103
 msgid "Update the list"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/packages.js:55
+#: root/www/luci-static/resources/view/detour/packages.js:65
 msgid "Update to the new version"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/packages.js:55
+#: root/www/luci-static/resources/view/detour/packages.js:65
 msgid "Updating %s"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/packages.js:93
+#: root/www/luci-static/resources/view/detour/packages.js:103
 msgid "Updating the package list"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/trafficui.js:113 root/www/luci-static/resources/detour/trafficui.js:141 root/www/luci-static/resources/detour/trafficui.js:147
+#: root/www/luci-static/resources/detour/trafficui.js:116 root/www/luci-static/resources/detour/trafficui.js:144 root/www/luci-static/resources/detour/trafficui.js:150
 msgid "Uploaded"
 msgstr ""
 
@@ -3243,7 +3259,7 @@ msgstr ""
 msgid "measuring…"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/packages.js:81 root/www/luci-static/resources/detour/warpui.js:31
+#: root/www/luci-static/resources/view/detour/packages.js:91 root/www/luci-static/resources/detour/warpui.js:31
 msgid "never"
 msgstr ""
 
@@ -3267,8 +3283,16 @@ msgstr ""
 msgid "nlbwmon is not installed: devices are not counted."
 msgstr ""
 
-#: root/www/luci-static/resources/detour/trafficui.js:77
+#: root/www/luci-static/resources/detour/trafficui.js:80
 msgid "nlbwmon is not running: devices are not counted now (System → Startup: nlbwmon)."
+msgstr ""
+
+#: root/www/luci-static/resources/detour/trafficui.js:78
+msgid "nlbwmon is running but does not answer: devices are not counted now. Detour restarted it at %s and restarts it again after 10 minutes of silence."
+msgstr ""
+
+#: root/www/luci-static/resources/detour/trafficui.js:79
+msgid "nlbwmon is running but does not answer: devices are not counted now. Detour restarts it by itself after 10 minutes of silence."
 msgstr ""
 
 #: root/www/luci-static/resources/view/detour/overview.js:235
