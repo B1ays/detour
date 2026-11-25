@@ -210,6 +210,8 @@ return view.extend({
 		const box = E('div', { 'class': 'detour-exits' });
 		const draw = function() {
 			const cur = pu.arr(uci.get('detour', name, 'exit'));
+			// the list changed: staged in UCI, the row list drawn again (the rows' buttons and the "add" select use it)
+			const set = function(list) { uci.set('detour', name, 'exit', list); if (self.pinWant && list.indexOf(self.pinWant) < 0) self.pinWant = ''; self.changed(); draw(); };
 			const rows = cur.map(function(n, i) {
 				const s = st[n];
 				const pinned = self.pinWant == n;
@@ -218,7 +220,6 @@ return view.extend({
 					: s.idle ? { t: _('not started'), c: '' }
 					: s.healthy ? { t: s.ms ? _('works · %d ms').format(s.ms) : _('works'), c: 'ok' }
 					: { t: s.last_ok ? _('not answering since %s').format(new Date(s.last_ok * 1000).toLocaleTimeString()) : _('not answering'), c: 'bad' };
-				const set = function(list) { uci.set('detour', name, 'exit', list); if (self.pinWant && list.indexOf(self.pinWant) < 0) self.pinWant = ''; self.changed(); draw(); };
 				return E('div', { 'class': 'detour-exit-row' + (pinned ? ' pinned' : '') }, [
 					E('span', { 'class': 'detour-muted' }, String(i + 1)),
 					E('div', { 'class': 'detour-exit-main' }, [
