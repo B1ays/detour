@@ -5,9 +5,12 @@
 //   a CIDR: ~200 B in the kernel's interval set + its data file -> counted as 250 B.
 // Rounded up on purpose: erring high only refuses a list a little earlier.
 // Two rules, both checked by lists-update for what a run adds (never for a list that stays as big as it was):
-//   - all lists together stay under a cap: a share of the RAM (main.lists_mem_max, MB; default 35 %);
-//   - after loading, a reserve stays free (main.lists_mem_reserve, MB; default 15 % of the RAM, at least 64 MB).
+//   - after loading, a reserve stays free (main.lists_mem_reserve, MB; default 12 % of the RAM, 32 to 96 MB - a
+//     fixed 64 MB floor took a quarter of a 256 MB router, which then had almost nothing for its lists);
+//   - all lists together stay under a cap (main.lists_mem_max, MB; default half of what the reserve leaves).
 // The cap holds even when MemAvailable is generous (right after a boot, before the engines have grown).
+// A download is a moment, not a load: its raw text, the normalised copy and the sort live in /tmp only while the
+// list is processed, so it may dip into the reserve down to TMP_FLOOR (unless the reserve was set by hand).
 'use strict';
 
 import * as fs from 'fs';
@@ -16,6 +19,7 @@ import { RUN } from 'detour.core';
 
 const LISTS = RUN + '/lists';
 const MB = 1048576;
+const TMP_FLOOR = 24 * MB;
 export const COST = { domain: 300, cidr: 250 };
 
 function meminfo() {
@@ -67,8 +71,9 @@ function opt_mb(c, k) {
 // the budget now: { total, avail, cap, reserve, used, left, per: { domain, cidr } } (bytes); used: the lists loaded
 export function budget() {
 	const c = cursor(), m = meminfo(), inst = instances();
-	const cap = opt_mb(c, 'lists_mem_max') ?? int(m.total * 0.35);
-	const reserve = opt_mb(c, 'lists_mem_reserve') ?? max(64 * MB, int(m.total * 0.15));
+	const own_reserve = opt_mb(c, 'lists_mem_reserve');
+	const reserve = own_reserve ?? min(96 * MB, max(32 * MB, int(m.total * 0.12)));
+	const cap = opt_mb(c, 'lists_mem_max') ?? int(max(0, m.total - reserve) / 2);
 	let used = 0;
 	for (let f in fs.glob(LISTS + '/*.data') ?? []) {
 		const name = replace(replace(f, /^.*\//, ''), /\.data$/, '');
@@ -77,7 +82,7 @@ export function budget() {
 		used += cost(cur.kind, cur.n, inst);
 	}
 	const left = max(0, min(cap - used, m.avail - reserve));
-	return { total: m.total, avail: m.avail, cap, reserve, used, left, instances: inst,
+	return { total: m.total, avail: m.avail, cap, reserve, own_reserve: own_reserve != null, used, left, instances: inst,
 		per: { domain: COST.domain * inst, cidr: COST.cidr } };
 };
 
@@ -116,7 +121,11 @@ export function check(name, kind, n, target, accepted) {
 	const by_free = b.avail - b.reserve - accepted - peak;
 	const room = max(0, min(by_cap, by_free));
 	if (delta <= room) return null;
-	return sprintf('not enough memory: needs ~%s MB, %s MB left for lists', mb_up(delta), mb_down(room));
+	// which rule refused, with its numbers (LuCI and the notification say it in words)
+	const why = (by_cap <= by_free)
+		? sprintf(' (cap: the lists may take %s MB, they take %s MB)', mb_down(b.cap), mb_up(b.used))
+		: sprintf(' (free: %s MB free, %s MB stay free)', mb_down(b.avail - accepted - peak), mb_down(b.reserve));
+	return sprintf('not enough memory: needs ~%s MB, %s MB left for lists', mb_up(delta), mb_down(room)) + why;
 };
 
 // what list <name> adds when it becomes <n> entries of <kind> (bytes, 0 when it does not grow)
@@ -125,8 +134,17 @@ export function delta(name, kind, n) {
 	return max(0, cost(kind, n, inst) - cost(old.kind, old.n, inst));
 };
 
-// the biggest download a list may take now (its raw text sits in /tmp, and sorting holds it again)
+// the biggest download a list may take now: its raw text sits in /tmp, the normalised copy next to it, and the sort
+// holds it once more - a third of what is free above the floor (the reserve when set by hand, else TMP_FLOOR)
 export function rawmax(accepted) {
 	const b = budget();
-	return max(MB, min(256 * MB, int((b.avail - b.reserve - int(accepted ?? 0)) / 4)));
+	const floor = b.own_reserve ? b.reserve : min(b.reserve, TMP_FLOOR);
+	return max(MB, min(256 * MB, int((b.avail - floor - int(accepted ?? 0)) / 3)));
+};
+
+// why a download was cut (the tail of its reason): what is free, and the reserve when it was set by hand
+export function raw_why() {
+	const b = budget();
+	return b.own_reserve ? sprintf(' (free: %s MB free, %s MB stay free)', mb_down(b.avail), mb_down(b.reserve))
+		: sprintf(' (free: %d MB free)', int(b.avail / MB));
 };

@@ -39,6 +39,17 @@ function list_title(s) {
 }
 
 // lists-update writes English reasons; the known ones for people. A subscription's address never appears.
+// which memory rule refused a list (listmem.uc adds it to the reason): " (cap: ...)" / " (free: ...)"
+function mem_why(t) {
+	let x;
+	if ((x = match(t ?? '', /^ \(cap: the lists may take ([0-9.]+) MB, they take ([0-9.]+) MB\)$/)))
+		return sprintf(_(' (all lists may take %s MB, they take %s MB)'), x[1], x[2]);
+	if ((x = match(t ?? '', /^ \(free: ([0-9.]+) MB free, ([0-9.]+) MB stay free\)$/)))
+		return sprintf(_(' (%s MB of memory free, %s MB of it must stay free)'), x[1], x[2]);
+	if ((x = match(t ?? '', /^ \(free: ([0-9.]+) MB free\)$/))) return sprintf(_(' (%s MB of memory free)'), x[1]);
+	return t ?? '';
+}
+
 function list_reason(m) {
 	m = replace(m ?? '', /;? ?previous data kept$/, '');
 	let x;
@@ -47,9 +58,10 @@ function list_reason(m) {
 	if ((x = match(m, /^only ([0-9]+) entries \(minimum ([0-9]+)\)$/))) return sprintf(_('only %s entries came (at least %s needed)'), x[1], x[2]);
 	if ((x = match(m, /^file missing: (.+)$/))) return sprintf(_('no file %s'), x[1]);
 	if ((x = match(m, /^unknown policy '(.+)'$/))) return sprintf(_('its policy %s is gone'), x[1]);
-	if ((x = match(m, /^not enough memory: needs ~([0-9.]+) MB, ([0-9.]+) MB left for lists$/)))
-		return sprintf(_('not enough router memory: ~%s MB more needed, %s MB left for lists'), x[1], x[2]);
-	if ((x = match(m, /^download too big for the memory: over ([0-9]+) MB$/))) return sprintf(_('the download is bigger than the memory holds (over %s MB)'), x[1]);
+	if ((x = match(m, /^not enough memory: needs ~([0-9.]+) MB, ([0-9.]+) MB left for lists(.*)$/)))
+		return sprintf(_('not enough router memory: ~%s MB more needed, %s MB left for lists'), x[1], x[2]) + mem_why(x[3]);
+	if ((x = match(m, /^download too big for the memory: over ([0-9]+) MB(.*)$/)))
+		return sprintf(_('the download is bigger than the memory holds (over %s MB)'), x[1]) + mem_why(x[2]);
 	return m;
 }
 

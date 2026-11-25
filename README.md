@@ -182,8 +182,8 @@ config main 'main'
 	option fails '2'              # this many failures in a row = exit down
 	option probe_timeout '8'      # wait for a check's answer, seconds (2..30)
 	option alert_hold '10'        # "exit not responding" is sent if it lasts this long, seconds
-	option lists_mem_max '300'    # memory cap for all lists, MB (default 35 % of RAM)
-	option lists_mem_reserve '150' # memory kept free after loading lists, MB (default 15 % of RAM, at least 64)
+	option lists_mem_max '300'    # memory cap for all lists, MB (default half of what the reserve leaves)
+	option lists_mem_reserve '150' # memory kept free after loading lists, MB (default 12 % of RAM, 32 to 96)
 	option dns 'tunnel'           # router DNS: off | tunnel | encrypted
 	option dns_policy 'vpn'       # policy carrying the router's DNS (tunnel mode)
 	option dns_provider 'quad9'   # encrypted resolver: adguard | cloudflare | google | quad9 | opendns; none = list dns_fallback

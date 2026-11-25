@@ -45,6 +45,15 @@ function modal(title, body, onSave, saveText) {
 }
 
 // lists-update writes English messages (they also go to the log); the known ones are shown translated
+// which memory rule refused a list (listmem.uc adds it to the reason)
+function memWhy(t) {
+	let x;
+	if ((x = (t || '').match(/^ \(cap: the lists may take ([0-9.]+) MB, they take ([0-9.]+) MB\)$/))) return ' ' + _('(all lists may take %s MB, they take %s MB)').format(x[1], x[2]);
+	if ((x = (t || '').match(/^ \(free: ([0-9.]+) MB free, ([0-9.]+) MB stay free\)$/))) return ' ' + _('(%s MB of memory free, %s MB of it must stay free)').format(x[1], x[2]);
+	if ((x = (t || '').match(/^ \(free: ([0-9.]+) MB free\)$/))) return ' ' + _('(%s MB of memory free)').format(x[1]);
+	return t || '';
+}
+
 function failText(m) {
 	let x, kept = / ?;? previous data kept$/.test(m);
 	m = m.replace(/;? ?previous data kept$/, '');
@@ -53,8 +62,8 @@ function failText(m) {
 	else if ((x = m.match(/^only (\d+) entries \(minimum (\d+)\)$/))) t = _('only %d entries (minimum %d)').format(+x[1], +x[2]);
 	else if ((x = m.match(/^file missing: (.+)$/))) t = _('file missing: %s').format(x[1]);
 	else if ((x = m.match(/^unknown policy '(.+)'$/))) t = _('unknown policy %s').format(x[1]);
-	else if ((x = m.match(/^not enough memory: needs ~([0-9.]+) MB, ([0-9.]+) MB left for lists$/))) t = _('not enough memory on the router: it needs ~%s MB more, %s MB are left for lists').format(x[1], x[2]);
-	else if ((x = m.match(/^download too big for the memory: over (\d+) MB$/))) t = _('the download is bigger than the memory can take (over %d MB)').format(+x[1]);
+	else if ((x = m.match(/^not enough memory: needs ~([0-9.]+) MB, ([0-9.]+) MB left for lists(.*)$/))) t = _('not enough memory on the router: it needs ~%s MB more, %s MB are left for lists').format(x[1], x[2]) + memWhy(x[3]);
+	else if ((x = m.match(/^download too big for the memory: over (\d+) MB(.*)$/))) t = _('the download is bigger than the memory can take (over %d MB)').format(+x[1]) + memWhy(x[2]);
 	return kept ? t + '; ' + _('the previous list stays in use') : t;
 }
 

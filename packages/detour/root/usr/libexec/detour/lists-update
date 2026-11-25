@@ -205,13 +205,13 @@ handle_list() {
 		*) fetch "$(pin "$u")" "$raw.part"; rc=$?; [ $rc = 0 ] && cat "$raw.part" >> "$raw"; rm -f "$raw.part"
 		   up=${up:-$(upstream_date "$u")} ;;
 		esac
-		[ $rc = 63 ] && { fail=1; msg="download too big for the memory: over $(mb "$RAWMAX") MB"; }
+		[ $rc = 63 ] && { fail=1; msg="download too big for the memory: over $(mb "$RAWMAX") MB$(/usr/sbin/detour lists-mem why-raw 2>/dev/null)"; }
 		[ $rc != 0 ] && [ $rc != 63 ] && { fail=1; msg="download failed: $u"; }
 		echo >> "$raw"
 	done
 	[ -n "$file" ] && { [ -r "$file" ] && cat "$file" >> "$raw" || { fail=1; msg="file missing: $file"; }; }
 	# several sources (and v2fly includes) add up: the whole text must fit too
-	[ "$fail" = 0 ] && [ -n "$RAWMAX" ] && [ "$(wc -c < "$raw")" -gt "$RAWMAX" ] && { fail=1; msg="download too big for the memory: over $(mb "$RAWMAX") MB"; }
+	[ "$fail" = 0 ] && [ -n "$RAWMAX" ] && [ "$(wc -c < "$raw")" -gt "$RAWMAX" ] && { fail=1; msg="download too big for the memory: over $(mb "$RAWMAX") MB$(/usr/sbin/detour lists-mem why-raw 2>/dev/null)"; }
 	[ "$fail" = 1 ] && : > "$raw"   # nothing of a failed download is normalised (sorting holds it in memory again)
 	[ "$kind" = auto ] && kind=$(detect_kind "$raw")
 	if [ "$kind" = cidr ]; then norm_cidr < "$raw" > "$RUN/$s.new"; else norm_domains < "$raw" > "$RUN/$s.new"; fi

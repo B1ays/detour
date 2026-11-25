@@ -25,6 +25,11 @@ echo "policy $POL, dnsmasq instances $INST (a domain costs $((300 * INST)) B)"
 echo "== the budget"
 B=$(ubus call detour status | jsonfilter -e '@.lists_memory.left')
 [ -n "$B" ] && [ "$B" -gt 0 ] && ok "status has lists_memory (left $((B / 1048576)) MB)" || bad "no lists_memory in status"
+# the defaults follow the RAM: a reserve of 12 % (32 to 96 MB), a cap of half of what the reserve leaves
+J=$(detour lists-mem); TOT=$(echo "$J" | jsonfilter -e '@.total'); RES=$(echo "$J" | jsonfilter -e '@.reserve'); CAP=$(echo "$J" | jsonfilter -e '@.cap')
+WANT=$((TOT * 12 / 100)); MBB=1048576; [ $WANT -lt $((32 * MBB)) ] && WANT=$((32 * MBB)); [ $WANT -gt $((96 * MBB)) ] && WANT=$((96 * MBB))
+d=$((RES - WANT)); [ ${d#-} -le 1 ] && ok "default reserve: $((RES / MBB)) MB of $((TOT / MBB)) MB" || bad "reserve $RES, want $WANT"
+d=$((CAP - (TOT - RES) / 2)); [ ${d#-} -le 1 ] && ok "default cap: $((CAP / MBB)) MB" || bad "cap $CAP"
 lim 2 64
 L=$(detour lists-mem | jsonfilter -e '@.cap'); [ "$L" = 2097152 ] && ok "main.lists_mem_max sets the cap" || bad "cap $L"
 
@@ -35,6 +40,7 @@ upd
 [ "$(st ma ok)" = true ] && [ "$(wc -l < $R/ma.data)" = 3000 ] && ok "ma (0.9 MB of 2) loaded" || bad "ma: $(cat $R/ma.status)"
 [ "$(st mb ok)" = false ] && [ ! -s $R/mb.data ] && echo "$(st mb message)" | grep -q '^not enough memory: needs ~1.2 MB, 1.1 MB left for lists' \
 	&& ok "mb refused in the same run: $(st mb message)" || bad "mb: $(cat $R/mb.status)"
+echo "$(st mb message)" | grep -q '(cap: the lists may take 2.0 MB, they take 0.9 MB)' && ok "the reason names the cap" || bad "cap reason: $(st mb message)"
 grep -q "b1.example" /tmp/dnsmasq.*.d/detour-list-mb.conf 2>/dev/null && bad "mb reached dnsmasq" || ok "nothing of mb in dnsmasq"
 
 echo "== an existing list that grows past the limit keeps its old data"
@@ -52,6 +58,7 @@ echo "== the reserve: what must stay free"
 lim 4000 100000
 mk mc 500 c; lst mc; uci commit detour; upd mc
 [ "$(st mc ok)" = false ] && echo "$(st mc message)" | grep -q '^not enough memory' && ok "a reserve bigger than the free memory refuses a new list" || bad "reserve: $(cat $R/mc.status)"
+echo "$(st mc message)" | grep -qE '\(free: [0-9.]+ MB free, 100000.0 MB stay free\)' && ok "the reason names the free memory" || bad "free reason: $(st mc message)"
 
 echo "== a download over what memory can take is cut off"
 # a reserve of (free - 4 MB) leaves rawmax near its 1 MB floor (the free memory moves a little); a 12 MB file is over it
@@ -61,6 +68,7 @@ awk 'BEGIN { for (i = 0; i < 550000; i++) printf "big%d.example.org\n", i }' > $
 uci -q delete detour.mc.file; uci -q delete detour.mc.url; uci add_list detour.mc.url=file://$T/big.txt; uci commit detour
 upd mc
 echo "$(st mc message)" | grep -qE '^download too big for the memory: over [0-9]+ MB' && [ ! -s $R/mc.data ] && ok "cut off: $(st mc message)" || bad "big download: $(cat $R/mc.status)"
+echo "$(st mc message)" | grep -qE '\(free: [0-9.]+ MB free, [0-9.]+ MB stay free\)' && ok "with the free memory and the reserve set by hand" || bad "cut reason: $(st mc message)"
 ls $R/mc.raw $R/mc.new 2>/dev/null && bad "work files left" || ok "no work files left"
 
 echo "== boot (--restore) loads what was accepted before, whatever the limits"

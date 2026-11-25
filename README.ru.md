@@ -182,8 +182,8 @@ config main 'main'
 	option fails '2'              # столько неудач подряд = выход упал
 	option probe_timeout '8'      # ожидание ответа на проверку, секунды (2..30)
 	option alert_hold '10'        # уведомление «выход не отвечает» — если длится столько секунд
-	option lists_mem_max '300'    # потолок памяти всех списков, МБ (по умолчанию 35 % ОЗУ)
-	option lists_mem_reserve '150' # свободная память после загрузки списков, МБ (по умолчанию 15 % ОЗУ, не меньше 64)
+	option lists_mem_max '300'    # потолок памяти всех списков, МБ (по умолчанию половина того, что оставляет резерв)
+	option lists_mem_reserve '150' # свободная память после загрузки списков, МБ (по умолчанию 12 % ОЗУ, от 32 до 96)
 	option dns 'tunnel'           # DNS роутера: off | tunnel | encrypted
 	option dns_policy 'vpn'       # политика для DNS роутера (режим tunnel)
 	option dns_provider 'quad9'   # шифрованный DNS: adguard | cloudflare | google | quad9 | opendns; без него — list dns_fallback

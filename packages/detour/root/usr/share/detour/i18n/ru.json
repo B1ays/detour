@@ -1,4 +1,7 @@
 {
+	" (%s MB of memory free)": " (свободно %s МБ памяти)",
+	" (%s MB of memory free, %s MB of it must stay free)": " (свободно %s МБ памяти, из них %s МБ должны оставаться свободными)",
+	" (all lists may take %s MB, they take %s MB)": " (всем спискам можно занять %s МБ, они занимают %s МБ)",
 	"\"%s\"": "«%s»",
 	"%.1f GB": "%.1f ГБ",
 	"%d h %d min": "%d ч %d мин",

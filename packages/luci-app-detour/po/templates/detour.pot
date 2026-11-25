@@ -35,7 +35,7 @@ msgid_plural "%d device names"
 msgstr[0] ""
 msgstr[1] ""
 
-#: root/www/luci-static/resources/detour/listsui.js:107 root/www/luci-static/resources/detour/listsui.js:251
+#: root/www/luci-static/resources/detour/listsui.js:116 root/www/luci-static/resources/detour/listsui.js:260
 msgid "%d entry"
 msgid_plural "%d entries"
 msgstr[0] ""
@@ -155,6 +155,18 @@ msgstr ""
 msgid "%s: «%s» is not a code of %d letters"
 msgstr ""
 
+#: root/www/luci-static/resources/detour/listsui.js:53
+msgid "(%s MB of memory free)"
+msgstr ""
+
+#: root/www/luci-static/resources/detour/listsui.js:52
+msgid "(%s MB of memory free, %s MB of it must stay free)"
+msgstr ""
+
+#: root/www/luci-static/resources/detour/listsui.js:51
+msgid "(all lists may take %s MB, they take %s MB)"
+msgstr ""
+
 #: root/www/luci-static/resources/detour/msg.js:148
 msgid "(chosen by hand)"
 msgstr ""
@@ -247,7 +259,7 @@ msgstr ""
 msgid "A download through this server only; the subscription does not switch"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:190
+#: root/www/luci-static/resources/detour/listsui.js:199
 msgid "A download with fewer entries is treated as a failure, and the previous list stays in use."
 msgstr ""
 
@@ -287,7 +299,7 @@ msgstr ""
 msgid "Action «%s» from the panel: %s"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:625 root/www/luci-static/resources/view/detour/policy.js:93 root/www/luci-static/resources/detour/addexit.js:147 root/www/luci-static/resources/detour/addexit.js:199 root/www/luci-static/resources/detour/listsui.js:215 root/www/luci-static/resources/detour/listsui.js:257
+#: root/www/luci-static/resources/view/detour/exits.js:625 root/www/luci-static/resources/view/detour/policy.js:93 root/www/luci-static/resources/detour/addexit.js:147 root/www/luci-static/resources/detour/addexit.js:199 root/www/luci-static/resources/detour/listsui.js:224 root/www/luci-static/resources/detour/listsui.js:266
 msgid "Add"
 msgstr ""
 
@@ -519,11 +531,11 @@ msgstr ""
 msgid "By the policies"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/devices.js:115 root/www/luci-static/resources/view/detour/exits.js:119 root/www/luci-static/resources/view/detour/exits.js:281 root/www/luci-static/resources/view/detour/policies.js:103 root/www/luci-static/resources/view/detour/policy.js:66 root/www/luci-static/resources/view/detour/policy.js:181 root/www/luci-static/resources/detour/addexit.js:210 root/www/luci-static/resources/detour/listsui.js:44 root/www/luci-static/resources/detour/listsui.js:130
+#: root/www/luci-static/resources/view/detour/devices.js:115 root/www/luci-static/resources/view/detour/exits.js:119 root/www/luci-static/resources/view/detour/exits.js:281 root/www/luci-static/resources/view/detour/policies.js:103 root/www/luci-static/resources/view/detour/policy.js:66 root/www/luci-static/resources/view/detour/policy.js:181 root/www/luci-static/resources/detour/addexit.js:210 root/www/luci-static/resources/detour/listsui.js:44 root/www/luci-static/resources/detour/listsui.js:139
 msgid "Cancel"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:274
+#: root/www/luci-static/resources/detour/listsui.js:283
 msgid "Catalogue of categories"
 msgstr ""
 
@@ -531,7 +543,7 @@ msgstr ""
 msgid "Catalogue of categories…"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:275
+#: root/www/luci-static/resources/detour/listsui.js:284
 msgid "Categories kept up to date by their authors: v2fly (services and sites of the world) and runetfreedom (what is blocked in Russia). The numbers of entries are from the time this version was built; a category that appeared later shows its number once added."
 msgstr ""
 
@@ -599,7 +611,7 @@ msgstr ""
 msgid "Choose the backup file…"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/devices.js:187 root/www/luci-static/resources/view/detour/exits.js:245 root/www/luci-static/resources/detour/listsui.js:279 root/www/luci-static/resources/detour/pkg.js:99 root/www/luci-static/resources/detour/warpui.js:143
+#: root/www/luci-static/resources/view/detour/devices.js:187 root/www/luci-static/resources/view/detour/exits.js:245 root/www/luci-static/resources/detour/listsui.js:288 root/www/luci-static/resources/detour/pkg.js:99 root/www/luci-static/resources/detour/warpui.js:143
 msgid "Close"
 msgstr ""
 
@@ -683,7 +695,7 @@ msgstr ""
 msgid "Connects to its servers through «%s»."
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:189
+#: root/www/luci-static/resources/detour/listsui.js:198
 msgid "Contents"
 msgstr ""
 
@@ -843,7 +855,7 @@ msgstr ""
 msgid "Downloading"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:192 root/www/luci-static/resources/view/detour/exits.js:527 root/www/luci-static/resources/detour/listsui.js:122
+#: root/www/luci-static/resources/view/detour/exits.js:192 root/www/luci-static/resources/view/detour/exits.js:527 root/www/luci-static/resources/detour/listsui.js:131
 msgid "Edit"
 msgstr ""
 
@@ -1007,11 +1019,11 @@ msgstr ""
 msgid "From the device"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:202
+#: root/www/luci-static/resources/detour/listsui.js:211
 msgid "Give a source or a file"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/devices.js:159 root/www/luci-static/resources/view/detour/devices.js:161 root/www/luci-static/resources/detour/listsui.js:186
+#: root/www/luci-static/resources/view/detour/devices.js:159 root/www/luci-static/resources/view/detour/devices.js:161 root/www/luci-static/resources/detour/listsui.js:195
 msgid "Goes"
 msgstr ""
 
@@ -1067,7 +1079,7 @@ msgstr ""
 msgid "How the exit is shown everywhere."
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:185
+#: root/www/luci-static/resources/detour/listsui.js:194
 msgid "How the list is shown everywhere. Empty: made from its source."
 msgstr ""
 
@@ -1139,7 +1151,7 @@ msgstr ""
 msgid "Installing the components: %s…"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:604 root/www/luci-static/resources/view/detour/policies.js:99 root/www/luci-static/resources/detour/addexit.js:206 root/www/luci-static/resources/detour/listsui.js:183
+#: root/www/luci-static/resources/view/detour/exits.js:604 root/www/luci-static/resources/view/detour/policies.js:99 root/www/luci-static/resources/detour/addexit.js:206 root/www/luci-static/resources/detour/listsui.js:192
 msgid "Internal name"
 msgstr ""
 
@@ -1147,7 +1159,7 @@ msgstr ""
 msgid "Internal name: Latin letters, digits and _, up to 11, starting with a letter."
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:196
+#: root/www/luci-static/resources/detour/listsui.js:205
 msgid "Internal name: a-z, 0-9, _, starts with a letter"
 msgstr ""
 
@@ -1155,7 +1167,7 @@ msgstr ""
 msgid "Internal name: a-z, 0-9, _, starts with a letter, up to 11"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:201 root/www/luci-static/resources/view/detour/exits.js:532 root/www/luci-static/resources/view/detour/policies.js:116 root/www/luci-static/resources/view/detour/policy.js:151 root/www/luci-static/resources/detour/listsui.js:140
+#: root/www/luci-static/resources/view/detour/exits.js:201 root/www/luci-static/resources/view/detour/exits.js:532 root/www/luci-static/resources/view/detour/policies.js:116 root/www/luci-static/resources/view/detour/policy.js:151 root/www/luci-static/resources/detour/listsui.js:149
 msgid "Internal name: used in the configuration and the log"
 msgstr ""
 
@@ -1233,7 +1245,7 @@ msgstr ""
 msgid "Latin letters, digits and _, up to 11; used in the configuration."
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:183
+#: root/www/luci-static/resources/detour/listsui.js:192
 msgid "Latin letters, digits and _; used in the configuration."
 msgstr ""
 
@@ -1261,7 +1273,7 @@ msgstr ""
 msgid "Lets nothing through."
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:192
+#: root/www/luci-static/resources/detour/listsui.js:201
 msgid "List «%s»"
 msgstr ""
 
@@ -1285,11 +1297,11 @@ msgstr ""
 msgid "Little space is left: %s. Installing or updating a component may fail, and a full flash can stop the router from saving its settings. Remove what is not used, or move the overlay to a USB drive (extroot)."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:243 root/www/luci-static/resources/view/detour/exits.js:319 root/www/luci-static/resources/view/detour/exits.js:321 root/www/luci-static/resources/view/detour/overview.js:264 root/www/luci-static/resources/detour/listsui.js:227 root/www/luci-static/resources/detour/warpui.js:84
+#: root/www/luci-static/resources/view/detour/exits.js:243 root/www/luci-static/resources/view/detour/exits.js:319 root/www/luci-static/resources/view/detour/exits.js:321 root/www/luci-static/resources/view/detour/overview.js:264 root/www/luci-static/resources/detour/listsui.js:236 root/www/luci-static/resources/detour/warpui.js:84
 msgid "Loading…"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:188
+#: root/www/luci-static/resources/detour/listsui.js:197
 msgid "Local file"
 msgstr ""
 
@@ -1353,7 +1365,7 @@ msgstr ""
 msgid "Memory for lists"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:91
+#: root/www/luci-static/resources/detour/listsui.js:100
 msgid "Memory: the lists take ~%s MB; up to %s MB more can be added (the router has %s MB, %s MB of it stay free for everything else)."
 msgstr ""
 
@@ -1365,15 +1377,15 @@ msgstr ""
 msgid "Meta (Facebook, Instagram, WhatsApp)"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:190
+#: root/www/luci-static/resources/detour/listsui.js:199
 msgid "Minimum entries"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:203
+#: root/www/luci-static/resources/detour/listsui.js:212
 msgid "Minimum entries: a number"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:345 root/www/luci-static/resources/view/detour/exits.js:380 root/www/luci-static/resources/view/detour/exits.js:559 root/www/luci-static/resources/view/detour/policies.js:98 root/www/luci-static/resources/view/detour/policy.js:252 root/www/luci-static/resources/detour/addexit.js:205 root/www/luci-static/resources/detour/addexit.js:227 root/www/luci-static/resources/detour/listsui.js:185
+#: root/www/luci-static/resources/view/detour/exits.js:345 root/www/luci-static/resources/view/detour/exits.js:380 root/www/luci-static/resources/view/detour/exits.js:559 root/www/luci-static/resources/view/detour/policies.js:98 root/www/luci-static/resources/view/detour/policy.js:252 root/www/luci-static/resources/detour/addexit.js:205 root/www/luci-static/resources/detour/addexit.js:227 root/www/luci-static/resources/detour/listsui.js:194
 msgid "Name"
 msgstr ""
 
@@ -1405,7 +1417,7 @@ msgstr ""
 msgid "New exit «%s»"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:192
+#: root/www/luci-static/resources/detour/listsui.js:201
 msgid "New list"
 msgstr ""
 
@@ -1509,7 +1521,7 @@ msgstr ""
 msgid "Not a site: %s"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:201
+#: root/www/luci-static/resources/detour/listsui.js:210
 msgid "Not a source: %s"
 msgstr ""
 
@@ -1541,7 +1553,7 @@ msgstr ""
 msgid "Nothing counted yet: the first numbers appear within 5 minutes."
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:261
+#: root/www/luci-static/resources/detour/listsui.js:270
 msgid "Nothing found."
 msgstr ""
 
@@ -1609,7 +1621,7 @@ msgstr ""
 msgid "One per line. A site includes its subdomains (example.com covers www.example.com). Devices must use the router's DNS (they do by default)."
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:187
+#: root/www/luci-static/resources/detour/listsui.js:196
 msgid "One per line: an http(s) address of a list, or a v2fly category as v2fly:NAME (for example v2fly:youtube). Address lists: one IP or range per line; domain lists: plain, hosts, dnsmasq, adblock or v2fly/geosite text."
 msgstr ""
 
@@ -1649,7 +1661,7 @@ msgstr ""
 msgid "Opening it directly and through an exit (up to 15 s)…"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:188
+#: root/www/luci-static/resources/detour/listsui.js:197
 msgid "Optional: a file on the router with more entries."
 msgstr ""
 
@@ -1771,7 +1783,7 @@ msgstr[1] ""
 msgid "Pool: empty"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:182
+#: root/www/luci-static/resources/detour/listsui.js:191
 msgid "Popular categories, kept up to date by their authors (runetfreedom, v2fly). Or give your own sources below."
 msgstr ""
 
@@ -1827,7 +1839,7 @@ msgstr ""
 msgid "Random bytes added to the handshake start. Must match the server."
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:182
+#: root/www/luci-static/resources/detour/listsui.js:191
 msgid "Ready-made list"
 msgstr ""
 
@@ -1851,7 +1863,7 @@ msgstr ""
 msgid "Refill below"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:273
+#: root/www/luci-static/resources/detour/listsui.js:282
 msgid "Refresh the list of categories"
 msgstr ""
 
@@ -1867,7 +1879,7 @@ msgstr ""
 msgid "Registers a new free WARP device at Cloudflare and adds it as an exit."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:197 root/www/luci-static/resources/view/detour/exits.js:289 root/www/luci-static/resources/view/detour/exits.js:528 root/www/luci-static/resources/view/detour/packages.js:62 root/www/luci-static/resources/view/detour/policy.js:191 root/www/luci-static/resources/detour/addexit.js:242 root/www/luci-static/resources/detour/listsui.js:134 root/www/luci-static/resources/detour/listsui.js:135
+#: root/www/luci-static/resources/view/detour/exits.js:197 root/www/luci-static/resources/view/detour/exits.js:289 root/www/luci-static/resources/view/detour/exits.js:528 root/www/luci-static/resources/view/detour/packages.js:62 root/www/luci-static/resources/view/detour/policy.js:191 root/www/luci-static/resources/detour/addexit.js:242 root/www/luci-static/resources/detour/listsui.js:143 root/www/luci-static/resources/detour/listsui.js:144
 msgid "Remove"
 msgstr ""
 
@@ -1891,7 +1903,7 @@ msgstr ""
 msgid "Remove the exit %s"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:128
+#: root/www/luci-static/resources/detour/listsui.js:137
 msgid "Remove the list «%s»?"
 msgstr ""
 
@@ -1979,7 +1991,7 @@ msgstr ""
 msgid "SSH"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/devices.js:121 root/www/luci-static/resources/view/detour/exits.js:117 root/www/luci-static/resources/detour/listsui.js:42 root/www/luci-static/resources/detour/listsui.js:215
+#: root/www/luci-static/resources/view/detour/devices.js:121 root/www/luci-static/resources/view/detour/exits.js:117 root/www/luci-static/resources/detour/listsui.js:42 root/www/luci-static/resources/detour/listsui.js:224
 msgid "Save"
 msgstr ""
 
@@ -2111,11 +2123,11 @@ msgstr ""
 msgid "Some providers give servers only to certain apps (Happ, v2rayNG…). Empty: v2rayNG."
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:113
+#: root/www/luci-static/resources/detour/listsui.js:122
 msgid "Source: %s"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:187
+#: root/www/luci-static/resources/detour/listsui.js:196
 msgid "Sources"
 msgstr ""
 
@@ -2223,7 +2235,7 @@ msgstr ""
 msgid "The backup was made by a newer Detour (%s): update Detour first."
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:309
+#: root/www/luci-static/resources/detour/listsui.js:318
 msgid "The catalogue is missing from this build."
 msgstr ""
 
@@ -2311,11 +2323,11 @@ msgstr ""
 msgid "The link your VPN provider gives for apps. Kept secret: shown only here, never logged."
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:270
+#: root/www/luci-static/resources/detour/listsui.js:279
 msgid "The list of categories did not come: %s"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:90
+#: root/www/luci-static/resources/detour/listsui.js:99
 msgid "The lists of this policy: ~%s MB · all lists: ~%s MB · up to %s MB more can be added"
 msgstr ""
 
@@ -2507,7 +2519,7 @@ msgstr ""
 msgid "This kind of server is edited as JSON below."
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:607 root/www/luci-static/resources/view/detour/policies.js:75 root/www/luci-static/resources/detour/listsui.js:197
+#: root/www/luci-static/resources/view/detour/exits.js:607 root/www/luci-static/resources/view/detour/policies.js:75 root/www/luci-static/resources/detour/listsui.js:206
 msgid "This name is already used"
 msgstr ""
 
@@ -2551,7 +2563,7 @@ msgstr ""
 msgid "Through the tunnel: the router resolves names via the exits of the selected policy, so the provider does not see the queries. If all of its exits are down, it switches to an encrypted resolver (DoH/DoT/DoQ) directly; traffic of the policies stays blocked. Encrypted: the router always asks the encrypted resolvers directly, whatever the exits do."
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:186
+#: root/www/luci-static/resources/detour/listsui.js:195
 msgid "Through which policy (its exits) the addresses of the list go - or never through a tunnel, whatever the policies say."
 msgstr ""
 
@@ -2607,11 +2619,11 @@ msgstr ""
 msgid "Transport"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:196 root/www/luci-static/resources/view/detour/policy.js:156 root/www/luci-static/resources/detour/listsui.js:126
+#: root/www/luci-static/resources/view/detour/exits.js:196 root/www/luci-static/resources/view/detour/policy.js:156 root/www/luci-static/resources/detour/listsui.js:135
 msgid "Turn off"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:196 root/www/luci-static/resources/view/detour/policy.js:156 root/www/luci-static/resources/view/detour/policy.js:166 root/www/luci-static/resources/detour/listsui.js:126
+#: root/www/luci-static/resources/view/detour/exits.js:196 root/www/luci-static/resources/view/detour/policy.js:156 root/www/luci-static/resources/view/detour/policy.js:166 root/www/luci-static/resources/detour/listsui.js:135
 msgid "Turn on"
 msgstr ""
 
@@ -2647,7 +2659,7 @@ msgstr ""
 msgid "Update every"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:516 root/www/luci-static/resources/detour/listsui.js:121
+#: root/www/luci-static/resources/view/detour/exits.js:516 root/www/luci-static/resources/detour/listsui.js:130
 msgid "Update now"
 msgstr ""
 
@@ -2679,7 +2691,7 @@ msgstr ""
 msgid "Use"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:189
+#: root/www/luci-static/resources/detour/listsui.js:198
 msgid "Usually detected by itself."
 msgstr ""
 
@@ -2771,7 +2783,7 @@ msgstr ""
 msgid "Watching: %d s left. Names asked: %d, requests: %d."
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:129
+#: root/www/luci-static/resources/detour/listsui.js:138
 msgid "What came only from this list goes directly from now on."
 msgstr ""
 
@@ -2955,15 +2967,15 @@ msgstr ""
 msgid "add an exit from a link"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:106 root/www/luci-static/resources/detour/listsui.js:171 root/www/luci-static/resources/detour/listsui.js:225
+#: root/www/luci-static/resources/detour/listsui.js:115 root/www/luci-static/resources/detour/listsui.js:180 root/www/luci-static/resources/detour/listsui.js:234
 msgid "addresses"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:226
+#: root/www/luci-static/resources/detour/listsui.js:235
 msgid "all sources"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:254
+#: root/www/luci-static/resources/detour/listsui.js:263
 msgid "already added"
 msgstr ""
 
@@ -2983,7 +2995,7 @@ msgstr ""
 msgid "an exit works again"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:260
+#: root/www/luci-static/resources/detour/listsui.js:269
 msgid "and %d more: narrow the search"
 msgstr ""
 
@@ -3007,11 +3019,11 @@ msgstr ""
 msgid "automatically"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/devices.js:149 root/www/luci-static/resources/detour/listsui.js:154
+#: root/www/luci-static/resources/view/detour/devices.js:149 root/www/luci-static/resources/detour/listsui.js:163
 msgid "block"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:151
+#: root/www/luci-static/resources/detour/listsui.js:160
 msgid "block (the policy «%s»)"
 msgstr ""
 
@@ -3079,7 +3091,7 @@ msgstr ""
 msgid "default"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:171
+#: root/www/luci-static/resources/detour/listsui.js:180
 msgid "detect by itself"
 msgstr ""
 
@@ -3099,15 +3111,15 @@ msgstr ""
 msgid "directly (exits down)"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:252
+#: root/www/luci-static/resources/detour/listsui.js:261
 msgid "does not fit: %s MB are left for lists"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:106 root/www/luci-static/resources/detour/listsui.js:171 root/www/luci-static/resources/detour/listsui.js:225
+#: root/www/luci-static/resources/detour/listsui.js:115 root/www/luci-static/resources/detour/listsui.js:180 root/www/luci-static/resources/detour/listsui.js:234
 msgid "domains"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:225
+#: root/www/luci-static/resources/detour/listsui.js:234
 msgid "domains and addresses"
 msgstr ""
 
@@ -3119,7 +3131,7 @@ msgstr ""
 msgid "down"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:52
+#: root/www/luci-static/resources/detour/listsui.js:61
 msgid "download failed: %s"
 msgstr ""
 
@@ -3163,11 +3175,11 @@ msgstr ""
 msgid "failed"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:104
+#: root/www/luci-static/resources/detour/listsui.js:113
 msgid "file %s"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:54
+#: root/www/luci-static/resources/detour/listsui.js:63
 msgid "file missing: %s"
 msgstr ""
 
@@ -3235,19 +3247,19 @@ msgstr ""
 msgid "never"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:153
+#: root/www/luci-static/resources/detour/listsui.js:162
 msgid "never through a tunnel"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:151
+#: root/www/luci-static/resources/detour/listsui.js:160
 msgid "never through a tunnel (the policy «%s»)"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:297
+#: root/www/luci-static/resources/detour/listsui.js:306
 msgid "new since this version: %d"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:251
+#: root/www/luci-static/resources/detour/listsui.js:260
 msgid "new: the number of entries is known once added"
 msgstr ""
 
@@ -3323,7 +3335,7 @@ msgstr ""
 msgid "not applied yet"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:56
+#: root/www/luci-static/resources/detour/listsui.js:65
 msgid "not enough memory on the router: it needs ~%s MB more, %s MB are left for lists"
 msgstr ""
 
@@ -3339,7 +3351,7 @@ msgstr ""
 msgid "not installed"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:112
+#: root/www/luci-static/resources/detour/listsui.js:121
 msgid "not loaded yet"
 msgstr ""
 
@@ -3391,7 +3403,7 @@ msgstr ""
 msgid "offline"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/policies.js:113 root/www/luci-static/resources/view/detour/policies.js:113 root/www/luci-static/resources/view/detour/policies.js:136 root/www/luci-static/resources/view/detour/policy.js:148 root/www/luci-static/resources/view/detour/policy.js:148 root/www/luci-static/resources/detour/listsui.js:139
+#: root/www/luci-static/resources/view/detour/policies.js:113 root/www/luci-static/resources/view/detour/policies.js:113 root/www/luci-static/resources/view/detour/policies.js:136 root/www/luci-static/resources/view/detour/policy.js:148 root/www/luci-static/resources/view/detour/policy.js:148 root/www/luci-static/resources/detour/listsui.js:148
 msgid "on"
 msgstr ""
 
@@ -3399,7 +3411,7 @@ msgstr ""
 msgid "online"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:53
+#: root/www/luci-static/resources/detour/listsui.js:62
 msgid "only %d entries (minimum %d)"
 msgstr ""
 
@@ -3503,7 +3515,7 @@ msgstr ""
 msgid "scanned %s"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:234
+#: root/www/luci-static/resources/detour/listsui.js:243
 msgid "size unknown until added"
 msgstr ""
 
@@ -3519,7 +3531,7 @@ msgstr ""
 msgid "subscription address"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:60 root/www/luci-static/resources/view/detour/overview.js:221 root/www/luci-static/resources/view/detour/policies.js:113 root/www/luci-static/resources/view/detour/policies.js:113 root/www/luci-static/resources/view/detour/policies.js:136 root/www/luci-static/resources/view/detour/policy.js:148 root/www/luci-static/resources/view/detour/policy.js:148 root/www/luci-static/resources/detour/listsui.js:139
+#: root/www/luci-static/resources/view/detour/exits.js:60 root/www/luci-static/resources/view/detour/overview.js:221 root/www/luci-static/resources/view/detour/policies.js:113 root/www/luci-static/resources/view/detour/policies.js:113 root/www/luci-static/resources/view/detour/policies.js:136 root/www/luci-static/resources/view/detour/policy.js:148 root/www/luci-static/resources/view/detour/policy.js:148 root/www/luci-static/resources/detour/listsui.js:148
 msgid "switched off"
 msgstr ""
 
@@ -3535,7 +3547,7 @@ msgstr ""
 msgid "takes %s; the update adds %s, download %s"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:253
+#: root/www/luci-static/resources/detour/listsui.js:262
 msgid "takes most of the %s MB left for lists"
 msgstr ""
 
@@ -3563,7 +3575,7 @@ msgstr ""
 msgid "the device is in the policy %s"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:57
+#: root/www/luci-static/resources/detour/listsui.js:66
 msgid "the download is bigger than the memory can take (over %d MB)"
 msgstr ""
 
@@ -3607,7 +3619,7 @@ msgstr ""
 msgid "the port %s is in the policy %s"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:58
+#: root/www/luci-static/resources/detour/listsui.js:67
 msgid "the previous list stays in use"
 msgstr ""
 
@@ -3655,7 +3667,7 @@ msgstr ""
 msgid "the site refused (HTTP %d)"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:109
+#: root/www/luci-static/resources/detour/listsui.js:118
 msgid "the source changed %s"
 msgstr ""
 
@@ -3687,7 +3699,7 @@ msgstr ""
 msgid "through %s"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:151
+#: root/www/luci-static/resources/detour/listsui.js:160
 msgid "through the policy «%s»"
 msgstr ""
 
@@ -3701,7 +3713,7 @@ msgid_plural "traffic history: %d months"
 msgstr[0] ""
 msgstr[1] ""
 
-#: root/www/luci-static/resources/detour/listsui.js:55
+#: root/www/luci-static/resources/detour/listsui.js:64
 msgid "unknown policy %s"
 msgstr ""
 
@@ -3717,7 +3729,7 @@ msgstr ""
 msgid "update available"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:139
+#: root/www/luci-static/resources/detour/listsui.js:148
 msgid "update failed"
 msgstr ""
 
@@ -3725,7 +3737,7 @@ msgstr ""
 msgid "update lists"
 msgstr ""
 
-#: root/www/luci-static/resources/view/detour/exits.js:434 root/www/luci-static/resources/detour/listsui.js:108
+#: root/www/luci-static/resources/view/detour/exits.js:434 root/www/luci-static/resources/detour/listsui.js:117
 msgid "updated %s"
 msgstr ""
 
@@ -3733,11 +3745,11 @@ msgstr ""
 msgid "updates every %s"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:295
+#: root/www/luci-static/resources/detour/listsui.js:304
 msgid "v2fly categories: %d, as of %s (checked %s)"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:299
+#: root/www/luci-static/resources/detour/listsui.js:308
 msgid "v2fly categories: built into this version (%s)"
 msgstr ""
 
@@ -3785,15 +3797,15 @@ msgstr ""
 msgid "wrong packet mark bits «%s» - the default ones are used"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:224
+#: root/www/luci-static/resources/detour/listsui.js:233
 msgid "youtube, telegram, openai, steam…"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:236
+#: root/www/luci-static/resources/detour/listsui.js:245
 msgid "~%d KB"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:236
+#: root/www/luci-static/resources/detour/listsui.js:245
 msgid "~%s MB"
 msgstr ""
 
@@ -3805,7 +3817,7 @@ msgstr ""
 msgid "— no more exits —"
 msgstr ""
 
-#: root/www/luci-static/resources/detour/listsui.js:165
+#: root/www/luci-static/resources/detour/listsui.js:174
 msgid "— own sources (below) —"
 msgstr ""
 

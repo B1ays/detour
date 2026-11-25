@@ -1,5 +1,5 @@
 name=luci-app-detour
-version=0.5.0-r7
+version=0.5.0-r8
 description=LuCI interface for Detour
 license=MIT
 depends=detour luci-base luci-proto-wireguard

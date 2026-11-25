@@ -129,6 +129,9 @@ def update_po(app, lang, msgs):
 
 # the messages the router sends to people (detourd, watch.uc, notify.uc) -> detour/root/usr/share/detour/i18n/ru.json
 RU_NOTIFY = {
+	' (all lists may take %s MB, they take %s MB)': ' (всем спискам можно занять %s МБ, они занимают %s МБ)',
+	' (%s MB of memory free, %s MB of it must stay free)': ' (свободно %s МБ памяти, из них %s МБ должны оставаться свободными)',
+	' (%s MB of memory free)': ' (свободно %s МБ памяти)',
 	'Policy %s: no exit works, its traffic goes directly (as set up)': 'Политика %s: не работает ни один выход, её трафик пошёл напрямую (так настроено)',
 	'Policy %s: no exit works, its traffic is blocked': 'Политика %s: не работает ни один выход, её трафик заблокирован',
 	'Policy %s has no exits left, its traffic is blocked': 'Политика %s осталась без выходов, её трафик заблокирован',

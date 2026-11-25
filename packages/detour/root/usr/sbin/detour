@@ -194,6 +194,7 @@ case 'lists-mem': {
 	// detour lists-mem                                         the memory budget of the lists (JSON, bytes)
 	// detour lists-mem check <list> <kind> <entries> <target> <accepted>   bytes it adds; exit 1 + the reason when it does not fit
 	// detour lists-mem rawmax <accepted>                        the biggest download a list may take now (bytes)
+	// detour lists-mem why-raw                                  why a download was cut: " (free: ...)"
 	if (ARGV[1] == 'check') {
 		const why = listmem.check(ARGV[2], ARGV[3], int(ARGV[4] ?? 0), ARGV[5], int(ARGV[6] ?? 0));
 		if (why) { print(why, '
@@ -202,6 +203,7 @@ case 'lists-mem': {
 ');   // what it adds: the caller sums a run
 		exit(0);
 	}
+	if (ARGV[1] == 'why-raw') { print(listmem.raw_why(), '\n'); exit(0); }
 	if (ARGV[1] == 'rawmax') { print(listmem.rawmax(int(ARGV[2] ?? 0)), '
 '); exit(0); }
 	printf('%.J
